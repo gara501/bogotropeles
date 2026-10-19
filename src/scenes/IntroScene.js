@@ -25,7 +25,7 @@ export class IntroScene extends Phaser.Scene {
     const bg=this.add.image(480,270,texture),scale=Math.max(960/bg.width,540/bg.height);
     bg.setScale(scale).setAlpha(0);
     this.tweens.add({targets:bg,alpha:1,duration:450});
-    const style={fontFamily:'monospace',color:'#e8edce',align:'center',stroke:'#05080a',strokeThickness:5};
+    const style={fontFamily:"'IBM Plex Mono', monospace",color:'#e8edce',align:'center',stroke:'#05080a',strokeThickness:5};
     if(isLevel) {
       this.add.rectangle(480,270,960,540,0x05080a,.6);
       this.add.text(480,210,`NIVEL ${this.nextData.level+1} / 6`,{...style,fontSize:'20px',color:'#d6ed64'}).setOrigin(.5);
@@ -41,7 +41,7 @@ export class IntroScene extends Phaser.Scene {
         });
     } else this.add.rectangle(480,490,960,100,0x05080a,.8);
     const caption=isLevel?(level.mode==='crossing'?'DERROTA A LOS PEATONES · ESQUIVA LAS MOTOS':`${level.total} ENEMIGOS · OLEADAS DE DOS Y TRES`)
-      :this.kind==='boss'?'DORMILÓN · EL ÚLTIMO TRÁMITE DE LA NOCHE':'SEIS CUADRAS. CINCO FORMAS DE DAR PELEA.';
+      :this.kind==='boss'?'DORMILÓN · EL ÚLTIMO TRÁMITE DE LA NOCHE':'A LOS TRAQUES POR BOGOTÁ.';
     if(this.kind!=='story')this.add.text(480,467,caption,{...style,fontSize:'16px'}).setOrigin(.5);
     const prompt=this.add.text(480,510,'',{...style,fontSize:'12px',color:'#d6ed64'}).setOrigin(.5);
     if(this.children)for(const object of this.children.list)if(object.type==='Text')fitArcadeText(object);

@@ -8,7 +8,7 @@ export class StageCamera {
   constructor(scene) {
     this.scene=scene;this.camera=scene.cameras.main;this.layout=stageLayout(scene.level);this.scrollX=0;this.time=0;
     this.background=new ParallaxBackground(scene,scene.level.layers??[{key:scene.level.key,factor:1}]);
-    this.go=scene.add.text(ARCADE.screen.width-36,250,'GO →',{fontFamily:'monospace',fontSize:'30px',color:'#ffcf69',fontStyle:'bold',stroke:'#142127',strokeThickness:6})
+    this.go=scene.add.text(ARCADE.screen.width-36,250,'GO →',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'30px',color:'#ffcf69',fontStyle:'bold',stroke:'#142127',strokeThickness:6})
       .setOrigin(1,.5).setScrollFactor(0).setDepth(1000).setVisible(false);
     this.traffic=scene.level.traffic?new AmbientTraffic(scene,scene.level.traffic,this.background):null;
     this.apply(0);

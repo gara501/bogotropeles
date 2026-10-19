@@ -1,5 +1,12 @@
 import Phaser from 'phaser';
 import './style.css';
+// Bundled web fonts (the page and the in-game texts asked for them, but they were never shipped).
+import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/ibm-plex-mono/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@fontsource/barlow-condensed/800.css';
+import '@fontsource/barlow-condensed/900.css';
+import { installCrispText } from './ui/crispText.js';
 import { StreetScene } from './scenes/StreetScene.js';
 import { levels } from './data/levels.js';
 import { IntroScene } from './scenes/IntroScene.js';
@@ -38,6 +45,7 @@ const game = new Phaser.Game({
 const focusGame = () => document.querySelector('#game').focus({ preventScroll: true });
 game.run=new RunState();
 game.touchControls=new TouchControls(game);
+installCrispText(game);
 game.recordKey=recordKey;
 const rankingKey=recordKey.endsWith('-qa')?'street-bogota-ranking-qa':RANKING_KEY;game.rankingKey=rankingKey;
 const flushCombatInput=()=>{const s=game.scene.getScene('Street');s?.arcade?.clearInput();s?.input?.keyboard?.resetKeys();};

@@ -14,6 +14,9 @@ export const ARCADE={
   ai:{tokens:2,comboStages:3,depthRatio:.55,windup:29,active:3,recovery:29,cooldown:126,rangedCooldown:168,
     circleX:45,circleY:22,alignY:10,circleSpeed:.7,initialCooldown:60,spawnSlots:3,spawnStagger:18,hurtCooldown:30,chargeHalfWidth:40},
   animation:{walkFramesPerPose:6},
+  // Cornered regular enemies: `hits` hits within `window` ms while within `edge` px of a screen side → they leap
+  // over the player to land `land` px past them (invulnerable in the air).
+  cornerEscape:{hits:3,window:1500,edge:110,land:190,duration:620,height:95},
   // Side-scrolling: waves are grouped in arenas `advance` px apart; the camera locks in each one.
   // maxScrollStep/ease: the camera catches up smoothly instead of snapping when an arena unlocks.
   stage:{advance:720,wavesPerArena:2,lead:.45,margin:65,backDepth:-100,frontDepth:800,maxScrollStep:8,ease:.2},
@@ -31,6 +34,15 @@ export const toFrames=ms=>Math.max(1,Math.round(ms/ARCADE.clock.stepMs));
 export function fitArcadeCamera(scene){
   scene.cameras.main.setZoom(ARCADE.screen.zoom).centerOn(ARCADE.screen.worldWidth/2,ARCADE.screen.worldHeight/2);
   scene.cameras.main.roundPixels=true;
+}
+// Pixel-art look for the fight: Phaser 3's Pixelate camera FX (the Phaser 4 equivalent is FilterPixelate).
+// Block size = 2 + amount screen pixels (amount 0 → 2 px blocks). WebGL only; skipped on Canvas.
+// Disabled: the 2 px blur made the HUD and fighters hard to read.
+export const PIXELATE={enabled:false,amount:0};
+export function applyPixelFilter(scene){
+  const camera=scene.cameras?.main;
+  if(!PIXELATE.enabled || !camera?.postFX?.addPixelate || camera.pixelFX)return null;
+  camera.pixelFX=camera.postFX.addPixelate(PIXELATE.amount);return camera.pixelFX;
 }
 export function fitArcadeText(text){
   if(text.arcadeFitted || !text.style || ARCADE.screen.zoom===1)return text;

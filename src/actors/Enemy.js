@@ -13,9 +13,24 @@ export class Enemy {
     this.action=null;this.actor.pending=null;this.actor.tell.setVisible(false);this.rush=false;
     if(healing){this.actor.sprite.clearTint?.();this.healReady=this.clock+toFrames(heal.interruptCooldown);}
     this.transition('hurt');this.ready=this.clock+Math.round(ARCADE.ai.hurtCooldown/this.scene.level.pressure);
-    const ev=this.actor.config.evade;if(!ev || this.actor.hp<=0)return;
+    const ev=this.actor.config.evade??this.cornerRule();if(!ev || this.actor.hp<=0)return;
     this.recentHits=(this.recentHits??[]).filter(frame=>this.clock-frame<=toFrames(ev.window));this.recentHits.push(this.clock);
-    if(this.recentHits.length>=ev.hits){this.recentHits=[];this.startEvade();}
+    if(this.recentHits.length>=ev.hits){this.recentHits=[];if(this.actor.config.evade)this.startEvade();else if(this.cornered())this.startCornerEscape();}
+  }
+  /** Regular enemies (not bosses, minions or crossing bikes) use the corner-escape rule. */
+  cornerRule(){const c=this.actor.config;return c.boss || c.minion || this.actor.crossing?null:ARCADE.cornerEscape;}
+  cornered(){const a=this.actor,f=this.scene.floor,e=ARCADE.cornerEscape.edge;return a.x-f.left<=e || f.right-a.x<=e;}
+  /** Trapped against a screen side: leap over the player and land on the open side, out of the corner. */
+  startCornerEscape(){
+    const a=this.actor,s=this.scene,rule=ARCADE.cornerEscape,f=s.floor;
+    const side=a.x-f.left<=f.right-a.x?1:-1; // left wall → land to the right of the player, and vice versa
+    const target=clamp(s.player.x+side*rule.land,f.left+20,f.right-20);
+    this.transition('evade');this.runtime.combat.tokens.release(a);a.pending=null;a.tell.setVisible(false);
+    a.facing=-side;a.sprite.setFlipX(a.facing<0); // faces the player once it lands
+    const art=a.config.animations;
+    this.evade={dir:Math.sign(target-a.x)||side,frames:toFrames(rule.duration),distance:Math.abs(target-a.x),height:rule.height,
+      pose:art.jump?.[1]??art.walk?.[1]??a.config.idle??0,escape:true};
+    a.invulnerableUntil=s.combatTime+rule.duration;
   }
   /** Boss escape: a backwards hop away from the player, invulnerable until it lands. */
   startEvade(){
@@ -28,7 +43,10 @@ export class Enemy {
   begin(forceMelee=false){
     const a=this.actor,s=this.scene;if(!this.runtime.combat.tokens.acquire(a))return false;this.rush=false;
     a.facing=Math.sign(s.player.x-a.x)||1;a.pending={enemy:a,connected:false,finisher:false};this.stage=0;
-    if(!forceMelee && a.config.charge && (!a.config.melee || Math.abs(s.player.x-a.x)>a.config.range)){
+    // Never start a charge from outside the floor span (e.g. still walking in): it would pin itself to the edge.
+    const inside=a.x>=s.floor.left && a.x<=s.floor.right,wantsCharge=!forceMelee && a.config.charge && (!a.config.melee || Math.abs(s.player.x-a.x)>a.config.range);
+    if(wantsCharge && !inside){this.runtime.combat.tokens.release(a);a.pending=null;return false;} // walk in first
+    if(wantsCharge){
       a.pending.finisher=true;
       this.action={charge:true,windup:a.config.charge.frames?.startup??toFrames(a.config.charge.windup),activePoses:a.config.charge.frames?.activePoses??a.config.animations.rush,remaining:a.config.charge.distance,hit:false};
       a.tell.setText('¡CARGA!').setVisible(true);this.transition('windup');
@@ -63,12 +81,12 @@ export class Enemy {
       return;
     }
     if(this.state==='evade'){
-      const ev=a.config.evade,p=this.evade,t=Math.min(1,this.age/p.frames);
-      a.x=clamp(a.x+p.dir*ev.distance/p.frames,s.floor.left,s.floor.right);a.z=Math.sin(t*Math.PI)*ev.height;
-      this.pose('evade',ev.poses?ev.poses[Math.min(ev.poses.length-1,Math.floor(t*ev.poses.length))]:ev.pose);
+      const ev=a.config.evade??{},p=this.evade,t=Math.min(1,this.age/p.frames);
+      a.x=clamp(a.x+p.dir*(p.distance??ev.distance)/p.frames,s.floor.left,s.floor.right);a.z=Math.sin(t*Math.PI)*(p.height??ev.height);
+      this.pose('evade',p.pose??(ev.poses?ev.poses[Math.min(ev.poses.length-1,Math.floor(t*ev.poses.length))]:ev.pose));
       if(this.age>=p.frames){a.z=0;this.evade=null;if(ev.stain)s.paintStain?.(a.x,a.y,ev.stain,a); // landing mark
-        // Summoners call a wave instead of rushing back in.
-        if(ev.summonAfter){this.summonReady=0;this.rush=false;}else this.rush=true;
+        // Summoners call a wave instead of rushing back in; a cornered enemy that escaped just regroups.
+        if(ev.summonAfter){this.summonReady=0;this.rush=false;}else this.rush=!p.escape;
         this.ready=this.clock;this.transition('approach');}
       return;
     }
@@ -86,7 +104,10 @@ export class Enemy {
         if(!p.hit && p.activePoses.includes(pose) && combat.touches(sweep,s.player,attack)){
           p.hit=true;if(s.hitPlayer(attack.damage,a.pending)){a.pending.connected=true;combat.push(s.player,attack);combat.impact(a,s.player,attack);}
         }
-        if(p.remaining<=0 || a.x===s.floor.left || a.x===s.floor.right){this.transition('recover');this.recovery=c.frames?.recovery??toFrames(c.recovery);}
+        // Ends when the distance is run, when it can't advance any further (a screen side), or after a safety timeout.
+        p.frames=(p.frames??0)+1;
+        const blocked=Math.abs(a.x-previous)<.01,timeout=p.frames>Math.ceil(c.distance/c.speed*ARCADE.clock.fps)+30;
+        if(p.remaining<=0 || blocked || timeout){this.transition('recover');this.recovery=c.frames?.recovery??toFrames(c.recovery);}
       }else {
         this.pose('brake');if(this.age>=this.recovery)this.finish(toFrames(c.cooldown/s.level.pressure));
       }
@@ -114,6 +135,8 @@ export class Enemy {
       return;
     }
     const dx=s.player.x-a.x,dy=s.player.y-a.y,range=a.config.charge?.triggerRange??a.config.range;
+    // Still outside the floor span (walking in from off-screen): step inside before anything else.
+    if(a.x<s.floor.left || a.x>s.floor.right){this.move(a.x<s.floor.left?1:-1,0);this.pose('walk');return;}
     this.face(dx);
     // Shielded bosses only strike forward: a player behind them is safe until they turn around.
     const inRange=Math.abs(dx)<=range && Math.abs(dy)<ARCADE.body.lane && this.facesPlayer(dx);

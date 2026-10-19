@@ -22,7 +22,7 @@ import { beginEnemyCharge, updateEnemyCharge, shouldCharge } from '../combat/ene
 import { canSpendSpecialEnergy, spendSpecialEnergy } from '../combat/specialEnergy.js';
 import { scaledEnemy, crossingHits } from '../data/campaign.js';
 import { playerAttackHits, knifeHits, DASH, enemyCanAdvance, dashDirection } from '../combat.js';
-import {ARCADE,fitArcadeCamera,fitArcadeText} from '../data/arcade.js';
+import {ARCADE,fitArcadeCamera,fitArcadeText,applyPixelFilter} from '../data/arcade.js';
 import {ArcadeRuntime} from '../game/ArcadeRuntime.js';
 import {EnergyPickups} from '../game/EnergyPickups.js';
 import {preloadPickups,preparePickups} from '../data/pickups.js';
@@ -30,7 +30,7 @@ import {StageCamera} from '../stage/StageCamera.js';
 import {viewLeft} from '../stage/scroll.js';
 import {Hud} from '../ui/Hud.js';
 
-const FONT = 'monospace';
+const FONT = "'IBM Plex Mono', monospace";
 const FLOOR = { bottom: 500, left: 65, right: 895 };
 
 export class StreetScene extends Phaser.Scene {
@@ -106,6 +106,7 @@ export class StreetScene extends Phaser.Scene {
   create() {
     preparePickups(this);
     fitArcadeCamera(this);
+    applyPixelFilter(this);
     for (const [key, config] of Object.entries({ ...characters, ...enemies })) registerAnimations(this, key, config);
     registerAnimations(this, 'dormilon', bossSprite);
     prepareEffects(this, 'boss-effects', bossEffects);

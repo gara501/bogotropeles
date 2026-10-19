@@ -28,7 +28,7 @@ export const enemies = {
   // The shield covers his front: hits from the front only do `frontDamage` and don't stagger him, so the player
   // has to get behind him. He turns around slowly (`turnMs`) and only attacks forward.
   // The last sheet row (canister, burst, clouds) is cut into the gas-0…gas-3 textures.
-  antidisturbios:{name:'EL ANTIDISTURBIOS',url:riotUrl,rows:[4,4,4,4,4,4],height:128,speed:120,hp:2400,range:118,damage:12,idle:0,boss:true,
+  antidisturbios:{name:'ESMADIEGO',url:riotUrl,rows:[4,4,4,4,4,4],height:128,speed:120,hp:2400,range:118,damage:12,idle:0,boss:true,
     frameRects:[[53,22,153,240],[285,22,152,240],[514,21,153,241],[746,22,151,240],[32,283,165,240],[280,284,146,238],[505,284,169,239],[768,284,135,239],[26,541,163,231],[252,544,190,227],[485,546,262,226],[755,542,149,230],[26,808,181,204],[257,793,190,221],[473,797,252,218],[759,793,152,222],[33,1032,152,230],[247,1040,191,216],[491,1077,181,183],[747,1034,165,226],[32,1280,190,207],[247,1314,225,173],[467,1364,240,120],[717,1395,217,89]]
       .map(([x,y,width,height])=>({x,y,width,height})),
     isolateFrames:true,
@@ -42,7 +42,7 @@ export const enemies = {
     animations:{walk:sequence(4,7),attack:sequence(12,15),throw:sequence(8,11),hurt:[17,18],defeat:sequence(20,23)}},
   // Level 4 boss (enemy_boss_4.png, 4×4): idle/walk · summon (shout, raise arm, point) · hurt · defeat.
   // He hangs back and calls waves of fast students; his own close attack is a weak open-hand shove (pose 3).
-  cabecilla:{name:'EL CABECILLA',url:cabecillaUrl,rows:[4,4,4,4],height:120,speed:150,hp:1600,range:95,damage:7,idle:0,boss:true,keepDistance:380,
+  cabecilla:{name:'COLADIN',url:cabecillaUrl,rows:[4,4,4,4],height:120,speed:150,hp:1600,range:95,damage:7,idle:0,boss:true,keepDistance:380,
     frameAnchors:{0:213,1:587,2:934,3:1278,4:213,5:618,6:938,7:1293,8:215,9:587,10:942,11:1303,12:206,13:567,14:936,15:1334},
     attackFrames:{startup:18,active:4,recovery:24,cooldown:80},
     // Summon: every 6.5 s (or right after an evade) a wave of 2–3 students, at most 4 alive at once.
@@ -58,7 +58,7 @@ export const enemies = {
     animations:{walk:sequence(0,3),attack:[3,4,4],hurt:[5],defeat:[5]}},
   // Level 3 boss (enemy_boss_2.png, 4×6 poses): run · spray-can throw · jump (crouch, airborne spray, land) ·
   // pink spray · idle/hurt · defeat. No knife combo: his close attack is the pink spray, which paints the floor.
-  grafitero:{name:'EL GRAFITERO',url:grafiteroUrl,rows:[4,4,4,4,4,4],height:120,speed:190,hp:1500,range:200,damage:10,idle:16,boss:true,
+  grafitero:{name:'PINTURITA',url:grafiteroUrl,rows:[4,4,4,4,4,4],height:120,speed:190,hp:1500,range:200,damage:10,idle:16,boss:true,
     frameAnchors:{0:169,1:467,2:790,3:1126,4:140,5:472,6:772,7:1125,8:138,9:462,10:823,11:1122,12:140,13:441,14:776,15:1091,
       16:132,17:491,18:787,19:1133,20:151,21:484,22:814,23:1136},
     // The pink cloud stays on screen: 14 hurting frames on pose 14, then pose 15 while it dissipates.
@@ -74,7 +74,7 @@ export const enemies = {
   // Level 2 boss (enemy_boss_3.png, 4×7 poses). Detached pigeons are separate blobs, so poses use explicit
   // rects (pigeon included) and isolate the body except where a loose pigeon belongs to the drawing.
   // Rows: walk · pigeon jab · pigeon thrust · white-dove ritual (heal, pose 14) · big pigeon push/throw · idle/hurt · defeat.
-  palomera:{name:'LA PALOMERA',url:palomeraUrl,rows:[4,4,4,4,4,4,4],height:118,speed:170,hp:1300,range:125,damage:10,idle:20,boss:true,
+  palomera:{name:'PALOMERA',url:palomeraUrl,rows:[4,4,4,4,4,4,4],height:118,speed:170,hp:1300,range:125,damage:10,idle:20,boss:true,
     frameRects:[[83,8,157,193],[374,8,155,191],[667,8,163,192],[966,5,158,195],[66,214,140,170],[325,221,199,163],[586,214,325,170],[958,213,163,171],
       [59,390,185,181],[344,393,184,177],[584,395,349,175],[979,390,168,182],[71,580,151,186],[341,563,184,203],[604,599,339,167],[984,578,179,188],
       [67,776,150,179],[326,776,205,179],[593,790,375,167],[1005,777,150,180],[66,961,165,176],[333,962,233,186],[657,982,149,157],[968,966,153,175],
@@ -92,7 +92,7 @@ export const enemies = {
       throw:sequence(16,19),heal:sequence(12,15),hurt:[21,22],defeat:sequence(24,27)}},
   // Level 1 boss (boss_level1.png, 4×7 poses): runs in fast, 3-slash knife combo, throws footballs from range.
   // Anchors are the hip centre of each pose so lunges and wind-ups do not shift the body.
-  barra:{name:'EL BARRA',url:barraUrl,rows:[4,4,4,4,4,4,4],height:122,speed:250,hp:900,range:118,damage:9,idle:20,boss:true,
+  barra:{name:'THE CHIKEN GOMEZ',url:barraUrl,rows:[4,4,4,4,4,4,4],height:122,speed:250,hp:900,range:118,damage:9,idle:20,boss:true,
     frameAnchors:{0:172,1:413,2:662,3:948,4:152,5:388,6:634,7:904,8:143,9:395,10:698,11:952,12:140,13:391,14:642,15:948,
       16:129,17:407,18:625,19:945,20:135,21:419,22:673,23:948,24:136,25:396,26:662,27:923},
     combo:{windup:380,interval:260,recovery:520,cooldown:1400,hitFrames:[2,1,2],ranges:[118,118,150],confirmFirst:false,followThrough:true},
@@ -102,7 +102,7 @@ export const enemies = {
     throw:{minRange:260,maxRange:640,windup:520,active:3,recovery:420,cooldown:2600,speed:430,damage:8,texture:'balon',width:30,height:30,spin:14,lift:70,offset:70,hitFrame:2},
     animations:{walk:sequence(0,3),attack:sequence(4,7),attack1:sequence(4,7),attack2:sequence(8,11),attack3:sequence(12,15),
       throw:sequence(16,19),hurt:[21,22],defeat:sequence(24,27)}},
-  belly:{name:'EL TAXISTA',url:bellyUrl,taunt:{text:'¡POR ALLÁ NO VOY!',ms:2500},rows:[4,4,4,4,4,4],height:120,speed:78,hp:305,range:110,damage:12,idle:4,melee:true,
+  belly:{name:'UBER JOSE',url:bellyUrl,taunt:{text:'¡POR ALLÁ NO VOY!',ms:2500},rows:[4,4,4,4,4,4],height:120,speed:78,hp:305,range:110,damage:12,idle:4,melee:true,
     charge:{windup:750,speed:510,distance:510,recovery:650,cooldown:1600,triggerRange:440},
     frameRects:[
       [56,7,175,248],[312,7,152,249],[559,7,180,249],[820,7,158,248],
@@ -114,7 +114,7 @@ export const enemies = {
     ].map(([x,y,width,height])=>({x,y,width,height})),
     frameAnchors:{4:125,5:385,6:625,7:895,8:145,9:390,10:650,11:900,12:130,13:385,14:640,15:900},
     animations:{walk:sequence(0,3),attack:sequence(4,7),prepare:[8],rush:[9,10],chargeImpact:[13,14],brake:[15,4],hurt:sequence(16,19),defeat:sequence(20,23)}},
-  leash:{name:'LA PASEAPERROS',url:leashUrl,taunt:{text:'¡HOLA MOR!',ms:2500},rows:[4,4,4,4,4,4],height:112,speed:230,hp:320,range:220,damage:6,idle:4,aggressive:true,
+  leash:{name:'BENDECIDA',url:leashUrl,taunt:{text:'¡HOLA MOR!',ms:2500},rows:[4,4,4,4,4,4],height:112,speed:230,hp:320,range:220,damage:6,idle:4,aggressive:true,
     keepDistance:155,retreatDistance:100,
     combo:{windup:430,interval:340,recovery:600,cooldown:2700,hitFrame:2,confirmFirst:false,ranges:[160,220,170]},
     // Keep the extended leash and detached dog in the same pose as its owner.
@@ -128,7 +128,7 @@ export const enemies = {
     ].map(([x,y,width,height])=>({x,y,width,height})),
     frameAnchors:{0:190,1:565,2:960,3:1335,4:180,5:560,6:960,7:1320,8:180,9:585,10:925,11:1350,12:195,13:550,14:925,15:1350,16:180,17:560,18:930,19:1350},
     animations:{walk:sequence(0,3),attack:sequence(4,7),attack1:[4,5,7,4],attack2:sequence(8,11),attack3:sequence(12,15),hurt:sequence(16,19),defeat:sequence(20,23)}},
-  vendor:{name:'EL VENDEDOR',url:vendorUrl,rows:[4,4,4,4,4],height:112,speed:95,hp:125,range:520,damage:12,idle:0,aggressive:true,
+  vendor:{name:'CHICLEMANICARAMELO',url:vendorUrl,rows:[4,4,4,4,4],height:112,speed:95,hp:125,range:520,damage:12,idle:0,aggressive:true,
     charge:{windup:1000,speed:680,distance:700,recovery:650,cooldown:1500},
     // Include detached snacks, motion lines and dust in their corresponding pose.
     trimFrames:true,
@@ -140,25 +140,25 @@ export const enemies = {
     animations:{walk:sequence(0,3),prepare:[4],rush:[5,6,7,8],brake:[9,10,11],attack:sequence(4,8),hurt:sequence(12,15),defeat:sequence(16,19)}},
   // Toughness, in hits of the strongest normal strike (kick 45) on every level they appear in:
   // walker/brawler/fan 7, belly (enemy_10) 6, leash (enemy_11) 8, thrower (enemy_3) 9.
-  walker: {name:'EL PAPU', url: walkerUrl, taunt:{text:'¡DESPÉGUELO PAPU!',ms:2500}, rows: [6, 6, 6, 6], height: 116, speed: 70, hp: 365, range: 60, damage: 6, animations },
-  rider: {name:'DOMICILIARIO', url: riderUrl, rows: [6, 6, 6, 6], height: 108, speed: 200, walkRate: 12, hp: 120, range: 80, damage: 8, animations },
+  walker: {name:'VERCETI', url: walkerUrl, taunt:{text:'¡DESPÉGUELO PAPU!',ms:2500}, rows: [6, 6, 6, 6], height: 116, speed: 70, hp: 365, range: 60, damage: 6, animations },
+  rider: {name:'COROMOTO', url: riderUrl, rows: [6, 6, 6, 6], height: 108, speed: 200, walkRate: 12, hp: 120, range: 80, damage: 8, animations },
   // Fast knife thrower: after 3 quick hits he hops back (crouch, recoil, land) and keeps throwing from range.
-  thrower: {name:'EL RAPONERO', url: throwerUrl, rows: [6, 6, 6, 6], height: 116, speed: 160, hp: 430, range: 380, damage: 9, ranged: true, animations,
+  thrower: {name:'VRALLAN', url: throwerUrl, rows: [6, 6, 6, 6], height: 116, speed: 160, hp: 430, range: 380, damage: 9, ranged: true, animations,
     evade:{hits:3,window:1500,distance:180,height:42,duration:440,poses:[14,12,12,14]} },
-  guard: {name:'EL PATRULLERO', url: guardUrl, taunt:{text:'¡PAPELES!',ms:2500}, rows: [6, 6, 6, 6], height: 116, speed: 150, hp: 120, range: 85, damage: 6, aggressive:true,
+  guard: {name:'TONFABIO', url: guardUrl, taunt:{text:'¡PAPELES!',ms:2500}, rows: [6, 6, 6, 6], height: 116, speed: 150, hp: 120, range: 85, damage: 6, aggressive:true,
     combo:{windup:300,interval:230,recovery:400,cooldown:1450,hitFrame:2,confirmFirst:true},
     animations:{...animations,attack1:[6,7,9,11],attack2:[6,8,10,11],attack3:[7,8,9,11]} },
-  chain: {name:'EL PUNKERO',
+  chain: {name:'PUNKETO',
     url: chainUrl, rows: [4, 4, 4, 4], height: 116, speed: 75, hp: 100, range: 155, damage: 8, idle: 4,
     // Keep the body planted when the chain extends far beyond the torso.
     frameAnchors: { 6: 850 },
     animations: { walk: sequence(0, 3), attack: sequence(4, 7), hurt: sequence(8, 11), defeat: sequence(12, 15) },
   },
   // taunt: speech bubble shown over the enemy's head when it enters the screen.
-  brawler: {name:'EL HINCHA DE MILLOS', url: brawlerUrl, rows: [6, 6, 6, 6], height: 114, ...ARCADE.enemies.brawler, aggressive:true, taunt:{text:'¡SOLO MILLOS LOK!',ms:2500,color:'#0b3b8c'}, hp: 430, range: 108, damage: 7, animations },
-  fan: {name:'EL CARDENAL',url:fanUrl,taunt:{text:'¡EL CIELO ES ROJO!',ms:2500,color:'#b3121b'},rows:[6,6,6,6],height:112,...ARCADE.enemies.fan,aggressive:true,hp:420,range:105,damage:6,
+  brawler: {name:'EZTIBEN', url: brawlerUrl, rows: [6, 6, 6, 6], height: 114, ...ARCADE.enemies.brawler, aggressive:true, taunt:{text:'¡SOLO MILLOS LOK!',ms:2500,color:'#0b3b8c'}, hp: 430, range: 108, damage: 7, animations },
+  fan: {name:'GARSON',url:fanUrl,taunt:{text:'¡EL CIELO ES ROJO!',ms:2500,color:'#b3121b'},rows:[6,6,6,6],height:112,...ARCADE.enemies.fan,aggressive:true,hp:420,range:105,damage:6,
     frameAnchors:{9:861},animations},
-  sweeper:{name:'EL BARRENDERO',url:sweeperUrl,taunt:{text:'¡BÓTESE LA LIGA MONO!',ms:2500},rows:[4,4,4,4,4,4],height:112,speed:100,hp:110,range:148,damage:5,idle:4,
+  sweeper:{name:'TIBISAY',url:sweeperUrl,taunt:{text:'¡BÓTESE LA LIGA MONO!',ms:2500},rows:[4,4,4,4,4,4],height:112,speed:100,hp:110,range:148,damage:5,idle:4,
     // Quick broom strikes: short windup and little time between the three hits.
     combo:{windup:260,interval:190,recovery:380,cooldown:1700,hitFrame:2,confirmFirst:false},
     // Hurt pose 18 has a detached broom; explicit cuts keep both in one frame.

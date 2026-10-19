@@ -262,6 +262,31 @@ test('charge waits for configured startup frames and only contact poses can dama
   step(5);assert.equal(target.x,x);assert.equal(model.state,'attack');step();assert.equal(s.health,100);
   model.action.activePoses=[...target.config.animations.rush];step();assert.ok(s.health<100);assert.equal(s.arcade.player.state,'knockdown');
 });
+test('a charge never pins the enemy to a screen side: it waits until inside the floor and ends when blocked',()=>{
+  const {s,target,step}=arcadeSetup();s.debugPreview=false;s.invulnerableUntil=0;
+  target.key='vendor';target.config={...enemies.vendor};target.x=s.floor.right+60;target.y=s.player.y;
+  const model=new Enemy(s.arcade,target);s.arcade.enemies.set(target,model);
+  assert.equal(model.begin(),false,'no charge from outside the floor');assert.equal(target.pending,null);
+  target.x=s.floor.left;target.y=s.player.y;s.player.x=s.floor.left+300;assert.equal(model.begin(),true);
+  model.action.remaining=1e6;target.facing=-1; // pushing into the left side: blocked on the first step
+  let guard=0;while(model.state!=='recover' && guard++<200)step();
+  assert.ok(guard<200,'the charge ends instead of running in place');assert.equal(model.state,'recover');
+});
+
+test('a cornered regular enemy leaps over the player after 3 quick hits; bosses keep their own rules',()=>{
+  const {s,target,step}=arcadeSetup();s.debugPreview=false;
+  target.x=s.floor.left+40;s.player.x=target.x+60;target.config={...target.config,boss:false,minion:false,evade:undefined};
+  const model=new Enemy(s.arcade,target);s.arcade.enemies.set(target,model);
+  for(let i=0;i<3;i++){s.hitEnemy(target,{damage:1,knockback:0,facing:-1,stun:100});step(2);}
+  assert.equal(model.state,'evade');assert.ok(target.invulnerableUntil>s.combatTime);
+  let guard=0;while(model.state==='evade' && guard++<120)step();
+  assert.ok(target.x>s.player.x+100,`lands on the open side (${target.x} vs player ${s.player.x})`);assert.equal(target.z,0);
+  const mid=arcadeSetup();mid.s.debugPreview=false;mid.target.x=(mid.s.floor.left+mid.s.floor.right)/2;mid.s.player.x=mid.target.x-60;
+  const free=new Enemy(mid.s.arcade,mid.target);mid.s.arcade.enemies.set(mid.target,free);
+  for(let i=0;i<3;i++){mid.s.hitEnemy(mid.target,{damage:1,knockback:0,facing:1,stun:100});mid.step(2);}
+  assert.notEqual(free.state,'evade','not cornered: no leap');
+});
+
 test('production fixed runtime preserves the battlefield and score through a life loss and clears pending input',()=>{
   const {s,target,step}=arcadeSetup();s.run.score=700;target.hp=333;s.invulnerableUntil=0;
   s.arcade.player.request('punch');s.hitPlayer(100);step();assert.equal(s.run.lives,2);
@@ -955,7 +980,7 @@ test('enemy_3 is fast and hops back after 3 hits; enemy_8 strikes faster',()=>{
 });
 
 test('La Palomera: level 2 boss data — pigeon combo poses, pigeon projectile and the pose-14 heal ritual',()=>{
-  const p=enemies.palomera;assert.equal(CAMPAIGN[1].boss,'palomera');assert.equal(bossFor(CAMPAIGN[1]).name,'LA PALOMERA');
+  const p=enemies.palomera;assert.equal(CAMPAIGN[1].boss,'palomera');assert.equal(bossFor(CAMPAIGN[1]).name,'PALOMERA');
   assert.deepEqual([0,1,2].map(stage=>enemyAttackData(p,stage).frames.find(f=>f.phase==='active').pose),[6,10,18]);
   assert.equal(enemyThrowData(p).frames.find(f=>f.phase==='active').pose,18);assert.equal(p.throw.texture,'paloma');
   assert.equal(p.heal.pose,14);assert.equal(p.heal.duration,5000);assert.equal(p.frameRects.length,28);
@@ -1017,7 +1042,7 @@ function grafiteroArena(){
   return {...r,boss,model};
 }
 test('El Grafitero (level 3): spray-can throw, pink floor spray and the 3rd-row jump',()=>{
-  const g=enemies.grafitero;assert.equal(CAMPAIGN[2].boss,'grafitero');assert.equal(bossFor(CAMPAIGN[2]).name,'EL GRAFITERO');
+  const g=enemies.grafitero;assert.equal(CAMPAIGN[2].boss,'grafitero');assert.equal(bossFor(CAMPAIGN[2]).name,'PINTURITA');
   assert.equal(enemyAttackData(g).frames.find(f=>f.phase==='active').pose,14,'pink spray at full cloud');
   assert.equal(enemyThrowData(g).frames.find(f=>f.phase==='active').pose,6);assert.equal(g.throw.texture,'spraycan');
   assert.deepEqual([...new Set(g.evade.poses)],[8,9,10,11],'jump uses the third row, mostly airborne (9)');
@@ -1066,7 +1091,7 @@ function cabecillaArena(){
 }
 test('El Cabecilla (level 4) data: summon row, fast fragile students in 4 variants',async()=>{
   const {characters}=await import('../src/data/characters.js');
-  const c=enemies.cabecilla,m=enemies.estudiante;assert.equal(CAMPAIGN[3].boss,'cabecilla');assert.equal(bossFor(CAMPAIGN[3]).name,'EL CABECILLA');
+  const c=enemies.cabecilla,m=enemies.estudiante;assert.equal(CAMPAIGN[3].boss,'cabecilla');assert.equal(bossFor(CAMPAIGN[3]).name,'COLADIN');
   assert.deepEqual(c.summon.poses,[4,5,6,7]);assert.equal(enemySummonData(c).frames.find(f=>f.phase==='active').pose,6,'minions appear when he points');
   assert.equal(m.minion,true);assert.ok(m.speed>Math.max(...Object.values(characters).map(ch=>ch.speed)),'faster than every player');
   assert.equal(enemyAttackData(m).frames.find(f=>f.phase==='active').pose,4,'running punch');
@@ -1103,7 +1128,7 @@ test('El Cabecilla keeps his distance even when the player hugs a screen edge',(
 
 test('level 5 boss: shield blocks frontal hits (chip damage, no stagger), full damage from behind; tear gas lobs and lingers',async()=>{
   const {GasClouds}=await import('../src/game/GasClouds.js');
-  assert.equal(CAMPAIGN[4].boss,'antidisturbios');assert.equal(bossFor(CAMPAIGN[4]).name,'EL ANTIDISTURBIOS');
+  assert.equal(CAMPAIGN[4].boss,'antidisturbios');assert.equal(bossFor(CAMPAIGN[4]).name,'ESMADIEGO');
   const r=enemies.antidisturbios;assert.ok(r.hp>=2000);assert.ok(r.shield.frontDamage<=.15);assert.ok(r.throw.gas);
   const s=setup(4,'gymbro');s.player.x=300;s.player.y=450;
   const boss=s.spawnMiniBoss(bossFor(CAMPAIGN[4])).enemy;boss.x=360;boss.y=450;boss.facing=-1;

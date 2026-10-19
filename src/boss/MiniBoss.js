@@ -4,7 +4,7 @@ import {fitArcadeText} from '../data/arcade.js';
 export class MiniBoss {
   constructor(scene,enemy,def) {
     this.scene=scene;this.enemy=enemy;this.def=def;this.defeatedAt=null;this.noticeUntil=scene.combatTime+2200;
-    const style={fontFamily:'monospace',fontSize:'12px',color:'#ffcf69',stroke:'#142127',strokeThickness:3};
+    const style={fontFamily:"'IBM Plex Mono', monospace",fontSize:'12px',color:'#ffcf69',stroke:'#142127',strokeThickness:3};
     this.name=scene.add.text(480,22,def.name,style).setOrigin(.5,0).setDepth(1000);
     this.barBack=scene.add.rectangle(310,44,340,10,0x14282c).setOrigin(0).setDepth(1000);
     this.bar=scene.add.rectangle(312,46,336,6,0xe45c50).setOrigin(0).setDepth(1000);

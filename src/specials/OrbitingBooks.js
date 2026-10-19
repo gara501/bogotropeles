@@ -9,7 +9,7 @@ export class OrbitingBooks {
     this.struck=new Set();this.hitAttack={...balance.attack};this.shock=[];
     this.books=Array.from({length:balance.count},(_,index)=>({x:0,y:0,
       sprite:scene.add.image(0,0,`orbit-book-${index%balance.colors.length}`).setVisible(false)}));
-    this.label=scene.add.text(260,65,'',{fontFamily:'monospace',fontSize:'10px',color:'#d6ed64'}).setDepth(1000);this.label.setScrollFactor?.(0);
+    this.label=scene.add.text(260,65,'',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'10px',color:'#d6ed64'}).setDepth(1000);this.label.setScrollFactor?.(0);
     this.onFrame=(animation,frame)=>{
       if(animation.key==='student-books' && Number(frame.textureFrame)===balance.summonFrame)this.summon(scene.playerAttack);
     };

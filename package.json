@@ -11,6 +11,12 @@
     "test": "node --test",
     "preview": "vite preview --host 127.0.0.1"
   },
-  "dependencies": { "phaser": "3.90.0" },
-  "devDependencies": { "vite": "^6.4.0" }
+  "dependencies": {
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^6.4.0"
+  }
 }

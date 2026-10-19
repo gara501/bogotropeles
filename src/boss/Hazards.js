@@ -23,7 +23,7 @@ export class Hazards {
     if (key === 'pico') {
       this.pico = {...picoPlan(floor,player,speed,this.blockers),active:false,hit:false,until:0};
       windup = this.pico.windup;
-      for (const zone of this.pico.zones) this.labels.push(this.scene.add.text(zone.x,zone.y,String(zone.number),{fontFamily:'monospace',fontSize:'18px',color:'#ffffff',stroke:'#142127',strokeThickness:4}).setOrigin(.5).setDepth(901));
+      for (const zone of this.pico.zones) this.labels.push(this.scene.add.text(zone.x,zone.y,String(zone.number),{fontFamily:"'IBM Plex Mono', monospace",fontSize:'18px',color:'#ffffff',stroke:'#142127',strokeThickness:4}).setOrigin(.5).setDepth(901));
     } else if (key === 'works') {
       this.plan = {key, sites:workSites(floor,player,this.works)};
     } else if (key === 'traffic') {
@@ -34,7 +34,7 @@ export class Hazards {
       const vx = viewLeft(this.scene);
       const direction = player.x < vx+480 ? -1 : 1;
       this.plan = {key,y,direction,barrier:Math.random()<.4};
-      this.labels.push(this.scene.add.text(vx+480,y-7,'→ → →  ¡SAL DEL CARRIL!  → → →',{fontFamily:'monospace',fontSize:'13px',color:'#ffdf84',stroke:'#142127',strokeThickness:4}).setOrigin(.5).setDepth(901));
+      this.labels.push(this.scene.add.text(vx+480,y-7,'→ → →  ¡SAL DEL CARRIL!  → → →',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'13px',color:'#ffdf84',stroke:'#142127',strokeThickness:4}).setOrigin(.5).setDepth(901));
     }
     return windup;
   }

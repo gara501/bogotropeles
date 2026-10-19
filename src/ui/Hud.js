@@ -3,10 +3,14 @@ import {ARCADE,fitArcadeText} from '../data/arcade.js';
 // Final Fight style HUD: player portrait, NAME =lives, score and a long yellow life bar whose
 // recent damage shows in red and drains; below it, the last enemy hit (or the boss) with its own
 // portrait and bar; TIME countdown and the record on the right.
-const ARCADE_FONT="'Barlow Condensed', Impact, 'Arial Black', sans-serif";
+// Big labels: bundled Barlow Condensed (never Impact: too heavy once outlined). Small labels: bundled IBM Plex Mono.
+const ARCADE_FONT="'Barlow Condensed', 'Arial Narrow', Arial, sans-serif",SMALL_FONT="'IBM Plex Mono', monospace";
 const YELLOW='#ffe14d',BLUE='#1b3fb8',PINK='#ff74c8';
-const text=(scene,x,y,value,size,color=YELLOW,stroke=BLUE)=>fitArcadeText(scene.add.text(x,y,value,{fontFamily:ARCADE_FONT,fontSize:`${size}px`,
-  fontStyle:'bold',color,stroke,strokeThickness:Math.max(3,Math.round(size/5))}).setDepth(1003).setScrollFactor(0));
+// Thin outline (about 1/9 of the size) so the letters stay open and readable.
+const text=(scene,x,y,value,size,color=YELLOW,stroke=BLUE,small=size<16)=>fitArcadeText(scene.add.text(x,y,value,{
+  fontFamily:small?SMALL_FONT:ARCADE_FONT,fontSize:`${size}px`,fontStyle:small?'600':'bold',color,stroke,
+  strokeThickness:small?2:Math.max(2,Math.round(size/9)),letterSpacing:small?0:1,
+  shadow:small?undefined:{offsetX:1,offsetY:2,color:'#06101c',blur:0,fill:true,stroke:true}}).setDepth(1003).setScrollFactor(0));
 
 /** Head crop of a fighter's pose, fitted into a size × size box at (x, y). */
 export function portrait(scene,x,y,size,key,frame) {
@@ -49,11 +53,11 @@ export class Hud {
     // enemy row
     this.enemyBox=add(s.add.rectangle(22,52,26,26,0x0b1430).setOrigin(0).setStrokeStyle(2,0xffffff).setScrollFactor(0).setDepth(1001));
     this.enemyFace=null;this.enemyKey=null;
-    this.enemyName=add(text(s,62,48,'',14));
+    this.enemyName=add(text(s,62,47,'',17));
     this.enemyBar=new LifeBar(s,62,67,220,8);
     // right side: record, level, TIME
-    this.record=add(text(s,800,4,'',14,'#fff6c8').setOrigin(1,0));
-    this.level=add(text(s,800,26,'',12,'#d6ed64','#14282c').setOrigin(1,0));
+    this.record=add(text(s,800,6,'',13,'#fff6c8','#14282c').setOrigin(1,0));
+    this.level=add(text(s,800,27,'',11,'#d6ed64','#14282c').setOrigin(1,0));
     this.timeLabel=add(text(s,885,2,'TIME',18,'#ffffff').setOrigin(.5,0));
     this.time=add(text(s,885,20,'99',38,PINK).setOrigin(.5,0));
     let record=0;

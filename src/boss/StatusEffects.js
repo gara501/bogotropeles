@@ -5,7 +5,7 @@ export class StatusEffects {
   constructor(scene) {
     this.scene = scene; this.stacks = []; this.presses = 0;
     this.icons = Array.from({length:BOSS.paper.maxStacks}, () => scene.add.image(0,0,'boss-effects','paper1').setDisplaySize(15,18).setVisible(false));
-    this.label = scene.add.text(26,83,'',{fontFamily:'monospace',fontSize:'10px',color:'#ffcf69',backgroundColor:'#142127',padding:{x:5,y:3}}).setDepth(1000);
+    this.label = scene.add.text(26,83,'',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'10px',color:'#ffcf69',backgroundColor:'#142127',padding:{x:5,y:3}}).setDepth(1000);
     this.label.setScrollFactor?.(0);
   }
   get speedMultiplier() { return slowMultiplier(this.stacks.length); }

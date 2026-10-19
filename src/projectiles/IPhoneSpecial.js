@@ -6,7 +6,7 @@ import { viewLeft } from '../stage/scroll.js';
 export class IPhoneSpecial {
   constructor(scene) {
     this.scene=scene;this.phones=[];this.bursts=[];this.feedbackUntil=0;
-    this.label=scene.add.text(260,65,'',{fontFamily:'monospace',fontSize:'10px',color:'#d6ed64'}).setDepth(1000);this.label.setScrollFactor?.(0);
+    this.label=scene.add.text(260,65,'',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'10px',color:'#d6ed64'}).setDepth(1000);this.label.setScrollFactor?.(0);
     this.onFrame=(animation,frame)=>{
       if(animation.key==='office-iphone' && Number(frame.textureFrame)===IPHONE.releaseFrame)this.release(scene.playerAttack);
     };
