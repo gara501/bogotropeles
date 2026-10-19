@@ -1,0 +1,16 @@
+{
+  "name": "street-bogota",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "build:itch": "vite build --base=./ --outDir dist-itch",
+    "package:itch": "npm run build:itch && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-itch.ps1",
+    "test": "node --test",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": { "phaser": "3.90.0" },
+  "devDependencies": { "vite": "^6.4.0" }
+}

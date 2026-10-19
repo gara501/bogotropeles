@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#141d23" />
+    <title>Street Bogotá · Prototipo</title>
+  </head>
+  <body>
+    <main>
+      <header><a class="wordmark" href="./">SB<span> / EST. 2026</span></a><span class="build">PROTOTIPO 001 <i></i></span></header>
+      <section class="intro"><div><p class="eyebrow">UN BEAT ’EM UP DE LA CAPITAL</p><h1>STREET <span>BOGOTÁ</span></h1></div><p class="tagline">La ciudad está pesada.<br>Sal a caminar.</p></section>
+      <section class="arcade" aria-label="Juego Street Bogotá">
+        <div class="stage-bar"><span>ESCENARIO <b id="level" role="status">CAMPAÑA / 6 NIVELES</b></span><span class="live">Bogotá a puño limpio.</span></div>
+        <div class="screen">
+          <aside class="touch-controls touch-left" aria-label="Movimiento táctil" hidden>
+            <span class="touch-caption">MOVER</span>
+            <div id="touch-stick" role="group" aria-label="Joystick: arrastra para moverte en cualquier dirección">
+              <span class="stick-cross" aria-hidden="true"></span><span class="stick-knob" aria-hidden="true"></span>
+            </div>
+            <span class="touch-orientation">EN HORIZONTAL<br>SE VE MEJOR</span>
+          </aside>
+          <div id="game" tabindex="0" aria-label="Juego: WASD o flechas para moverse, H puño, J patada, K especial, L patada baja de Universitaria, Shift dash o pisotón, espacio salto, P pausa y R reiniciar"></div>
+          <aside class="touch-controls touch-right" aria-label="Acciones táctiles" hidden>
+            <button class="touch-pause" data-touch-action="P" aria-label="Pausar partida"><span aria-hidden="true">Ⅱ</span></button>
+            <div class="touch-actions">
+              <button data-touch-action="H" aria-label="Puño"><span aria-hidden="true">H</span><small>PUÑO</small></button>
+              <button data-touch-action="J" aria-label="Patada"><span aria-hidden="true">J</span><small>PATADA</small></button>
+              <button class="touch-special" data-touch-action="K" aria-label="Especial: consume 10 de energía"><span aria-hidden="true">✦</span><small>ESPECIAL</small><em>−10 ENERGÍA</em></button>
+              <button data-touch-action="SPACE" aria-label="Saltar"><span aria-hidden="true">↑</span><small>SALTO</small></button>
+              <button data-touch-action="SHIFT" aria-label="Dash"><span aria-hidden="true">»</span><small>DASH</small></button>
+              <button data-touch-action="L" aria-label="Patada baja" hidden><span aria-hidden="true">↘</span><small>BAJA</small></button>
+            </div>
+          </aside>
+          <section id="selection" class="menu selection" hidden aria-labelledby="selection-title">
+            <div class="selection-heading"><div><p class="eyebrow">ELIGE QUIÉN SALE A LA CALLE</p><h2 id="selection-title">¿CON QUIÉN VAS?</h2></div><button id="back">← VOLVER</button></div>
+            <p class="selection-hint">CLIC EN TU PERSONAJE PARA JUGAR · ← → ELEGIR · ENTER JUGAR</p>
+            <div class="fighter-options">
+              <button class="fighter-card" data-pick="office" aria-pressed="true"><span class="fighter-number">01 / PLAYER 1</span><img data-portrait="office" alt="Gomelo en posición de combate"><strong>GOMELO</strong><span>Salió de la oficina. Se quedó en la pelea.</span><span class="fighter-stats">K / IPHONE · ATAQUE A DISTANCIA</span></button>
+              <button class="fighter-card" data-pick="student" aria-pressed="false"><span class="fighter-number">02 / PLAYER 2</span><img data-portrait="student" alt="Universitaria en posición de combate"><strong>UNIVERSITARIA</strong><span>Entre clases y patadas, nadie la frena.</span><span class="fighter-stats">K / LIBROS · L / PATADA BAJA</span></button>
+              <button class="fighter-card" data-pick="teleperforman" aria-pressed="false"><span class="fighter-number">03 / PLAYER 3</span><img data-portrait="teleperforman" alt="Teleperforman con su diadema"><strong>TELEPERFORMAN</strong><span>Terminó la llamada. Ahora responde a golpes.</span><span class="fighter-stats">K / DIADEMA · MAYOR ALCANCE</span></button>
+              <button class="fighter-card" data-pick="gymbro" aria-pressed="false"><span class="fighter-number">04 / PLAYER 4</span><img data-portrait="gymbro" alt="Gymbro en posición de combate"><strong>GYMBRO</strong><span>Hoy toca pierna. Que tiemble la cuadra.</span><span class="fighter-stats">K / PISOTÓN EN ÁREA · SHIFT / DASH</span></button>
+              <button class="fighter-card" data-pick="magolita" aria-pressed="false"><span class="fighter-number">05 / PLAYER 5</span><img data-portrait="magolita" alt="Magolita en posición de combate"><strong>MAGOLITA</strong><span>Deja la cuadra limpia a punta de golpes.</span><span class="fighter-stats">H ×3 COMBO · J ESCOBA · K TRAPERO</span></button>
+            </div>
+          </section>
+          <section id="result-modal" class="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title" aria-describedby="result-description" hidden>
+            <div class="result-panel">
+              <p class="eyebrow">BOGOTÁ A PUÑO LIMPIO</p>
+              <h2 id="result-title"></h2>
+              <p id="result-description"></p>
+              <p id="result-score" class="result-score"></p>
+              <div id="continue-count" class="continue-count" hidden><strong id="continue-seconds" aria-live="off">10</strong><span>SEGUNDOS PARA CONTINUAR</span></div>
+              <form id="ranking-entry" class="ranking-entry" autocomplete="off" hidden>
+                <label for="initials">¡ENTRASTE AL RANKING! ESCRIBE TUS INICIALES</label>
+                <div class="ranking-input"><input id="initials" name="initials" maxlength="3" spellcheck="false" autocapitalize="characters" enterkeyhint="done" placeholder="AAA"><button type="submit" class="primary">GUARDAR</button></div>
+              </form>
+              <ol id="ranking-list" class="ranking-list" aria-label="Ranking local" hidden></ol>
+              <div class="result-actions">
+                <button id="continue-run" class="primary" hidden>CONTINUAR</button>
+                <button id="new-game" class="primary" hidden>NUEVA PARTIDA</button>
+                <button id="next-level" class="primary" disabled hidden>SIGUIENTE NIVEL · ENTER →</button>
+                <button id="retry" class="primary">REINICIAR · R ↗</button>
+                <button id="result-choose">CAMBIAR PERSONAJE</button>
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="toolbar"><button id="choose" disabled>CAMBIAR PERSONAJE</button><button id="restart" disabled>REINICIAR · R ↗</button></div>
+      </section>
+      <footer><div class="controls"><span><kbd>W A S D</kbd> / <kbd>↑ ← ↓ →</kbd> MOVER</span><span><kbd>H</kbd> PUÑO</span><span><kbd>J</kbd> PATADA</span><span><kbd>K</kbd> ESPECIAL</span><span><kbd>L</kbd> PATADA BAJA (P2)</span><span><kbd>SHIFT</kbd> DASH / PISOTÓN (P4)</span><span><kbd>ESPACIO</kbd> SALTO</span><span><kbd>P</kbd> PAUSA</span></div><p>BOGOTÁ, COLOMBIA <span>4°36′ N · 74°04′ O</span></p></footer>
+      <p class="note">Gomelo: más fuerza. Universitaria: más velocidad. <span>ESPACIO + K: patada aérea · Juega con teclado</span></p>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

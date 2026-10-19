@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-itch/
+releases/
+*.local
+.DS_Store
+backups/
+ejemplos/
+preview.png
+enemies-preview.png
+walk_preview.gif
