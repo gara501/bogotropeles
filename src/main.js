@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import './style.css';
+import selectionBackground from './data/fondo_players.png?url';
+document.documentElement.style.setProperty('--selection-art',`url(${selectionBackground})`);
 // Bundled web fonts (the page and the in-game texts asked for them, but they were never shipped).
 import '@fontsource/ibm-plex-mono/400.css';
 import '@fontsource/ibm-plex-mono/600.css';
@@ -77,6 +79,21 @@ function pick(key) {
   selected = key;
   document.querySelectorAll('[data-pick]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.pick === key)));
 }
+// TEST LEVEL SELECTOR: lets you start any level from the character screen.
+// Set LEVEL_SELECT to false to remove it (the game then always continues from the campaign's current level).
+const LEVEL_SELECT = true;
+const levelPicker=LEVEL_SELECT?createLevelPicker():null;
+function createLevelPicker(){
+  const label=document.createElement('label');label.className='level-picker';
+  label.style.cssText='display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:1px;color:#d6ed64';
+  const select=document.createElement('select');select.setAttribute('aria-label','Nivel de prueba');
+  select.style.cssText='background:#213138;color:#e7e8df;border:1px solid #d6ed64;padding:6px 8px;font:inherit;font-size:11px';
+  levels.forEach((level,index)=>select.append(new Option(`${String(index+1).padStart(2,'0')} · ${level.name.toUpperCase()}${level.boss?' · JEFE':''}`,index)));
+  label.append('NIVEL (PRUEBAS)',select);
+  const heading=document.querySelector('.selection-heading');
+  heading?.insertBefore(label,document.querySelector('#back'));
+  return label;
+}
 function openSelection() {
   returnToStreet=game.scene.isActive('Street') || game.scene.isPaused('Street');
   if(returnToStreet) {
@@ -85,6 +102,7 @@ function openSelection() {
     game.scene.pause('Street');
   }
   showScreen('selection');
+  if(levelPicker){levelPicker.hidden=returnToStreet;levelPicker.querySelector('select').value=String(game.run.level);}
   pick(selected);
   document.querySelector(`[data-pick="${selected}"]`).focus();
 }
@@ -103,6 +121,7 @@ function play() {
   if(returnToStreet) {
     const scene=game.scene.getScene('Street');scene.switchCharacter(selected);resumeStreet();return;
   }
+  if(levelPicker && !levelPicker.hidden){const level=Number(levelPicker.querySelector('select').value);if(level!==game.run.level)game.run.advance(level);}
   startIntro({kind:'level',character:selected,level:game.run.level});
 }
 function resumeStreet() {
@@ -280,6 +299,7 @@ document.addEventListener('keydown', event => {
   }
   if (screen === 'game' || event.repeat) return;
   if (screen === 'selection') {
+    if (event.target.closest?.('.level-picker')) return; // arrows/Enter belong to the level dropdown
     if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
       const roster = Object.keys(characters), step = event.key === 'ArrowRight' ? 1 : -1;

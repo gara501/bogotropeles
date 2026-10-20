@@ -10,7 +10,7 @@ export function timeline({startup,active,recovery,startupPose,activePose,recover
 export const PLAYER_ATTACK_FRAMES={
   punch:{startup:6,active:3,recovery:11},punch2:{startup:6,active:3,recovery:11},punch3:{startup:8,active:3,recovery:15},
   kick:{startup:10,active:4,recovery:14},jumpKick:{startup:5,active:5,recovery:12},
-  lowKick:{startup:9,active:4,recovery:13},headset:{startup:15,active:4,recovery:18},
+  lowKick:{startup:9,active:4,recovery:13},headset:{startup:25,active:5,recovery:20},
   stomp:{startup:18,active:4,recovery:20},iphone:{startup:17,active:1,recovery:24},books:{startup:14,active:1,recovery:14},
   mop:{startup:18,active:4,recovery:20},
 };
@@ -74,7 +74,7 @@ export function enemyAttackData(config,stage=0){
   // hitFrames: per-stage contact pose (each slash of a boss combo strikes on a different drawing).
   const hit=combo?.hitFrames?.[stage]??combo?.hitFrame??Math.floor(art.length/2);
   return {damage:config.damage,range:combo?.ranges?.[stage]??config.range,lane:ARCADE.body.lane,
-    startup,active,recovery,finisher:Boolean(combo && stage===ARCADE.ai.comboStages-1),
+    startup,active,recovery,finisher:Boolean(combo && stage===(combo.stages??ARCADE.ai.comboStages)-1),
     frames:timeline({startup,active,recovery,startupPose:art.slice(0,Math.max(1,hit)),activePose:art[hit],
       recoveryPose:(combo?.followThrough??config.followThrough) && hit<art.length-1?art.slice(hit+1):config.idle??art.at(-1)})};
 }

@@ -1,3 +1,4 @@
+import { playPowerSound } from '../audio/SoundEffects.js';
 import { IPHONE } from '../data/iphone.js';
 import { canSpendSpecialEnergy, spendSpecialEnergy } from '../combat/specialEnergy.js';
 import { firstPhoneTarget } from './iphoneCollision.js';
@@ -27,12 +28,14 @@ export class IPhoneSpecial {
     if(!attack || attack!==s.playerAttack || attack.type!=='iphone' || attack.released || s.health<=0 || s.finished || s.paused || s.combatTime<s.hurtUntil || s.combatTime<s.dashUntil)return false;
     if(!spendSpecialEnergy(s))return false;
     attack.released=true;attack.hit=true;
-    s.sfx?.play('celuco');
+    s.sfx?.play('celuco');playPowerSound(s);
     s.specialReadyAt=s.combatTime+attack.cooldown;
     const x=s.player.x+attack.facing*IPHONE.handOffset,y=s.player.y;
     const sprite=s.add.image(x,y-IPHONE.flightHeight,IPHONE.texture).setDisplaySize(IPHONE.width,IPHONE.height)
       .setFlipX(attack.facing<0).setDepth(y+1);
-    this.phones.push({x,y,facing:attack.facing,distance:0,born:s.combatTime,attack:{...attack},sprite});
+    const trail=s.add.graphics?.();trail?.setDepth?.(y);
+    this.phones.push({x,y,facing:attack.facing,distance:0,born:s.combatTime,attack:{...attack},sprite,trail});
+    s.cameras?.main?.flash?.(80,180,240,255);
     this.updateHud();
     return true;
   }
@@ -48,7 +51,7 @@ export class IPhoneSpecial {
     const s=this.scene;
     if(s.paused || s.finished)return;
     this.phones=this.phones.filter(phone=>{
-      if(s.combatTime-phone.born>=IPHONE.lifetime){phone.sprite.destroy();return false;}
+      if(s.combatTime-phone.born>=IPHONE.lifetime){phone.sprite.destroy();phone.trail?.destroy();return false;}
       const previousX=phone.x,step=Math.min(IPHONE.speed*dt,phone.attack.range-phone.distance);
       phone.x+=phone.facing*step;phone.distance+=step;
       const target=firstPhoneTarget(previousX,phone.x,phone.y,phone.facing,this.targets(),IPHONE.lane);
@@ -61,11 +64,12 @@ export class IPhoneSpecial {
         else if(target.kind==='boss')target.entity.hit(phone.attack,{x:previousX,y:phone.y});
         else s.boss.hazards.hitObstacle(target.entity,phone.attack);
         this.impact(phone.x,phone.y);
-        phone.sprite.destroy();return false;
+        phone.sprite.destroy();phone.trail?.destroy();return false;
       }
       phone.sprite.setPosition(phone.x,phone.y-IPHONE.flightHeight).setDepth(phone.y+1);
+      this.drawTrail(phone);
       phone.sprite.rotation+=phone.facing*IPHONE.spin*dt;
-      if(phone.distance>=phone.attack.range || phone.x < viewLeft(s)-32 || phone.x > viewLeft(s)+IPHONE.arenaWidth+32){phone.sprite.destroy();return false;}
+      if(phone.distance>=phone.attack.range || phone.x < viewLeft(s)-32 || phone.x > viewLeft(s)+IPHONE.arenaWidth+32){phone.sprite.destroy();phone.trail?.destroy();return false;}
       return true;
     });
     this.updateBursts();
@@ -80,6 +84,17 @@ export class IPhoneSpecial {
     for(const part of parts)part.setDepth?.(y+3);
     this.bursts.push({parts,born:s.combatTime});
     s.cameras?.main?.shake?.(70,.0025);
+  }
+  /** Beam of light behind the flying phone: wide cyan glow, white core and sparkles. */
+  drawTrail(phone){
+    const g=phone.trail;if(!g?.clear)return;
+    const T=IPHONE.trail,y=phone.y-IPHONE.flightHeight,len=Math.min(T.length,phone.distance),x0=phone.x-phone.facing*len,t=this.scene.combatTime;
+    g.clear().setDepth?.(phone.y);
+    g.lineStyle(T.glow,T.color,.28).lineBetween(x0,y,phone.x,y);
+    g.lineStyle(T.glow*.55,T.color,.5).lineBetween(x0+phone.facing*len*.3,y,phone.x,y);
+    g.lineStyle(T.core,T.coreColor,.95).lineBetween(x0+phone.facing*len*.5,y,phone.x,y);
+    g.fillStyle(T.coreColor,.9).fillCircle(phone.x,y,T.glow*.5);
+    for(let i=0;i<6;i++){const a=((i*37+Math.floor(t/40)*13)%100)/100;g.fillStyle(i%2?T.color:T.coreColor,.8).fillCircle(phone.x-phone.facing*len*a,y+(a-.5)*14,1.5+a*2);}
   }
   updateBursts() {
     const s=this.scene,ms=IPHONE.impact.ms;
@@ -97,7 +112,7 @@ export class IPhoneSpecial {
       .setColor(feedback?'#ffcf69':remaining?'#aebeb1':'#d6ed64');
   }
   clear() {
-    this.phones.forEach(phone=>phone.sprite.destroy());this.phones=[];
+    this.phones.forEach(phone=>{phone.sprite.destroy();phone.trail?.destroy();});this.phones=[];
     for(const burst of this.bursts)for(const part of burst.parts)part.destroy();this.bursts=[];
   }
   destroy() {

@@ -1,3 +1,4 @@
+import {BOSS_SOUNDS,BOSS_HURT_COOLDOWN} from '../audio/SoundEffects.js';
 import { enemyDeathSound } from '../audio/SoundEffects.js';
 import { BOSS } from './balance.js';
 import { phaseFor, clamp, availableAttacks } from './rules.js';
@@ -56,6 +57,7 @@ export class BossController {
     this.facing=this.scene.player.x<this.x?-1:1;
     const windup=key==='melee'?config.windup:this.hazards.prepare(key,this.speed);
     this.attack={key,config,start:now,windup,release:now+windup};
+    this.scene.sfx?.play(BOSS_SOUNDS.dormilon.attack);
     if(this.scene.arcade){
       this.attack.frame=0;
       this.attack.frames=timeline({startup:toFrames(windup),active:toFrames(key==='rain'?BOSS.rain.guard:config.duration),recovery:toFrames(config.recovery),
@@ -99,6 +101,7 @@ export class BossController {
       this.blockUntil=now+350;this.cue(110,.07);return;
     }
     this.hp=Math.max(0,this.hp-attack.damage);this.bar.width=336*this.hp/BOSS.hp;
+    if(this.hp>0 && now>=(this.gruntReady??0)){this.gruntReady=now+BOSS_HURT_COOLDOWN;this.scene.sfx?.play(BOSS_SOUNDS.dormilon.hurt);}
     this.actor.sprite.setTint(0xffcdb6);this.hurtFlashUntil=now+120;
     this.scene.arcade?.combat.impact(this.scene.player,this.actor,attack);
     if(!this.hp){this.defeat();return;}

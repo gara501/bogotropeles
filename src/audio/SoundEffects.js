@@ -1,21 +1,39 @@
 export const EFFECT_FILES={knife:'knife.mp3',hurt:'hurt.wav',hurt2:'hurt2.wav',lose:'lose.mp3',bar:'bar.mp3',punch:'punch.mp3',kick:'kick.mp3',moto:'moto.mp3',running:'running.mp3',tambo:'tambo.mp3',start:'start.mp3',button:'button.mp3',whip:'whip.mp3',celuco:'celuco.mp3',stomp:'stomp.mp3',spell:'spell.mp3',
   wave:'wave.wav',maleGrunt:'male_grunt.mp3',maleGrunt2:'male_grunt2.mp3',maleGrunt3:'male_grunt3.mp3',maleGrunt4:'male_grunt4.mp3',
   femaleGrunt:'female_grunt.mp3',metalCrack:'metal_crack.mp3',item:'item.mp3',punch2:'punch2.mp3',screeching:'screeching.mp3',femaleGrunt2:'female_grunt2.mp3',
-  player1Die:'player_1_die.mp3',player2Die:'player_2_die.mp3',player3Die:'player_3_die.mp3',player4Die:'player_4_die.mp3',player5Die:'player_die_5.mp3'};
+  player1Die:'player_1_die.mp3',player2Die:'player_2_die.mp3',player3Die:'player_3_die.mp3',player4Die:'player_4_die.mp3',player5Die:'player_die_5.mp3',
+  player2Grunt:'player_2_grunt.mp3',player4Grunt:'player_4_grunt.mp3',enemy2Voice:'enemy_2_voice.mp3',femaleHurt:'female_hurt.mp3',maleHurt:'male_hurt.mp3',
+  enemy11Attack:'enemy_11_attack.mp3',enemy12Attack:'enemy_12_attack.mp3',enemy3Die:'enemy_3_die.mp3',enemy10Die:'enemy_10_die.mp3',
+  boss1Attack:'enemy_boss_1_attack.mp3',boss2Attack:'enemy_boss_2_attack.mp3',boss2Hurt:'enemy_boss_2_hurt.mp3',boss3Attack:'enemy_boss_3_attack.mp3',
+  boss4Attack:'enemy_boss_4_attack.mp3',boss5Attack:'enemy_boss_5_attack.mp3',boss6Attack:'enemy_boss_6_attack.mp3',power1:'power_player_1.mp3',power2:'power_player_2.mp3',power3:'power_player_3.mp3',power4:'power_player_4.mp3',power5:'power_player_5.mp3'};
 
 // Sound when an enemy's strike becomes active (enemy_N.png → key in src/data/enemies.js).
 // Sound when a charge starts its rush (enemy_9 vendor, enemy_10 belly). Any other charger uses running.
+// enemy_2 (crossing moto courier) shouts once per pass, only when it rides by close to the player.
+export const CROSSING_VOICE={sound:'enemy2Voice',range:200,depth:70};
+// Level bosses (level 1 → 6): attack = voice when an attack starts (once per combo), throw = only for throws,
+// hurt = grunt when hit (at most every BOSS_HURT_COOLDOWN ms so a combo doesn't stack grunts).
+export const BOSS_SOUNDS={barra:{attack:'boss1Attack',hurt:'maleGrunt2'},palomera:{throw:'boss2Attack',hurt:'boss2Hurt'},
+  grafitero:{attack:'boss3Attack',hurt:'maleGrunt2'},cabecilla:{attack:'boss4Attack',hurt:'maleGrunt4'},
+  antidisturbios:{throw:'boss5Attack',hurt:'maleGrunt4'},dormilon:{attack:'boss6Attack',hurt:'maleGrunt4'}};
+export const BOSS_HURT_COOLDOWN=400;
 export const CHARGE_SOUNDS={vendor:'screeching',belly:'running'};
 export const chargeSound=key=>CHARGE_SOUNDS[key]??'running';
-export const ENEMY_ATTACK_SOUNDS={guard:'tambo',chain:'bar',sweeper:'bar',belly:'bar',leash:'whip',barra:'wave',palomera:'wave',grafitero:'wave',cabecilla:'wave',estudiante:'punch2',walker:'punch2',brawler:'punch2',fan:'punch2'};
+export const ENEMY_ATTACK_SOUNDS={guard:'tambo',chain:'bar',sweeper:'bar',belly:'bar',leash:'whip',barra:'wave',palomera:'wave',grafitero:'wave',cabecilla:'wave',estudiante:'punch2',yulitza:'knife',walker:'punch2',brawler:'punch2',fan:'punch2'};
 
 // Sound when a player character takes a hit (character key in src/data/characters.js; player_2 = student).
-export const PLAYER_HURT_SOUNDS={student:'femaleGrunt2'};
+export const PLAYER_HURT_SOUNDS={student:'player2Grunt',gymbro:'player4Grunt',magolita:'femaleGrunt'};
+// Voice shout when a player character launches its special (player_N → power_player_N.mp3), on top of the special's own effect.
+export const PLAYER_POWER_SOUNDS={office:'power1',student:'power2',teleperforman:'power3',gymbro:'power4',magolita:'power5'};
+export const playPowerSound=scene=>{const name=PLAYER_POWER_SOUNDS[scene.characterKey];if(name)scene.sfx?.play(name);};
 // Sound when a player character loses a life (player_N.png → character key).
 export const PLAYER_DEATH_SOUNDS={office:'player1Die',student:'player2Die',teleperforman:'player3Die',gymbro:'player4Die',magolita:'player5Die'};
 
 // Death sound per enemy (enemy_N.png → key in src/data/enemies.js). Others alternate hurt/hurt2.
-export const DEATH_SOUNDS={palomera:'femaleGrunt',walker:'maleGrunt',belly:'maleGrunt2',leash:'femaleGrunt',guard:'maleGrunt4',sweeper:'maleGrunt3'};
+// Regular enemies: grunt when hit (same cooldown as bosses) and a shout when they enter the fight.
+export const ENEMY_HURT_SOUNDS={yulitza:'femaleHurt',leash:'femaleHurt',thrower:'maleHurt'};
+export const ENEMY_SPAWN_SOUNDS={yulitza:'enemy12Attack',leash:'enemy11Attack'};
+export const DEATH_SOUNDS={yulitza:'femaleGrunt',palomera:'femaleGrunt',walker:'maleGrunt',belly:'enemy10Die',thrower:'enemy3Die',leash:'femaleGrunt',guard:'maleGrunt4',sweeper:'maleGrunt3'};
 /** Punches and kicks: impact sound when they connect, a whoosh when they miss. */
 export const strikeSound=(type,connected)=>!connected?'wave':type==='punch'?'punch':'kick';
 

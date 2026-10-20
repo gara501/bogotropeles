@@ -68,15 +68,26 @@ test('can takes two distinct active punches, plays break poses and drops one ite
   step(30);assert.equal(s.health,65);assert.equal(s.energyPickups.items.length,0);assert.equal(s.run.score,score);
 });
 
-test('can on levels 1, 2, 5, 6 and taquilla on 3, 4, 5, 6; every 4th drop is the full-energy changua',async()=>{
+test('can on levels 1, 2, 5, 6, taquilla on 3, 4, 5, 6, parking on 1, 3, 5, 6; every 4th drop is the full-energy changua',async()=>{
   const {containersFor,PICKUPS}=await import('../src/data/pickups.js');
-  assert.deepEqual([0,1,2,3,4,5].map(containersFor),[['can'],['can'],['taquilla'],['taquilla'],['can','taquilla'],['can','taquilla']]);
+  assert.deepEqual([0,1,2,3,4,5].map(containersFor),[['can','parking'],['can'],['taquilla','parking'],['taquilla'],['can','taquilla','parking'],['can','taquilla','parking']]);
   const {s}=pickupSetup();s.levelIndex=2;s.health=10;const system=s.energyPickups;
   const taquilla=system.spawn(s.player.x+300,s.player.y);assert.equal(taquilla.kind,'taquilla');
   const kinds=[1,2,3,4,5,6,7,8].map(()=>system.drop(0,0).kind);
   assert.deepEqual(kinds,['energy','energy','energy','full','energy','energy','energy','full']);assert.equal(PICKUPS.fullEvery,4);
   system.items=[];system.drops=3;const full=system.drop(s.player.x,s.player.y);assert.equal(full.kind,'full');system.rolled.add(0);
   system.update(9);assert.equal(full.sprite.destroyed,true);assert.equal(s.health,100,'the changua refills all energy');
+});
+
+test('TuLlave card: +1000 points even at full energy; parking breaks through its 4 poses and drops an item',async()=>{
+  const {ITEMS,CONTAINERS}=await import('../src/data/pickups.js');
+  const {s,press,step}=pickupSetup();s.health=100;s.addScore=function(points){this.run.score+=points;};const system=s.energyPickups;const score=s.run.score;
+  const card=system.drop(s.player.x,s.player.y,'money');system.rolled.add(0);system.update(1);
+  assert.equal(s.run.score,score+ITEMS.money.score);assert.equal(card.sprite.destroyed,true);assert.equal(s.health,100);
+  assert.deepEqual(CONTAINERS.parking.poses,{hit:1,dented:1,breaking:[2,3]});
+  const parking=system.spawn(s.player.x+70,s.player.y,'parking');assert.equal(parking.kind,'parking');
+  press('H');step(40);assert.equal(parking.sprite.texture,'parking-1');press('H');step(40);
+  assert.equal(system.cans.length,0);assert.equal(system.items.length,1);
 });
 
 test('energy pickup requires ground proximity, caps health and stays available at full energy',()=>{
@@ -94,9 +105,9 @@ test('can spawn rolls once per reached arena and respects scrolling coordinates;
   s.energyPickups.destroy();s.energyPickups=new EnergyPickups(s,()=>{calls++;return .5;});
   s.waves.arena=1;let reached=false;s.stage={reached:()=>reached,arenaScroll:()=>720};
   const system=s.energyPickups;system.update(0);assert.equal(calls,0);
-  reached=true;system.update(1);assert.equal(calls,3);assert.equal(system.cans.length,1);
+  reached=true;system.update(1);assert.equal(calls,4,'chance, x, y and which container');assert.equal(system.cans.length,1);
   const can=system.cans[0];assert.ok(can.x>720 && can.x<1680);assert.ok(can.y>=s.floor.top && can.y<=s.floor.bottom);
-  for(let frame=2;frame<200;frame++)system.update(frame);assert.equal(calls,3);
+  for(let frame=2;frame<200;frame++)system.update(frame);assert.equal(calls,4);
   system.destroy();system.destroy();assert.equal(can.sprite.destroyed,true);assert.equal(system.cans.length,0);assert.equal(system.items.length,0);
 });
 function arcadeSetup(character='gymbro'){
@@ -158,21 +169,22 @@ test('Magolita links three separate punch impacts and uses the broom for kicks',
   assert.ok(kick.frames.filter(f=>f.phase==='active').every(f=>f.pose===21));
 });
 
-test('Magolita mop costs energy once, deals double normal damage and pushes enemies back',()=>{
+test('Magolita mop costs energy once, hits more than three punches, knocks down and throws a water splash',()=>{
   const {s,target,step,press}=arcadeSetup('magolita');const x=target.x;
   press('K');step(70);
-  assert.equal(s.health,90);assert.equal(target.hp,1000-2*s.character.attacks.punch.damage);
-  assert.equal(target.x-x,32);assert.ok(s.specialReadyAt>0);
-  s.specialReadyAt=0;s.health=10;press('K');step(70);assert.equal(s.health,10);assert.equal(target.hp,944);
+  assert.equal(s.health,90);const dealt=1000-target.hp;assert.equal(dealt,s.character.attacks.mop.damage);
+  assert.ok(dealt>3*s.character.attacks.punch.damage);assert.ok(s.specialReadyAt>0);
+  assert.equal(s.arcade.enemies.get(target)?.state,'down','knocked down (the push plays as its fall slide)');
+  s.specialReadyAt=0;s.health=10;const hp=target.hp;press('K');step(70);assert.equal(s.health,10);assert.equal(target.hp,hp,'no energy, no mop');
 });
 
 test('Magolita atlas and animation frames fit player_5 and selection has no temporary level picker',()=>{
   const c=setup(0,'magolita').character,png=readFileSync(new URL('../src/data/player_5.png',import.meta.url));
-  assert.equal(c.frameRects.length,39);
-  for(const r of c.frameRects){assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=png.readUInt32BE(16) && r.y+r.height<=png.readUInt32BE(20));}
+  assert.equal(c.frameRects.length,51,'39 main poses + 12 grab poses (player_5_agarre.png)');
+  for(const r of c.frameRects.slice(0,39)){assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=png.readUInt32BE(16) && r.y+r.height<=png.readUInt32BE(20));}
   for(const frames of Object.values(c.animations))for(const frame of frames)assert.ok(frame>=0 && frame<c.frameRects.length);
   const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
-  assert.doesNotMatch(main,/LEVEL_SELECT|levelPicker|createLevelPicker/);
+  assert.match(main,/const LEVEL_SELECT = (true|false);/,'the test level selector is a single switch');
   const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');assert.match(html,/data-pick="magolita"/);
 });
 test('input buffer expires at eight frames, consumes once and preserves command order',()=>{
@@ -390,11 +402,11 @@ test('third death waits for continue once; continue restores three lives and pre
   s.endRun();assert.equal(s.gameOver,true);assert.equal(s.restartLevel(),false);
 });
 test('each actual updated player sheet has valid victory frames and Gymbro has a separate dash',()=>{
-  for(const [i,key] of ['office','student','teleperforman','gymbro'].entries()) {
+  for(const [i,key] of ['office','student','teleperforman','gymbro','magolita'].entries()) {
     const c=setup(0,key).character,png=readFileSync(new URL(`../src/data/player_${i+1}.png`,import.meta.url));
     let count=c.rows.reduce((a,b)=>a+b,0),width=png.readUInt32BE(16),height=png.readUInt32BE(20);
-    if(key==='teleperforman'){ // player_3_combo.png is stacked under the main sheet
-      const combo=readFileSync(new URL('../src/data/player_3_combo.png',import.meta.url));width=Math.max(width,combo.readUInt32BE(16));height+=combo.readUInt32BE(20);
+    for(const url of c.appendUrls??[]){ // combo / grab sheets stacked under the main sheet
+      const extra=readFileSync(new URL(String(url).replace('?url','')));width=Math.max(width,extra.readUInt32BE(16));height+=extra.readUInt32BE(20);
     }
     assert.equal(c.frameRects.length,count);
     for(const rect of c.frameRects)assert.ok(rect.x>=0 && rect.y>=0 && rect.x+rect.width<=width && rect.y+rect.height<=height);
@@ -481,7 +493,7 @@ test('enemy_10 chooses cruceta nearby and belly charge at distance through the r
   }
 });
 test('enemy_11 moves faster than every other normal enemy and retreats to keep distance',()=>{
-  assert.ok(Object.entries(enemies).filter(([key,e])=>key!=='leash' && !e.boss && !e.minion).every(([,e])=>e.speed<enemies.leash.speed),'bosses excluded: the level 1 boss is deliberately faster');
+  assert.ok(Object.entries(enemies).filter(([key,e])=>!['leash','yulitza'].includes(key) && !e.boss && !e.minion).every(([,e])=>e.speed<enemies.leash.speed),'bosses (and Yulitza, the fastest of all) excluded');
   const s=setup(3);s.enemies=[];const e=s.spawnEnemy('leash',0,0,2,0);e.x=150;e.y=450;e.nextHit=Infinity;
   s.player.x=600;s.updateEnemies(.1);assert.ok(e.x>150);
   e.x=560;s.player.x=500;s.updateEnemies(.1);assert.ok(e.x>560);
@@ -538,8 +550,8 @@ test('updated Gymbro atlas fits the actual PNG and synchronizes contact poses wi
   const c=setup(0,'gymbro').character,png=readFileSync(new URL('../src/data/player_4.png',import.meta.url));
   const width=png.readUInt32BE(16),height=png.readUInt32BE(20),count=c.rows.reduce((sum,n)=>sum+n,0);
   assert.equal(width,1024);assert.equal(height,1536);
-  assert.equal(count,32);assert.equal(c.frameRects.length,count);
-  for(const r of c.frameRects)assert.ok(r.x>=0 && r.y>=0 && r.width>0 && r.height>0 && r.x+r.width<=width && r.y+r.height<=height);
+  assert.equal(count,44,'32 main poses + 12 grab poses');assert.equal(c.frameRects.length,count);
+  for(const r of c.frameRects.slice(0,32))assert.ok(r.x>=0 && r.y>=0 && r.width>0 && r.height>0 && r.x+r.width<=width && r.y+r.height<=height);
   for(const frames of Object.values(c.animations))assert.ok(frames.every(f=>f>=0 && f<count));
   for(const [name,pose] of [['punch',8],['punch2',6],['punch3',10],['kick',22],['stomp',20]]) {
     const a=c.attacks[name.startsWith('punch')?'punch':name],frames=c.animations[name];
@@ -581,6 +593,7 @@ test('actual combat emits sounds on accepted attacks, releases and deaths, never
   const s=setup(2),calls=[];s.sfx={play:name=>calls.push(name),stop(){},setPaused(){}};
   s.startAttack('punch');s.startAttack('punch');assert.deepEqual(calls,['punch']);
   s.playerAttack=null;s.startAttack('kick');assert.deepEqual(calls,['punch','kick']);
+  for(const e of s.enemies.slice(0,2))e.key='brawler'; // no own death or hurt sound: alternates hurt/hurt2
   s.hitEnemy(s.enemies[0],strike);s.hitEnemy(s.enemies[0],strike);s.hitEnemy(s.enemies[1],strike);
   assert.deepEqual(calls.slice(-2),['hurt','hurt2']);
   for(const [key,sound] of [['guard','tambo'],['sweeper','bar'],['chain','bar']]) {
@@ -652,7 +665,7 @@ function finishWaves(s,avoid=false) {
 }
 
 test('campaign has exact pools and totals and steadily increases health, speed, damage and pressure',()=>{
-  assert.deepEqual(CAMPAIGN.map(l=>l.enemies),[['fan','brawler'],['walker','rider','vendor','belly'],['thrower','brawler','fan','sweeper','vendor','belly'],['chain','brawler','fan','sweeper','belly','leash'],['guard','chain','walker','sweeper','belly','leash'],['guard','rider','walker','sweeper','belly','leash']]);
+  assert.deepEqual(CAMPAIGN.map(l=>l.enemies),[['fan','brawler'],['walker','rider','vendor','belly'],['thrower','brawler','fan','sweeper','vendor','belly','yulitza'],['chain','brawler','fan','sweeper','belly','leash','yulitza'],['guard','chain','walker','sweeper','belly','leash','yulitza'],['guard','rider','walker','sweeper','belly','leash','yulitza']]);
   assert.deepEqual(CAMPAIGN.map(l=>l.total),[15,20,20,20,20,30]);
   for(let i=1;i<6;i++)for(const key of ['hp','speed','damage','pressure'])assert.ok(CAMPAIGN[i][key]>CAMPAIGN[i-1][key]);
   assert.equal(CAMPAIGN[1].mode,'crossing');assert.equal(CAMPAIGN[5].boss,'dormilon');
@@ -866,7 +879,7 @@ test('arcade strikes sound by result: hit → punch/kick once, miss → wave onc
 
 test('enemy deaths use their own grunt; enemies without one keep alternating hurt sounds',()=>{
   const s=setup(0),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
-  for(const [key,sound] of [['walker','maleGrunt'],['belly','maleGrunt2'],['leash','femaleGrunt'],['guard','maleGrunt4'],['sweeper','maleGrunt3']]){
+  for(const [key,sound] of [['walker','maleGrunt'],['belly','enemy10Die'],['thrower','enemy3Die'],['leash','femaleGrunt'],['guard','maleGrunt4'],['sweeper','maleGrunt3']]){
     const e=s.spawnEnemy(key,0,0,2,0);s.hitEnemy(e,strike);assert.equal(calls.at(-1),sound,key);
   }
   for(const key of ['fan','brawler']){const e=s.spawnEnemy(key,0,0,2,0);s.hitEnemy(e,strike);}
@@ -911,7 +924,7 @@ test('level 1 boss data: each knife slash strikes on its own drawing and the foo
   assert.deepEqual([0,1,2].map(active),[6,9,14],'slash, backhand, lunge');
   assert.ok(enemyAttackData(b,2).range>enemyAttackData(b,0).range,'the lunge reaches further');
   const t=enemyThrowData(b,.8);assert.equal(t.frames.find(f=>f.phase==='active').pose,18);assert.equal(t.damage,Math.round(b.throw.damage*.8));
-  assert.ok(b.speed>Math.max(...Object.entries(enemies).filter(([,e])=>!e.boss && !e.minion).map(([,e])=>e.speed)),'runs in faster than any normal enemy');
+  assert.ok(b.speed>Math.max(...Object.entries(enemies).filter(([key,e])=>!e.boss && !e.minion && key!=='yulitza').map(([,e])=>e.speed)),'runs in faster than any normal enemy but Yulitza');
 });
 
 function bossArena(character='office'){
@@ -967,7 +980,7 @@ test('walker, brawler and fan survive at least 7 of the strongest normal strike 
   const strongest=Math.max(...Object.values(characters).flatMap(c=>['punch','kick','lowKick'].map(k=>c.attacks[k]?.damage??0)));
   assert.equal(strongest,45);
   // enemy_1/6/7: 7 · enemy_10 (belly): 6 · enemy_11 (leash): 8 · enemy_3 (thrower): 9
-  for(const [key,hits] of Object.entries({walker:7,brawler:7,fan:7,belly:6,leash:8,thrower:9})) {
+  for(const [key,hits] of Object.entries({walker:7,brawler:7,fan:7,belly:6,leash:8,thrower:9,yulitza:8})) {
     const levels=CAMPAIGN.filter(level=>level.enemies.includes(key));assert.ok(levels.length,key);
     for(const level of levels){const hp=scaledEnemy(enemies[key],level).hp;assert.ok(Math.ceil(hp/strongest)>=hits,`${key} on ${level.name}: ${hp} hp`);}
   }
@@ -1074,8 +1087,8 @@ test('the jump sends him backwards leaving cyan stains at takeoff and landing, a
   assert.ok(jumped,'hops back after painting when crowded');
 });
 
-test('player 2 (Universitaria) grunts with female_grunt2 when hit; other characters stay silent',()=>{
-  for(const [character,expected] of [['student',['femaleGrunt2']],['office',[]],['gymbro',[]]]) {
+test('players 2, 4 and 5 grunt when hit (player_2_grunt, player_4_grunt, female_grunt); the others stay silent',()=>{
+  for(const [character,expected] of [['student',['player2Grunt']],['gymbro',['player4Grunt']],['magolita',['femaleGrunt']],['office',[]],['teleperforman',[]]]) {
     const {s}=arcadeSetup(character),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
     s.invulnerableUntil=0;s.respawnProtectedUntil=0;assert.equal(s.hitPlayer(10),true);
     assert.deepEqual(calls,expected,character);
@@ -1139,4 +1152,123 @@ test('level 5 boss: shield blocks frontal hits (chip damage, no stagger), full d
   const cloud=gas.spawn(s.player.x,s.player.y,r.throw.gas);assert.equal(s.health,100-r.throw.gas.blast);
   s.invulnerableUntil=0;s.combatTime+=r.throw.gas.every;gas.update();assert.equal(s.health,100-r.throw.gas.blast-r.throw.gas.damage);
   s.combatTime+=r.throw.gas.ms;gas.update();assert.equal(gas.clouds.length,0);assert.equal(cloud.sprite.destroyed,true);
+});
+
+function grabSetup(){
+  const setup=arcadeSetup();const {s,target}=setup;s.debugPreview=false;
+  const model=new Enemy(s.arcade,target);s.arcade.enemies.set(target,model);model.ready=1e6;
+  target.x=s.player.x+50;target.y=s.player.y;
+  const walkIn=()=>{s.keys.D.isDown=true;setup.step(6);s.keys.D.isDown=false;};
+  return {...setup,model,walkIn};
+}
+test('walking into a regular enemy grabs it; H knees it and the third knee knocks it down',()=>{
+  const {s,target,step,press,model,walkIn}=grabSetup();walkIn();
+  assert.equal(s.arcade.player.state,'grab');assert.equal(model.state,'grabbed');
+  assert.equal(target.x,s.player.x+ARCADE.grab.hold,'held in front of the player');
+  const hp=target.hp;press('H');step(20);assert.ok(target.hp<hp);assert.equal(model.state,'grabbed');
+  press('H');step(20);press('H');step(30); // hitstop delays the end of the last knee
+  assert.equal(model.state,'down');assert.equal(s.arcade.player.state,'walk');
+  assert.ok(target.invulnerableUntil>s.combatTime,'invulnerable while on the floor');
+  let guard=0;while(model.state==='down' && guard++<200)step();assert.equal(model.state,'approach','gets back up');
+});
+test('J throws the held enemy forward, back + H throws it backward; the body bowls over others and lands knocked down',()=>{
+  const {s,target,step,press,model,walkIn}=grabSetup();
+  const other={...s.enemies[0],x:0};const bystander=Object.assign(Object.create(Object.getPrototypeOf(target)),target,{x:s.player.x+200,hp:500,config:{...target.config,hp:500},invulnerableUntil:0});
+  s.enemies.push(bystander);const bystanderModel=new Enemy(s.arcade,bystander);s.arcade.enemies.set(bystander,bystanderModel);bystanderModel.ready=1e6;
+  walkIn();const start=target.x,hp=target.hp;press('J');
+  let guard=0;while(model.state!=='down' && guard++<120)step();
+  assert.equal(model.state,'down');assert.ok(target.x>start+150,'flew forward');assert.ok(target.hp<hp,'landing hurts');
+  assert.ok(bystander.hp<500,'hit by the flying body');assert.equal(bystanderModel.state,'down');
+  const back=grabSetup();back.walkIn();const x=back.target.x;back.s.keys.A.isDown=true;back.press('H');back.s.keys.A.isDown=false;
+  guard=0;while(back.model.state!=='down' && guard++<120)back.step();
+  assert.ok(back.target.x<x-150,'thrown behind the player');
+});
+test('bosses cannot be grabbed and a grab ends if the player is hit; held too long, the enemy breaks free',()=>{
+  const {s,target,step,model,walkIn}=grabSetup();
+  target.config={...target.config,boss:true};walkIn();assert.equal(s.arcade.player.state,'walk');
+  target.config={...target.config,boss:false};walkIn();assert.equal(s.arcade.player.state,'grab');
+  s.invulnerableUntil=0;s.hitPlayer(5);assert.notEqual(model.state,'grabbed');
+  const held=grabSetup();held.walkIn();held.step(ARCADE.grab.holdFrames+2);
+  assert.equal(held.model.state,'hurt');assert.equal(held.s.arcade.player.state,'walk');
+});
+test('the third strike of a combo knocks a regular enemy down',()=>{
+  const {s,target,step,press,model}=grabSetup();target.x=s.player.x+55;
+  press('H');
+  for(let stage=0;stage<2;stage++){
+    let guard=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && guard++<60)step();press('H');
+  }
+  let guard=0;while(model.state!=='down' && guard++<60)step();
+  assert.equal(model.state,'down');
+});
+
+test('Yulitza: fastest fighter, 2-slash machete combo, and she hops to the other side when the player swings close by',()=>{
+  const y=enemies.yulitza;assert.equal(y.name,'YULITZA');
+  const speeds=[...Object.entries(enemies).filter(([key])=>key!=='yulitza').map(([,e])=>e.speed),...Object.values(ARCADE.player.speeds)];
+  assert.ok(y.speed>Math.max(...speeds),'faster than every enemy, boss and player');
+  assert.equal(y.combo.stages,2);assert.equal(enemyAttackData(y,0).finisher,false);assert.equal(enemyAttackData(y,1).finisher,true);
+  assert.deepEqual([0,1].map(stage=>enemyAttackData(y,stage).frames.find(f=>f.phase==='active').pose),[10,14]);
+  const {s,target,step}=arcadeSetup();s.debugPreview=false;
+  target.key='yulitza';target.config={...y,hp:400,dodge:{...y.dodge,chance:1}};target.hp=400;target.x=s.player.x+60;target.y=s.player.y;
+  const model=new Enemy(s.arcade,target);s.arcade.enemies.set(target,model);model.ready=1e6;
+  s.arcade.player.request('punch');step(2);
+  assert.equal(model.state,'evade');assert.ok(target.invulnerableUntil>s.combatTime,'untouchable mid-hop');
+  let guard=0;while(model.state==='evade' && guard++<60)step();
+  assert.ok(target.x<s.player.x,'landed on the player\'s other side');assert.equal(target.hp,400);
+});
+
+test('a knocked-down enemy slides back along an arc, lands with a thud and lies still before getting up',()=>{
+  const {s,target,step,model}=grabSetup();const calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
+  const x=target.x;s.hitEnemy(target,{damage:1,knockback:30,facing:1,stun:100,knockdown:true,finisher:true});
+  assert.equal(model.state,'down');assert.ok(Math.abs(target.x-x)<1,'the push is replayed as a slide, not a jump');
+  // fall frames + hitstop
+  let maxZ=0;for(let i=0;i<ARCADE.knockdown.fall+10;i++){step();maxZ=Math.max(maxZ,target.z??0);}
+  assert.ok(maxZ>10,'arcs through the air');assert.equal(target.z,0);assert.ok(target.x>x+25,'ends pushed back');
+  assert.ok(calls.includes('stomp'),'thud on landing');
+});
+test('player hits throw punch/kick/finisher sparks, finishers make the player rebound, and defeats pop their points',()=>{
+  const {s,target}=arcadeSetup();const combat=s.arcade.combat;
+  const drawn=[];s.add.graphics=()=>{const g={clear(){return g;},setDepth(){return g;},lineStyle(){return g;},lineBetween(){return g;},fillStyle(){return g;},fillCircle(){return g;},strokeCircle(){return g;},destroy(){}};drawn.push(g);return g;};
+  combat.impact(s.player,target,{type:'punch',facing:1});combat.impact(s.player,target,{type:'kick',facing:1});
+  const x=s.player.x;combat.impact(s.player,target,{type:'punch',facing:1,finisher:true});
+  assert.deepEqual(combat.impacts.slice(-3).map(p=>p.kind),['punch','kick','finisher']);
+  assert.equal(s.player.x,x-ARCADE.feedback.recoil,'rebound away from the target');
+  combat.step(combat.frame+1);
+  const texts=[];s.add.text=(px,py,value)=>{const t={value,setOrigin(){return t;},setDepth(){return t;}};texts.push(t);return t;};
+  target.hp=1;s.hitEnemy(target,{damage:5,knockback:0,facing:1});assert.equal(texts.at(-1).value,'+100');
+});
+
+test('the crossing moto courier shouts enemy_2_voice once per pass, only when it passes close to the player',()=>{
+  const s=setup(1),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
+  const bike=s.enemies.find(e=>e.key==='rider');assert.ok(bike.crossing);
+  bike.x=s.player.x-600;bike.y=s.player.y;s.updateCrossing(bike,0);assert.ok(!calls.includes('enemy2Voice'),'still far away');
+  bike.x=s.player.x-150;s.updateCrossing(bike,0);s.updateCrossing(bike,.01);
+  assert.equal(calls.filter(n=>n==='enemy2Voice').length,1,'once per pass');
+  const far=setup(1),farCalls=[];far.sfx={play:n=>farCalls.push(n),stop(){},setPaused(){}};
+  const other=far.enemies.find(e=>e.key==='rider');other.x=far.player.x;other.y=far.player.y+200;far.updateCrossing(other,0);
+  assert.ok(!farCalls.includes('enemy2Voice'),'another lane, far in depth: silent');
+});
+
+test('level bosses: attack voices (Palomera only on the pigeon throw) and hurt grunts with a short cooldown',async()=>{
+  const {BOSS_SOUNDS,EFFECT_FILES}=await import('../src/audio/SoundEffects.js');
+  const files=k=>EFFECT_FILES[k];
+  assert.deepEqual(['barra','palomera','grafitero','cabecilla','antidisturbios','dormilon'].map(k=>[files(BOSS_SOUNDS[k].attack??BOSS_SOUNDS[k].throw),files(BOSS_SOUNDS[k].hurt)]),
+    [['enemy_boss_1_attack.mp3','male_grunt2.mp3'],['enemy_boss_2_attack.mp3','enemy_boss_2_hurt.mp3'],['enemy_boss_3_attack.mp3','male_grunt2.mp3'],
+     ['enemy_boss_4_attack.mp3','male_grunt4.mp3'],['enemy_boss_5_attack.mp3','male_grunt4.mp3'],['enemy_boss_6_attack.mp3','male_grunt4.mp3']]);
+  const s=setup(0),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
+  const boss=s.spawnMiniBoss(bossFor(CAMPAIGN[0])).enemy;
+  s.hitEnemy(boss,{damage:5,knockback:0,facing:1});s.hitEnemy(boss,{damage:5,knockback:0,facing:1});
+  assert.equal(calls.filter(n=>n==='maleGrunt2').length,1,'one grunt per cooldown');
+  s.combatTime+=500;s.hitEnemy(boss,{damage:5,knockback:0,facing:1});assert.equal(calls.filter(n=>n==='maleGrunt2').length,2);
+});
+
+test('stomp, books and the phone knock enemies down; enemy_11/12 shout on entry and grunt when hit',async()=>{
+  const {characters}=await import('../src/data/characters.js');const {IPHONE}=await import('../src/data/iphone.js');
+  assert.equal(characters.gymbro.attacks.stomp.knockdown,true);assert.ok(characters.gymbro.attacks.stomp.damage>45);
+  assert.equal(IPHONE.attack.knockdown,true);assert.ok(IPHONE.attack.damage>90);
+  assert.ok(characters.teleperforman.attacks.headset.damage>40 && characters.teleperforman.attacks.headset.cooldown>=2000);
+  const s=setup(3),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
+  const y=s.spawnEnemy('yulitza',90,0,1,0),l=s.spawnEnemy('leash',91,0,1,0);
+  assert.deepEqual(calls.slice(-2),['enemy12Attack','enemy11Attack']);
+  s.hitEnemy(y,{damage:1,knockback:0,facing:1});s.hitEnemy(l,{damage:1,knockback:0,facing:1});
+  assert.deepEqual(calls.filter(n=>n==='femaleHurt').length,2);
 });

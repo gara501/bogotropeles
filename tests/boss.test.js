@@ -107,8 +107,7 @@ test('works preserve the upper corridor, never appear under an unmarked player, 
   scene.player={x:(cone.x+fence.x)/2,y:cone.y};
   // A real Gymbro stomp catches a cone and a fence on opposite sides.
   const stomp={...characters.gymbro.attacks.stomp,facing:1};
-  boss.hazards.hitObstacles(stomp);assert.equal(cone.active,false);assert.equal(fence.hp,25);
-  boss.hazards.hitObstacles(stomp);assert.equal(fence.active,false);
+  boss.hazards.hitObstacles(stomp);assert.equal(cone.active,false);assert.equal(fence.active,false,'the stronger stomp breaks the fence at once');
   const under=workSites(scene.floor,{x:0,y:410})[0];
   const sites=workSites(scene.floor,{x:under.x,y:488});assert.ok(sites.every(site=>Math.abs(site.x-under.x)>60));
 });

@@ -1,8 +1,8 @@
 import {PICKUPS as C,CONTAINERS,ITEMS,containersFor} from '../data/pickups.js';
 import {ARCADE} from '../data/arcade.js';
 
-/** Breakable containers (can / taquilla) that drop energy: usually a pandebono (+25),
- * and every C.fullEvery-th drop of the level a changua that refills all energy.
+/** Breakable containers (can / taquilla / parking) that drop items: every C.fullEvery-th drop of the level a
+ * changua (all energy); otherwise a TuLlave card (+1000 points, C.moneyChance) or a pandebono (+25 energy).
  * `cans` holds every container, whatever its kind (specials and combat target that list). */
 export class EnergyPickups {
   constructor(scene,random=Math.random){this.scene=scene;this.random=random;this.rolled=new Set();this.cans=[];this.items=[];this.drops=0;}
@@ -15,7 +15,7 @@ export class EnergyPickups {
     const s=this.scene;if(can.hp<=0 || s.health<=0 || s.paused || s.finished || s.cinematic)return false;
     can.hp--;can.hitAt=s.arcade.frame;
     if(!can.hp){can.brokenAt=s.arcade.frame;s.sfx?.play('metalCrack');}
-    can.sprite.setTexture(`${can.kind}-${can.hp?1:3}`);s.arcade.combat.impact(s.player,can,{finisher:!can.hp});return true;
+    const poses=CONTAINERS[can.kind].poses;can.sprite.setTexture(`${can.kind}-${can.hp?poses.hit:poses.breaking[0]}`);s.arcade.combat.impact(s.player,can,{finisher:!can.hp});return true;
   }
   contact(actor,attack,targets){
     for(const can of this.cans)if(can.hp>0 && !targets.has(can) && this.scene.arcade.combat.touches(actor,can,attack)){
@@ -23,7 +23,7 @@ export class EnergyPickups {
     }
   }
   /** Drops a pickup; without `kind`, every C.fullEvery-th drop is the full refill. */
-  drop(x,y,kind=++this.drops%C.fullEvery===0?'full':'energy'){
+  drop(x,y,kind=++this.drops%C.fullEvery===0?'full':this.random()<C.moneyChance?'money':'energy'){
     const def=ITEMS[kind];
     const sprite=this.scene.add.image(x,y,def.texture).setOrigin(.5,1).setDisplaySize(def.width,def.height).setDepth(y);
     const item={x,y,kind,sprite};this.items.push(item);return item;
@@ -42,18 +42,28 @@ export class EnergyPickups {
     }
     this.cans=this.cans.filter(can=>{
       if(can.brokenAt!==null){
-        const age=frame-can.brokenAt,pose=3+Math.min(2,Math.floor(age/C.poseFrames));can.sprite.setTexture(`${can.kind}-${pose}`);
-        if(age>=C.poseFrames*3){can.sprite.destroy();this.drop(can.x,can.y);return false;}
-      }else if(can.hitAt!==null && frame-can.hitAt>=C.poseFrames)can.sprite.setTexture(`${can.kind}-2`);
+        const breaking=CONTAINERS[can.kind].poses.breaking,age=frame-can.brokenAt;
+        can.sprite.setTexture(`${can.kind}-${breaking[Math.min(breaking.length-1,Math.floor(age/C.poseFrames))]}`);
+        if(age>=C.poseFrames*Math.max(3,breaking.length)){can.sprite.destroy();this.drop(can.x,can.y);return false;}
+      }else if(can.hitAt!==null && frame-can.hitAt>=C.poseFrames)can.sprite.setTexture(`${can.kind}-${CONTAINERS[can.kind].poses.dented}`);
       return true;
     });
     this.items=this.items.filter(item=>{
       const p=s.player,def=ITEMS[item.kind??'energy'];
-      if(def.frames)item.sprite.setTexture(`item-full-${Math.floor(frame/def.frameTicks)%def.frames}`); // rising steam
-      if(s.health>=C.maxEnergy || (p.z??0)>C.pickupZ || Math.abs(p.x-item.x)>C.pickupX || Math.abs(p.y-item.y)>=C.pickupY)return true;
-      s.health=Math.min(C.maxEnergy,s.health+def.heal);s.healthBar.width=s.health*2;
+      if(def.frames)item.sprite.setTexture(`${def.prefix}-${Math.floor(frame/def.frameTicks)%def.frames}`); // steam, sparkles, spinning card
+      // Energy items wait while energy is full; the card can always be picked up.
+      if((def.heal && s.health>=C.maxEnergy) || (p.z??0)>C.pickupZ || Math.abs(p.x-item.x)>C.pickupX || Math.abs(p.y-item.y)>=C.pickupY)return true;
+      if(def.heal){s.health=Math.min(C.maxEnergy,s.health+def.heal);s.healthBar.width=s.health*2;}
+      if(def.score){s.addScore?.(def.score);this.scorePopup(item.x,item.y,def.score);}
       s.iphone?.updateHud();s.books?.updateHud();s.sfx?.play('item');item.sprite.destroy();return false;
     });
+  }
+  /** "+1000" rising over a picked-up card. */
+  scorePopup(x,y,points){
+    const s=this.scene;if(s.scorePopup)return s.scorePopup(x,y-60,points);if(!s.add?.text)return;
+    const label=s.add.text(x,y-60,`+${points}`,{fontFamily:"'Barlow Condensed', 'Arial Narrow', Arial, sans-serif",fontSize:'22px',fontStyle:'bold',
+      color:'#d6ed64',stroke:'#14282c',strokeThickness:3}).setOrigin(.5).setDepth(952);
+    s.tweens?.add?.({targets:label,y:label.y-30,alpha:0,duration:800,onComplete:()=>label.destroy()});
   }
   destroy(){for(const object of [...this.cans,...this.items])object.sprite.destroy();this.cans=[];this.items=[];this.rolled.clear();this.drops=0;}
 }

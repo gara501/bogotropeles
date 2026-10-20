@@ -94,19 +94,19 @@ test('books burst outward from the cast point, which stays fixed while she moves
 });
 
 test('the blast takes at least half of a regular enemy\'s energy; bosses take more than any normal strike',()=>{
-  assert.equal(BOOKS.enemyShare,.5);
+  assert.equal(BOOKS.enemyShare,.6);
   const strongest=Math.max(...Object.values(characters).flatMap(c=>['punch','kick','lowKick'].map(k=>c.attacks[k]?.damage??0)));
   assert.ok(BOOKS.bossDamage>strongest);
   const {s,summon,enemy}=setup();
   const tough=Object.assign(enemy(400,450),{hp:430,config:{hp:430}}),boss=Object.assign(enemy(405,452),{hp:1500,config:{hp:1500,boss:true}});
-  s.enemies=[tough,boss];summon();assert.equal(tough.hp,215);assert.equal(boss.hp,1500-BOOKS.bossDamage);
+  s.enemies=[tough,boss];summon();assert.equal(tough.hp,172);assert.equal(boss.hp,1500-BOOKS.bossDamage);
 });
 
 test('every enemy reached by the blast is hit exactly once',()=>{
   const {s,special,summon,enemy,advance}=setup();
   const a=enemy(400,450),b=enemy(405,452);s.enemies=[a,b];summon();
-  assert.equal(a.hp,50);assert.equal(b.hp,50);assert.equal(s.hits.length,2);
-  advance(900);assert.equal(a.hp,50);assert.equal(b.hp,50);assert.equal(s.hits.length,2);
+  assert.equal(a.hp,40);assert.equal(b.hp,40);assert.equal(s.hits.length,2);
+  advance(900);assert.equal(a.hp,40);assert.equal(b.hp,40);assert.equal(s.hits.length,2);
 });
 
 test('the blast front grows to reach nearby enemies and never distant ones; knockback pushes outward',()=>{
@@ -114,7 +114,7 @@ test('the blast front grows to reach nearby enemies and never distant ones; knoc
   const near=enemy(540,450),farX=enemy(620,450),farY=enemy(400,560),behind=enemy(300,470);s.enemies=[near,farX,farY,behind];summon();
   assert.equal(near.hp,100,'outside the initial radius');
   advance(BOOKS.expandMs);
-  assert.equal(near.hp,50);assert.equal(behind.hp,50);assert.equal(farX.hp,100);assert.equal(farY.hp,100);
+  assert.equal(near.hp,40);assert.equal(behind.hp,40);assert.equal(farX.hp,100);assert.equal(farY.hp,100);
   assert.ok(near.x>540 && behind.x<300,'real damage pipeline pushes outward');
   assert.equal(blastReaches({x:0,y:0},{x:0,y:BOOKS.blastRadius*BOOKS.perspective+20},BOOKS.blastRadius),false);
 });

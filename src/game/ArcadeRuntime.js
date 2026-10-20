@@ -74,7 +74,7 @@ export class ArcadeRuntime {
   }
   enemyHit(actor,attack){
     if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
-    this.enemies.get(actor).hurt();this.combat.impact(this.scene.player,actor,attack);
+    this.enemies.get(actor).hurt(attack);this.combat.impact(this.scene.player,actor,attack);
   }
   playerHit(combo,source){this.player.hurt(Boolean(combo?.finisher));if(!combo)this.combat.impact(source??null,this.scene.player,{finisher:false});}
   resetPlayer(revive=false){this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}

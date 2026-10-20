@@ -1,21 +1,21 @@
 import {ARCADE} from '../data/arcade.js';
-import {playerAttackData,comboNext} from '../data/attacks.js';
+import {playerAttackData,comboNext,PLAYER_CONTACT_POSES} from '../data/attacks.js';
 import {InputBuffer} from '../input/InputBuffer.js';
 import {canSpendSpecialEnergy,spendSpecialEnergy} from '../combat/specialEnergy.js';
-import {strikeSound} from '../audio/SoundEffects.js';
+import {strikeSound,playPowerSound} from '../audio/SoundEffects.js';
 // Strikes that choose their sound by result (hit → punch/kick, miss → wave) once the active frames end.
 const STRIKES=['punch','kick','lowKick'];
 
-export const PLAYER_STATES=['walk','attack','special','jump','hurt','knockdown','dash','celebration'];
-const transitions={walk:['attack','special','jump','hurt','knockdown','dash','celebration'],jump:['walk','attack','hurt','knockdown','celebration'],
+export const PLAYER_STATES=['walk','attack','special','jump','hurt','knockdown','dash','celebration','grab'];
+const transitions={walk:['attack','special','jump','hurt','knockdown','dash','celebration','grab'],grab:['walk','hurt','knockdown','celebration'],jump:['walk','attack','hurt','knockdown','celebration'],
   attack:['walk','attack','jump','hurt','knockdown','dash','celebration'],special:['walk','hurt','knockdown','dash','celebration'],
   hurt:['walk','knockdown','celebration'],knockdown:['walk','knockdown','celebration'],dash:['walk','hurt','knockdown','celebration'],celebration:[]};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export class Player {
   constructor(runtime){this.runtime=runtime;this.scene=runtime.scene;this.buffer=new InputBuffer();this.reset();}
   get actor(){return this.scene.player;}
-  reset(){this.state='walk';this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.dashReady=0;this.buffer.clear();if(this.actor)this.actor.z=0;}
-  transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid player transition: ${this.state} → ${state}`);this.state=state;this.age=0;if(!['attack','special'].includes(state)){this.action=null;this.scene.playerAttack=null;}}
+  reset(){this.dropGrab();this.state='walk';this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.dashReady=0;this.buffer.clear();if(this.actor)this.actor.z=0;}
+  transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid player transition: ${this.state} → ${state}`);if(this.state==='grab' && state!=='grab')this.dropGrab();this.state=state;this.age=0;if(!['attack','special'].includes(state)){this.action=null;this.scene.playerAttack=null;}}
   request(type){this.buffer.push(type,this.runtime.frame);}
   begin(type,stage=0){
     const s=this.scene,airborne=this.jumpAge<ARCADE.jump.frames;this.lastCombo=null;
@@ -60,12 +60,15 @@ export class Player {
       if(this.state!=='dash') {
         if(input.dx)s.facing=Math.sign(input.dx);
         this.move(input.dx,input.dy,s.boss?.status.speedMultiplier??1);
+        if(this.state==='walk' && this.tryGrab(input)){s.boss?.hazards.resolveMovement(previous);s.jumpHeight=0;this.age++;return;}
         const link=this.lastCombo && this.runtime.frame-this.lastCombo.endFrame<=ARCADE.input.comboLinkFrames && this.jumpAge>=ARCADE.jump.frames?this.lastCombo:null;
         for(const type of [s.character.special,'lowKick','kick','punch'])if(this.buffer.consume(type,this.runtime.frame) && this.begin(type,link?.next===type?link.stage+1:0))break;
       }
       if(this.state==='jump' && this.jumpAge>=ARCADE.jump.frames)this.transition('walk');
       if(this.state==='walk'){if(input.dx||input.dy)this.pose('walk');else this.actor.sprite.stop().setFrame(s.character.idle);}
       if(this.state==='jump')this.actor.sprite.stop().setFrame(s.character.jump);
+    } else if(this.state==='grab') {
+      this.stepGrab(input);
     } else if(this.state==='dash') {
       this.move(this.vector.x,this.vector.y,ARCADE.dash.speed/s.character.speed);this.pose('dash');
       if(this.age>=ARCADE.dash.frames){this.transition('walk');s.dashUntil=0;}
@@ -94,6 +97,76 @@ export class Player {
     }
     s.boss?.hazards.resolveMovement(previous);s.jumpHeight=this.actor.z??0;this.age++;
   }
+  /** Grab poses. With a `grab` config (dedicated sheet): start/hold loops and knee/throw sequences with their
+   * contact pose; otherwise existing poses stand in (arm out to hold, the kick for the knee, the combo finisher to throw). */
+  grabPoses(){
+    const c=this.scene.character,g=c.grab,contact=PLAYER_CONTACT_POSES[c.texture]??{},art=c.animations;
+    if(g)return g;
+    const hold=contact.punch??art.punch?.[1]??c.idle,knee=contact.kick??art.kick?.[1]??c.idle,toss=contact.combo3??contact.kick??art.kick?.at(-1)??c.idle;
+    return {start:[hold],hold:[hold],knee:[hold,knee],kneeContact:knee,throw:[hold,toss],throwContact:toss};
+  }
+  /** Pose of a sequence at `age`, with its contact pose shown exactly at `hit` and the rest spread before/after it. */
+  sequencePose(poses,contactPose,age,hit,total){
+    const at=Math.max(0,poses.indexOf(contactPose));
+    if(age<hit)return poses[Math.min(at,Math.floor(age/hit*at))]??contactPose;
+    return poses[Math.min(poses.length-1,at+Math.floor((age-hit)/Math.max(1,total-hit)*(poses.length-at)))];
+  }
+  /** Walking into a grabbable enemy for a few frames seizes it. */
+  tryGrab(input){
+    const s=this.scene,p=this.actor,g=ARCADE.grab,dir=Math.sign(input.dx);
+    if(!dir || (p.z??0)>0){this.grabTouch=null;return false;}
+    const target=s.enemies.find(e=>{
+      const model=this.runtime.enemies.get(e);
+      return model?.grabbable() && Math.sign(e.x-p.x)===dir && Math.abs(e.x-p.x)<=g.reach && Math.abs(e.y-p.y)<=g.depth;
+    });
+    if(!target){this.grabTouch=null;return false;}
+    if(this.grabTouch?.target!==target)this.grabTouch={target,frames:0};
+    if(++this.grabTouch.frames<g.touchFrames)return false;
+    this.grabTouch=null;s.facing=dir;this.transition('grab');this.buffer.clear();
+    const model=this.runtime.enemies.get(target);model.seize();
+    this.grab={target,model,age:0,knees:0,action:null};this.holdTarget();s.sfx?.play('wave');
+    return true;
+  }
+  holdTarget(){
+    const s=this.scene,p=this.actor,t=this.grab.target;
+    t.x=clamp(p.x+s.facing*ARCADE.grab.hold,s.floor.left,s.floor.right);t.y=p.y;t.z=0;t.facing=-s.facing;t.sprite.setFlipX(t.facing<0);
+  }
+  stepGrab(input){
+    const s=this.scene,g=this.grab,G=ARCADE.grab,t=g.target,poses=this.grabPoses();g.age++;
+    if(!g.action && (t.hp<=0 || g.model.state!=='grabbed')){this.transition('walk');return;}
+    if(g.action){
+      const act=g.action;act.age++;
+      if(act.kind==='knee'){
+        this.actor.sprite.stop().setFrame(this.sequencePose(poses.knee,poses.kneeContact,act.age,act.hit,act.total));
+        if(act.age===act.hit){
+          g.knees++;const last=g.knees>=G.maxKnees;s.sfx?.play('punch');g.age=Math.min(g.age,Math.round(G.holdFrames/2)); // each knee buys time before it breaks free
+          // Knees keep it held; the last one knocks it down and ends the hold.
+          s.hitEnemy(t,{damage:Math.round(s.character.attacks.punch.damage*G.kneeDamage),knockback:last?ARCADE.knockdown.knockback:0,facing:s.facing,stun:200,
+            grab:!last,knockdown:last,finisher:last,lane:ARCADE.body.lane});
+        }
+      }else{
+        this.actor.sprite.stop().setFrame(this.sequencePose(poses.throw,poses.throwContact,act.age,act.release,act.total));
+        if(act.age<act.release)this.holdTarget();
+        if(act.age===act.release && t.hp>0 && g.model.state==='grabbed'){
+          g.model.startThrown(s.facing,Math.round(s.character.attacks.kick.damage*G.throwDamage));s.sfx?.play('whip');
+        }
+      }
+      if(act.age>=act.total){g.action=null;if(act.kind==='throw' || g.knees>=G.maxKnees || g.model.state!=='grabbed')this.transition('walk');}
+      return;
+    }
+    // Reaching in (start poses) for the first frames, then the grip loops.
+    const reach=8*poses.start.length;
+    this.holdTarget();this.actor.sprite.stop().setFrame(g.age<reach?poses.start[Math.floor(g.age/8)]:poses.hold[Math.floor((g.age-reach)/12)%poses.hold.length]);
+    const frame=this.runtime.frame,back=input.dx && Math.sign(input.dx)===-s.facing;
+    if(this.buffer.consume('kick',frame))g.action={kind:'throw',age:0,release:G.throwRelease,total:G.throwTotal};
+    else if(this.buffer.consume('punch',frame)){
+      if(back){s.facing=-s.facing;this.holdTarget();g.action={kind:'throw',age:0,release:G.throwRelease,total:G.throwTotal};} // throw backward
+      else g.action={kind:'knee',age:0,hit:G.kneeHit,total:G.kneeTotal};
+    }
+    else if(g.age>=G.holdFrames){g.model.breakFree();this.actor.x=clamp(this.actor.x-s.facing*12,s.floor.left,s.floor.right);this.transition('walk');}
+  }
+  /** Leaving the grab state for any reason (hurt, reset…) lets a still-held enemy go. */
+  dropGrab(){if(this.grab?.model?.state==='grabbed')this.grab.model.breakFree();this.grab=null;}
   /** Impact sound fires on the first frame a strike connects; a whoosh if the active frames end empty. */
   resolveStrikeSound(action,connected=false){
     if(action.sounded || !STRIKES.includes(action.data.type) || (!connected && !action.wasActive))return;
@@ -107,8 +180,10 @@ export class Player {
       if(attack.type===s.character.special){
         if(!spendSpecialEnergy(s)){this.transition('walk');return;}
         if(attack.cooldown)s.specialReadyAt=s.combatTime+attack.cooldown;
-        s.sfx?.play(attack.sound??(attack.type==='headset'?'whip':'stomp'));
-        if(attack.type==='stomp')this.runtime.combat.groundImpact(this.actor);
+        s.sfx?.play(attack.sound??(attack.type==='headset'?'whip':'stomp'));playPowerSound(s);
+        if(attack.type==='stomp')this.runtime.combat.quake(this.actor,attack.range);
+        if(attack.splash)this.runtime.combat.splash(this.actor,attack.facing,attack.range);
+        if(attack.wave)this.runtime.combat.energyWave(this.actor,attack.facing,attack.range);
       }
       action.committed=true;attack.hit=true;
     }

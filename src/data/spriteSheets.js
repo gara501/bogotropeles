@@ -4,13 +4,15 @@ import { isStudentFringe } from './books.js';
 export function prepareSheet(scene, key, config) {
   if (scene.textures.exists(key)) return;
   const image = scene.textures.get(`${key}-source`).getSourceImage();
-  // appendUrl: a second sheet (e.g. player_3_combo.png) stacked under the first; its frameRects use y + image.height.
-  const extra = config.appendUrl ? scene.textures.get(`${key}-append-source`).getSourceImage() : null;
+  // appendUrls: extra sheets (combo, grab…) stacked under the main one, in order; their frameRects use
+  // y + the heights of every sheet above them.
+  const extras = (config.appendUrls ?? []).map((_, i) => scene.textures.get(`${key}-append-${i}`).getSourceImage());
   const source = document.createElement('canvas');
-  source.width = Math.max(image.width, extra?.width ?? 0); source.height = image.height + (extra?.height ?? 0);
+  source.width = Math.max(image.width, ...extras.map(e => e.width)); source.height = image.height + extras.reduce((h, e) => h + e.height, 0);
   const context = source.getContext('2d', { willReadFrequently: true });
   context.drawImage(image, 0, 0);
-  if (extra) context.drawImage(extra, 0, image.height);
+  let stackY = image.height;
+  for (const extra of extras) { context.drawImage(extra, 0, stackY); stackY += extra.height; }
   const { width, height, data } = context.getImageData(0, 0, source.width, source.height);
   if(config.cleanFringes)for(let i=0;i<data.length;i+=4) {
     if(isStudentFringe(data[i],data[i+1],data[i+2]))data[i+3]=0;

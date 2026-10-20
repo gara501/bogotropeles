@@ -2,6 +2,14 @@ import Phaser from 'phaser';
 import { StreetScene } from './StreetScene.js';
 import { characters } from '../data/characters.js';
 import { registerAnimations } from '../data/spriteSheets.js';
+import office from '../data/player_1_profile.png?url';
+import student from '../data/player_2_profile.png?url';
+import teleperforman from '../data/player_3_profile.png?url';
+import gymbro from '../data/player_4_profile.png?url';
+import magolita from '../data/player_5_profile.png?url';
+
+// Illustrated portraits for the character selection (player_N_profile.png). Characters without one fall back to their idle sprite.
+const PROFILES = { office, student, teleperforman, gymbro, magolita };
 
 // Load once, before combat starts. The same textures are shared with Street.
 export class MenuScene extends Phaser.Scene {
@@ -10,6 +18,8 @@ export class MenuScene extends Phaser.Scene {
   create() {
     for (const [key, config] of Object.entries(characters)) {
       registerAnimations(this, key, config);
+      const img = document.querySelector(`[data-portrait="${key}"]`);
+      if (PROFILES[key]) { img.src = PROFILES[key]; img.classList.add('profile'); continue; }
       const texture = this.textures.get(key), frame = texture.get(config.idle);
       const portrait = document.createElement('canvas');
       portrait.width = frame.cutWidth; portrait.height = frame.cutHeight;

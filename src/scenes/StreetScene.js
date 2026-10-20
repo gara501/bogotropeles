@@ -15,7 +15,7 @@ import { BossController } from '../boss/BossController.js';
 import { LevelMusic } from '../audio/LevelMusic.js';
 import { MUSIC_TRACKS, chooseMusic } from '../audio/musicTracks.js';
 import { RunState } from '../game/RunState.js';
-import { SoundEffects, preloadEffects, enemyDeathSound, PLAYER_HURT_SOUNDS, PLAYER_DEATH_SOUNDS } from '../audio/SoundEffects.js';
+import { SoundEffects, preloadEffects, enemyDeathSound, PLAYER_HURT_SOUNDS, PLAYER_DEATH_SOUNDS, CROSSING_VOICE, BOSS_SOUNDS, BOSS_HURT_COOLDOWN, ENEMY_HURT_SOUNDS, ENEMY_SPAWN_SOUNDS } from '../audio/SoundEffects.js';
 import { WaveDirector } from '../combat/WaveDirector.js';
 import { beginEnemyAttack, updateEnemyAttack } from '../combat/enemyAttacks.js';
 import { beginEnemyCharge, updateEnemyCharge, shouldCharge } from '../combat/enemyCharge.js';
@@ -26,6 +26,7 @@ import {ARCADE,fitArcadeCamera,fitArcadeText,applyPixelFilter} from '../data/arc
 import {ArcadeRuntime} from '../game/ArcadeRuntime.js';
 import {EnergyPickups} from '../game/EnergyPickups.js';
 import {preloadPickups,preparePickups} from '../data/pickups.js';
+import {preloadProps,prepareProps} from '../data/props.js';
 import {StageCamera} from '../stage/StageCamera.js';
 import {viewLeft} from '../stage/scroll.js';
 import {Hud} from '../ui/Hud.js';
@@ -82,7 +83,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   preload() {
-    preloadPickups(this);
+    preloadPickups(this);preloadProps(this);
     if(this.cameras?.main?.setZoom)fitArcadeCamera(this);
     preloadEffects(this);
     const label = this.add.text(480, 270, 'CARGANDO LA CIUDAD…', { fontFamily: FONT, fontSize: '18px', color: '#d6ed64' }).setOrigin(.5);
@@ -90,7 +91,7 @@ export class StreetScene extends Phaser.Scene {
     for (const level of levels) for (const asset of levelTextures(level)) if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.url);
     for (const [key, actor] of Object.entries({ ...characters, ...enemies, dormilon: bossSprite, 'boss-effects': bossEffects })) {
       if (!this.textures.exists(`${key}-source`)) this.load.image(`${key}-source`, actor.url);
-      if (actor.appendUrl && !this.textures.exists(`${key}-append-source`)) this.load.image(`${key}-append-source`, actor.appendUrl);
+      (actor.appendUrls ?? []).forEach((url, i) => { if (!this.textures.exists(`${key}-append-${i}`)) this.load.image(`${key}-append-${i}`, url); });
     }
     if (!this.textures.exists('knife')) this.load.image('knife', knife.url);
     for (const [key, url] of Object.entries(projectileTextures)) if (!this.textures.exists(key)) this.load.image(key, url);
@@ -104,7 +105,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   create() {
-    preparePickups(this);
+    preparePickups(this);prepareProps(this);
     fitArcadeCamera(this);
     applyPixelFilter(this);
     for (const [key, config] of Object.entries({ ...characters, ...enemies })) registerAnimations(this, key, config);
@@ -208,6 +209,7 @@ export class StreetScene extends Phaser.Scene {
     Object.assign(enemy,{hp:config.hp,index,slot,nextHit:this.combatTime+1400+slot*300,
       actionUntil:0,pending:null,crossing,facing,crossingHit:false});
     enemy.healthBar=this.add.rectangle(x,y-config.height-10,42,4,0xd6ed64).setOrigin(0,.5);
+    const entrance=ENEMY_SPAWN_SOUNDS[key];if(entrance)this.sfx?.play(entrance);
     enemy.tell=this.add.text(x,y-config.height-30,'!',{fontFamily:FONT,fontSize:'22px',color:'#ffcf69',fontStyle:'bold'}).setOrigin(.5).setVisible(false);
     if(config.taunt) {
       // Speech bubble that follows the enemy for a moment after it appears (taunt.color: team colours, default dark).
@@ -423,12 +425,15 @@ export class StreetScene extends Phaser.Scene {
   hitEnemy(enemy, attack) {
     if(enemy.hp<=0 || this.combatTime<(enemy.invulnerableUntil??0))return; // e.g. a boss mid-evade
     this.lastHit={enemy,at:this.combatTime};
+    enemy.jitterUntil=this.combatTime+(attack.finisher?200:120); // the hit body shudders for a moment
     if(enemy.config.shield && this.shieldBlocks(enemy,attack)) {
       const damage=Math.max(1,Math.round(attack.damage*enemy.config.shield.frontDamage));
       if(enemy.hp>damage){this.blockHit(enemy,damage);return;}
       attack={...attack,damage}; // the chip damage finishes him off: fall through to the normal defeat
     }
     enemy.hp = Math.max(0, enemy.hp - attack.damage);
+    const bossHurt=BOSS_SOUNDS[enemy.key]?.hurt??ENEMY_HURT_SOUNDS[enemy.key];
+    if(bossHurt && enemy.hp>0 && this.combatTime>=(enemy.gruntReady??0)){enemy.gruntReady=this.combatTime+BOSS_HURT_COOLDOWN;this.sfx?.play(bossHurt);}
     if(attack.radialKnockback) {
       const dx=enemy.x-this.player.x,dy=enemy.y-this.player.y,length=Math.hypot(dx,dy)||1;
       enemy.x=Phaser.Math.Clamp(enemy.x+dx/length*attack.knockback,this.floor.left,this.floor.right);
@@ -450,7 +455,8 @@ export class StreetScene extends Phaser.Scene {
     else this.play(enemy, enemy.hp === 0 ? 'defeat' : 'hurt');
     if (enemy.hp === 0) {
       // A boss is not part of the wave count; it pays its own bonus.
-      this.addScore(enemy.config.boss ? (bossFor(this.level)?.score ?? 1000) : enemy.config.minion ? 50 : 100);
+      const points=enemy.config.boss ? (bossFor(this.level)?.score ?? 1000) : enemy.config.minion ? 50 : 100;
+      this.addScore(points);this.scorePopup(enemy.x,enemy.y-enemy.config.height-10,points,enemy.config.boss);
       enemyDeathSound(this,enemy);
       if(!enemy.config.boss && !enemy.config.minion)this.defeated++;
       enemy.shadow.setVisible(false); enemy.healthBar.setVisible(false); enemy.taunt?.setVisible(false);
@@ -458,6 +464,17 @@ export class StreetScene extends Phaser.Scene {
       this.updateCounter();
     }
     this.arcade?.enemyHit(enemy,attack);
+  }
+
+  /** Points that jump out of a defeated enemy (or a picked-up card) and float away. */
+  scorePopup(x,y,points,big=false) {
+    if(!this.add?.text)return null;
+    const label=this.add.text(x,y,`+${points}`,{fontFamily:"'Barlow Condensed', 'Arial Narrow', Arial, sans-serif",fontSize:big?'30px':'22px',fontStyle:'bold',
+      color:big?'#ffe14d':'#d6ed64',stroke:'#14282c',strokeThickness:3}).setOrigin(.5).setDepth(952);
+    // A quick hop up, then a slow drift and fade.
+    this.tweens?.add?.({targets:label,y:y-26,scale:{from:.6,to:1.15},duration:180,ease:'Back.Out',onComplete:()=>
+      this.tweens?.add?.({targets:label,y:y-56,alpha:0,scale:1,duration:700,delay:250,onComplete:()=>label.destroy()})});
+    return label;
   }
 
   /** A shield bearer blocks every hit that comes at his front (the side he faces). */
@@ -615,6 +632,9 @@ export class StreetScene extends Phaser.Scene {
     // Direction and lane are fixed at entry; this behavior never tracks the player.
     enemy.x+=enemy.facing*enemy.crossingSpeed*dt;
     if(crossingHits(previous,enemy.x,enemy,this.player,this.jumpHeight) && this.hitPlayer(enemy.config.damage))enemy.crossingHit=true;
+    if(!enemy.voiced && Math.abs(enemy.x-this.player.x)<=CROSSING_VOICE.range && Math.abs(enemy.y-this.player.y)<=CROSSING_VOICE.depth){
+      enemy.voiced=true;this.sfx?.play(CROSSING_VOICE.sound);
+    }
     if(this.combatTime>=enemy.actionUntil && !enemy.sprite.anims.isPlaying) {
       enemy.sprite.play({key:`${enemy.key}-attack`,repeat:-1});
     }
@@ -787,7 +807,8 @@ export class StreetScene extends Phaser.Scene {
   }
 
   placeFighter(fighter, height = 0) {
-    fighter.sprite.setPosition(fighter.x, fighter.y - height + 4 * fighter.sprite.scaleY).setDepth(fighter.y);
+    const jitter=(fighter.jitterUntil??0)>this.combatTime?(Math.floor(this.combatTime/34)%2?2:-2):0;
+    fighter.sprite.setPosition(fighter.x + jitter, fighter.y - height + 4 * fighter.sprite.scaleY).setDepth(fighter.y);
     fighter.shadow.setPosition(fighter.x, fighter.y).setDepth(fighter.y - 1);
   }
 

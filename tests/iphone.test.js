@@ -37,7 +37,7 @@ function setup(facing=1) {
 
 test('iPhone balance matches actual punch, arena and release frame timing; other abilities stay available',()=>{
   const office=characters.office;
-  assert.equal(IPHONE.attack.damage,office.attacks.punch.damage*3);
+  assert.equal(IPHONE.attack.damage,office.attacks.punch.damage*3+25);
   assert.equal(IPHONE.attack.range,IPHONE.arenaWidth*.7);assert.equal(IPHONE.attack.cooldown,2000);
   const releaseIndex=office.animations.iphone.indexOf(IPHONE.releaseFrame);
   assert.equal(office.attacks.iphone.duration/office.animations.iphone.length*releaseIndex,IPHONE.attack.hitAt);
@@ -84,7 +84,7 @@ test('swept collision selects the closest valid lane target and prevents piercin
     const {scene,release,special}=setup(facing),phone=release();
     const near={x:phone.x+facing*90,y:450,hp:100},far={x:phone.x+facing*150,y:450,hp:100},wrongLane={x:phone.x+facing*30,y:490,hp:100};
     scene.enemies=[far,wrongLane,near];scene.combatTime+=300;special.update(.3);
-    assert.equal(near.hp,10);assert.equal(far.hp,100);assert.equal(wrongLane.hp,100);assert.equal(scene.hits.length,1);assert.equal(special.phones.length,0);assert.equal(phone.sprite.destroyed,true);
+    assert.equal(near.hp,100-IPHONE.attack.damage);assert.equal(far.hp,100);assert.equal(wrongLane.hp,100);assert.equal(scene.hits.length,1);assert.equal(special.phones.length,0);assert.equal(phone.sprite.destroyed,true);
   }
   assert.equal(firstPhoneTarget(100,150,450,1,[{x:80,y:450,radius:10}],26),null);
 });
@@ -99,13 +99,13 @@ test('a blocked enemy still consumes the phone without transferring damage to th
 test('phone impacts boss from its own incoming position and hits only one destructible object',()=>{
   const first=setup();const phone=first.release();let origin;
   first.scene.player.x=900;
-  first.scene.boss={x:phone.x+60,y:450,dead:false,ended:false,hazards:{works:[]},hit(attack,incoming){origin=incoming;assert.equal(attack.damage,90);}};
+  first.scene.boss={x:phone.x+60,y:450,dead:false,ended:false,hazards:{works:[]},hit(attack,incoming){origin=incoming;assert.equal(attack.damage,115);}};
   first.advance(100);assert.ok(origin.x<first.scene.boss.x);assert.equal(first.special.phones.length,0);
   const second=setup();const next=second.release();
   const cone={x:next.x+45,y:450,w:40,active:true,kind:'cone',hp:40};
   const fence={x:next.x+80,y:450,w:65,active:true,kind:'fence',hp:70};
   second.scene.boss={x:850,y:450,dead:true,hazards:{works:[fence,cone],hitObstacle(work,attack){work.hp-=attack.damage;}}};
-  second.advance(200);assert.equal(cone.hp,-50);assert.equal(fence.hp,70);assert.equal(second.special.phones.length,0);
+  second.advance(200);assert.equal(cone.hp,-75);assert.equal(fence.hp,70);assert.equal(second.special.phones.length,0);
 });
 
 test('range, lifetime and offscreen bounds remove misses; pause freezes flight and cooldown',()=>{

@@ -10,12 +10,23 @@ export const ARCADE={
   jump:{frames:39,height:72},dash:{frames:11,cooldown:51,speed:650,invulnerable:17},
   player:{speeds:{office:205,student:290,teleperforman:220,gymbro:180,magolita:205},specialLifeCost:10,hurtFrames:12,knockdownFrames:45,wakeInvulnerable:30,hitInvulnerable:24,respawnInvulnerable:180},
   attack:{knockback:8,finisherKnockback:24,stun:20},
-  feedback:{hitstop:3,finisherHitstop:5,flash:3,impact:3,impactRadius:12,shakeMs:45,shakeStrength:.0015},
+  // sparks: frames the player's hit sparks last (punch: short yellow star · kick: long white/orange burst · finisher: bigger, with a ring).
+  // recoil: px the player rebounds after a finisher lands. finisherShake: stronger screen shake on finishers.
+  feedback:{hitstop:3,finisherHitstop:5,flash:3,impact:3,impactRadius:12,shakeMs:45,shakeStrength:.0015,
+    sparks:{punch:7,kick:9,finisher:12},recoil:7,finisherShake:{ms:90,strength:.004}},
   ai:{tokens:2,comboStages:3,depthRatio:.55,windup:29,active:3,recovery:29,cooldown:126,rangedCooldown:168,
     circleX:45,circleY:22,alignY:10,circleSpeed:.7,initialCooldown:60,spawnSlots:3,spawnStagger:18,hurtCooldown:30,chargeHalfWidth:40},
   animation:{walkFramesPerPose:6},
   // Cornered regular enemies: `hits` hits within `window` ms while within `edge` px of a screen side → they leap
   // over the player to land `land` px past them (invulnerable in the air).
+  // Grabs (Final Fight style): walk into a regular enemy for `touchFrames` to seize it. While holding:
+  // H = knee (the `maxKnees`-th knocks it down), J = throw forward, back + H = throw backward.
+  // Thrown enemies fly `throwDistance` px, hurt whoever they hit and land knocked down. Damage factors use the
+  // character's own punch (knee) and kick (throw). Knocked-down enemies lie still (invulnerable) and then get up.
+  grab:{reach:58,depth:14,touchFrames:4,hold:46,holdFrames:110,kneeTotal:16,kneeHit:6,maxKnees:3,kneeDamage:.7,
+    throwTotal:26,throwRelease:10,throwFrames:32,throwDistance:230,throwHeight:72,throwDamage:1.3,collideDamage:30},
+  // fall: frames in the air (sliding back along an arc of `arc` px); lie: frames on the floor; getup: frames standing up.
+  knockdown:{fall:18,lie:42,getup:14,knockback:30,arc:22},
   cornerEscape:{hits:3,window:1500,edge:110,land:190,duration:620,height:95},
   // Side-scrolling: waves are grouped in arenas `advance` px apart; the camera locks in each one.
   // maxScrollStep/ease: the camera catches up smoothly instead of snapping when an arena unlocks.

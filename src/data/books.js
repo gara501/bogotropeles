@@ -14,7 +14,7 @@ export const BOOKS = {
   shock:{color:0xffd54a, flash:0xffffff},
   // Regular enemies (minions included) lose at least `enemyShare` of their max energy per blast;
   // bosses take `bossDamage`, more than any normal strike.
-  enemyShare:.5, bossDamage:90,
+  enemyShare:.6, bossDamage:110,
   attack:{damage:20*2.2, range:165, duration:480, hitAt:240, knockback:42,
     stun:600, area:true, radialKnockback:true, summon:'books'},
 };

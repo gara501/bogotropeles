@@ -97,3 +97,12 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 .ranking-list li.empty::before{content:none}
 .is-mobile .ranking-input input{font-size:30px}
 .is-mobile .ranking-list li{padding:3px 6px}
+
+/* Illustrated selection portraits (player_N_profile.png): square art, smooth scaling, framed. */
+.fighter-card img.profile{aspect-ratio:1;width:auto;object-fit:cover;image-rendering:auto;filter:none;border:2px solid #0b1430;box-shadow:4px 4px 0 #0005}
+.fighter-card[aria-pressed=true] img.profile{border-color:#d6ed64}
+
+/* Character selection background (fondo_players.png), darkened so the cards and text stay readable. */
+.selection{background:linear-gradient(#0a141acc,#0a141a99 45%,#0a141ad9),var(--selection-art) center/cover,#142127}
+.selection .fighter-card{background:#213138e6}
+.selection .fighter-card[aria-pressed=true]{background:#2d3b36f0}

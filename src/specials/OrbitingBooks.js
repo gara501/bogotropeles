@@ -1,3 +1,4 @@
+import { playPowerSound } from '../audio/SoundEffects.js';
 import { BOOKS, positionBook, blastRadius, blastReaches } from '../data/books.js';
 import { canSpendSpecialEnergy, spendSpecialEnergy } from '../combat/specialEnergy.js';
 
@@ -31,7 +32,7 @@ export class OrbitingBooks {
       this.active || s.health<=0 || s.finished || s.paused || s.combatTime<s.hurtUntil || s.combatTime<s.dashUntil)return false;
     if(!spendSpecialEnergy(s))return false;
     attack.summoned=true;attack.hit=true;
-    s.sfx?.play('spell');
+    s.sfx?.play('spell');playPowerSound(s);
     this.startedAt=s.combatTime;this.activeUntil=s.combatTime+this.balance.activeMs;
     s.specialReadyAt=s.combatTime+this.balance.cooldownMs;
     this.center={x:s.player.x,y:s.player.y};this.angle=0;this.struck.clear();
@@ -76,7 +77,8 @@ export class OrbitingBooks {
     const s=this.scene;
     const b=this.balance,isBoss=boss || target.config?.boss;
     const damage=isBoss?Math.max(b.attack.damage,b.bossDamage??0):Math.max(b.attack.damage,Math.ceil((target.config?.hp??0)*(b.enemyShare??0)));
-    const attack={...this.hitAttack,damage,range:b.blastRadius,facing:Math.sign(target.x-this.center.x)||s.facing};
+    // The blast knocks regular enemies down (bosses keep their own rules).
+    const attack={...this.hitAttack,damage,range:b.blastRadius,facing:Math.sign(target.x-this.center.x)||s.facing,knockdown:true,finisher:true};
     // BossController owns its entry/transition/umbrella/Vuelva mañana protections.
     if(boss)target.hit(attack,this.center);else s.hitEnemy(target,attack);
   }
