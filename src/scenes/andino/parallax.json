@@ -1,0 +1,40 @@
+{
+  "name": "Centro Comercial Andino",
+  "width": 960,
+  "height": 540,
+  "walkable": {
+    "left": 65,
+    "right": 895,
+    "top": 415,
+    "bottom": 500
+  },
+  "layers": [
+    {
+      "file": "game/sky.png",
+      "factor": 0.06,
+      "repeatX": true
+    },
+    {
+      "file": "game/skyline.png",
+      "factor": 0.18
+    },
+    {
+      "file": "game/buildings.png",
+      "factor": 0.55
+    },
+    {
+      "file": "game/floor.png",
+      "factor": 1,
+      "repeatX": true
+    },
+    {
+      "file": "game/streetlights.png",
+      "factor": 0.85
+    },
+    {
+      "file": "game/front.png",
+      "factor": 1.25,
+      "front": true
+    }
+  ]
+}

@@ -7,6 +7,8 @@ export const BOSSES={
   grafitero:{kind:'enemy',enemy:'grafitero',name:'PINTURITA',music:BOSS_MUSIC.key,score:2500,deathMs:1500},
   cabecilla:{kind:'enemy',enemy:'cabecilla',name:'COLADIN',music:BOSS_MUSIC.key,score:3000,deathMs:1500},
   antidisturbios:{kind:'enemy',enemy:'antidisturbios',name:'ESMADIEGO',music:BOSS_MUSIC.key,score:3500,deathMs:1600},
+  brayatan:{kind:'enemy',enemy:'brayatan',name:'BRAYATAN',music:BOSS_MUSIC.key,score:4000,deathMs:1700},
+  pacho:{kind:'enemy',enemy:'pacho',name:'DON PACHO PLOMO',music:BOSS_MUSIC.key,score:5000,deathMs:1800},
   dormilon:{kind:'controller'},
 };
 export const bossFor=level=>BOSSES[level?.boss]??null;

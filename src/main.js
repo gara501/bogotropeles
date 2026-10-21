@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import selectionBackground from './data/fondo_players.png?url';
+import selectionBackground from './data/players/fondo_players.png?url';
 document.documentElement.style.setProperty('--selection-art',`url(${selectionBackground})`);
 // Bundled web fonts (the page and the in-game texts asked for them, but they were never shipped).
 import '@fontsource/ibm-plex-mono/400.css';
@@ -13,6 +13,7 @@ import { StreetScene } from './scenes/StreetScene.js';
 import { levels } from './data/levels.js';
 import { IntroScene } from './scenes/IntroScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
+import { CharacterIntroScene } from './scenes/CharacterIntroScene.js';
 import { characters } from './data/characters.js';
 import { enemies } from './data/enemies.js';
 import { SoundEffects } from './audio/SoundEffects.js';
@@ -41,7 +42,7 @@ const game = new Phaser.Game({
   roundPixels:true,
   fps:{target:ARCADE.clock.fps,forceSetTimeOut:true,smoothStep:false},
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [MenuScene, IntroScene, StreetScene],
+  scene: [MenuScene, IntroScene, CharacterIntroScene, StreetScene],
 });
 
 const focusGame = () => document.querySelector('#game').focus({ preventScroll: true });
@@ -107,14 +108,16 @@ function openSelection() {
   document.querySelector(`[data-pick="${selected}"]`).focus();
 }
 function startIntro(data={kind:'game'}) {
-  if(data.kind==='boss')game.scene.pause('Street');
+  if(['boss','ending','credits'].includes(data.kind))game.scene.pause('Street');
   else game.scene.stop('Street');
-  game.scene.stop('Menu');
+  game.scene.stop('Menu');game.scene.stop('CharacterIntro');
   showScreen('intro');
   document.querySelector('#next-level').disabled=true;
   if(data.kind==='level')levelLabel.textContent=`${String(data.level+1).padStart(2,'0')} / ${levels[data.level].name.toUpperCase()}`;
-  game.scene.start('Intro',data);
-  game.scene.bringToTop('Intro');
+  const sceneKey=data.kind==='character' || data.kind==='ending'?'CharacterIntro':'Intro';
+  if(sceneKey!=='Intro')game.scene.stop('Intro');
+  game.scene.start(sceneKey,data);
+  game.scene.bringToTop(sceneKey);
   focusGame();
 }
 function play() {
@@ -122,7 +125,8 @@ function play() {
     const scene=game.scene.getScene('Street');scene.switchCharacter(selected);resumeStreet();return;
   }
   if(levelPicker && !levelPicker.hidden){const level=Number(levelPicker.querySelector('select').value);if(level!==game.run.level)game.run.advance(level);}
-  startIntro({kind:'level',character:selected,level:game.run.level});
+  // Character story screen first; confirming it continues to the level intro.
+  startIntro({kind:'character',character:selected,level:game.run.level});
 }
 function resumeStreet() {
   const scene=game.scene.getScene('Street');game.scene.resume('Street');showScreen('game');
@@ -188,13 +192,13 @@ function showResult(result) {
   const {won,last,score,character}=result;lastResult=result;resetResultButtons();
   const scene=game.scene.getScene('Street');scene.input.keyboard.resetKeys();
   document.querySelector('#result-title').textContent=last?'BOGOTÁ DESPEJADA':'CUADRA DESPEJADA';
-  document.querySelector('#result-description').textContent=last?'Sobreviviste a las seis cuadras.':'La siguiente cuadra te espera.';
+  document.querySelector('#result-description').textContent=last?'Sobreviviste a la pelea por Bogotá.':'La siguiente cuadra te espera.';
   let text=`${character} · ${score} PUNTOS`;
   if(last){const record=saveRecord(score,character,undefined,recordKey);text+=` · RÉCORD ${record.score} — ${record.character}`;}
   document.querySelector('#result-score').textContent=text;
   const next=document.querySelector('#next-level');next.hidden=last;next.disabled=last;
   document.querySelector('#retry').hidden=last;document.querySelector('#retry').classList.remove('primary');
-  document.querySelector('#new-game').hidden=!last;document.querySelector('#result-choose').hidden=false;
+  document.querySelector('#new-game').hidden=!last;document.querySelector('#result-choose').hidden=last;
   openResult();document.querySelector(last?'#new-game':'#next-level').focus();
   if(last)offerRanking(score,character,levels.length,document.querySelector('#new-game'));
 }
@@ -226,8 +230,16 @@ game.events.on('game-over',()=>{
 });
 showScreen('intro');
 game.events.on('intro-complete',data=>{
-  playUiSound(data.kind==='game'?'start':'button');
-  if(data.kind==='game') {
+  playUiSound(data.kind==='game' || (data.kind==='character' && !data.back)?'start':'button');
+  if(data.kind==='ending') {
+    startIntro({kind:'credits',result:data.result});
+  } else if(data.kind==='credits') {
+    // Back to the (paused) street under the final result: score, record and ranking.
+    game.scene.resume('Street');showScreen('game');game.touchControls.setEnabled(false);showResult(data.result);
+  } else if(data.kind==='character') {
+    if(data.back)openSelection();
+    else startIntro({kind:'level',character:data.character,level:data.level});
+  } else if(data.kind==='game') {
     startIntro({kind:'story'});
   } else if(data.kind==='boss') {
     game.scene.resume('Street');game.scene.getScene('Street').resumeBoss();showScreen('game');focusGame();
@@ -255,10 +267,10 @@ if (import.meta.env.DEV) {
     const {installCombatPreview}=await import('./debug/combatPreview.js');installCombatPreview(game);
   });
   const enemyTest=debugParams.get('enemyTest');
-  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge)game.events.once('menu-ready',()=>{
+  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap)game.events.once('menu-ready',()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
     showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
-    game.scene.start('Street',{character:selected,level:2,enemyTest});focusGame();
+    game.scene.start('Street',{character:selected,level:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2,enemyTest});focusGame();
   });
   if(debugParams.has('campaignPreview'))game.events.once('menu-ready',async()=>{
     const {installCampaignPreview}=await import('./debug/campaignPreview.js');installCampaignPreview(game);
@@ -321,7 +333,12 @@ game.events.on('level-start', (index) => {
 game.events.on('level-clear', (index) => {
   document.querySelector('#next-level').disabled = index >= levels.length - 1;
 });
-game.events.on('level-result',showResult);
+// The final victory plays the character ending and credits before saving scores or offering initials.
+game.events.on('level-result',result=>{
+  const scene=game.scene.getScene('Street');
+  if(result.won && result.last)startIntro({kind:'ending',character:scene.characterKey,result});
+  else showResult(result);
+});
 game.events.on('level-restart',()=>{showScreen('game');focusGame();});
 document.querySelector('#next-level').addEventListener('click', () => {
   game.scene.getScene('Street').nextLevel();

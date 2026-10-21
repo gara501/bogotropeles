@@ -17,17 +17,18 @@ export const ARCADE={
   ai:{tokens:2,comboStages:3,depthRatio:.55,windup:29,active:3,recovery:29,cooldown:126,rangedCooldown:168,
     circleX:45,circleY:22,alignY:10,circleSpeed:.7,initialCooldown:60,spawnSlots:3,spawnStagger:18,hurtCooldown:30,chargeHalfWidth:40},
   animation:{walkFramesPerPose:6},
-  // Cornered regular enemies: `hits` hits within `window` ms while within `edge` px of a screen side → they leap
-  // over the player to land `land` px past them (invulnerable in the air).
+  // Cornered regular enemies: the `hits`-th hit within `window` ms while within `edge` px of a screen side (knockdown
+  // finishers included) → they leap over the player to land `land` px past them (invulnerable in the air). They also
+  // leap out when they get up in a corner with the player within `getupRange` px, so a corner can't be farmed.
   // Grabs (Final Fight style): walk into a regular enemy for `touchFrames` to seize it. While holding:
   // H = knee (the `maxKnees`-th knocks it down), J = throw forward, back + H = throw backward.
   // Thrown enemies fly `throwDistance` px, hurt whoever they hit and land knocked down. Damage factors use the
   // character's own punch (knee) and kick (throw). Knocked-down enemies lie still (invulnerable) and then get up.
-  grab:{reach:58,depth:14,touchFrames:4,hold:46,holdFrames:110,kneeTotal:16,kneeHit:6,maxKnees:3,kneeDamage:.7,
+  grab:{struggleFramesPerPose:6,reach:58,depth:14,touchFrames:4,hold:46,holdFrames:110,kneeTotal:16,kneeHit:6,maxKnees:3,kneeDamage:.7,
     throwTotal:26,throwRelease:10,throwFrames:32,throwDistance:230,throwHeight:72,throwDamage:1.3,collideDamage:30},
   // fall: frames in the air (sliding back along an arc of `arc` px); lie: frames on the floor; getup: frames standing up.
   knockdown:{fall:18,lie:42,getup:14,knockback:30,arc:22},
-  cornerEscape:{hits:3,window:1500,edge:110,land:190,duration:620,height:95},
+  cornerEscape:{hits:2,window:1500,edge:110,land:190,duration:620,height:95,getupRange:170},
   // Side-scrolling: waves are grouped in arenas `advance` px apart; the camera locks in each one.
   // maxScrollStep/ease: the camera catches up smoothly instead of snapping when an arena unlocks.
   stage:{advance:720,wavesPerArena:2,lead:.45,margin:65,backDepth:-100,frontDepth:800,maxScrollStep:8,ease:.2},
@@ -38,8 +39,6 @@ export const ARCADE={
   // Final Fight style HUD; timeLimit: seconds per arena/boss (0 hides TIME and disables the countdown).
   hud:{enabled:true,timeLimit:99},
   flow:{victoryFrames:60,resultDelayFrames:66,blinkPeriod:6,blinkVisible:3,blinkAlpha:.25},
-  lanes:[{top:400,bottom:500},{top:410,bottom:500},{top:415,bottom:500},
-    {top:355,bottom:500},{top:375,bottom:500},{top:410,bottom:500}],
 };
 export const toFrames=ms=>Math.max(1,Math.round(ms/ARCADE.clock.stepMs));
 export function fitArcadeCamera(scene){

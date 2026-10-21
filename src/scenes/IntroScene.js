@@ -14,24 +14,36 @@ export class IntroScene extends Phaser.Scene {
     if(!this.textures.exists('intro-story'))this.load.image('intro-story',storyUrl);
     if(this.kind==='level') {
       const level=levels[this.nextData.level];
-      if(!this.textures.exists(level.key))this.load.image(level.key,level.url);
+      const assets=level.url?[{key:level.key,url:level.url}]:level.layers??[];
+      for(const asset of assets)if(!this.textures.exists(asset.key))this.load.image(asset.key,asset.url);
     }
   }
   create() {
     fitArcadeCamera(this);
-    const level=levels[this.nextData.level??0],isLevel=this.kind==='level';
-    const texture=isLevel?level.key:this.kind==='boss'?'intro-boss':this.kind==='story'?'intro-story':'intro-game';
+    const level=levels[this.nextData.level??0],isLevel=this.kind==='level',isCredits=this.kind==='credits';
+    const texture=isLevel?level.key:this.kind==='boss'?'intro-boss':['story','credits'].includes(this.kind)?'intro-story':'intro-game';
     this.cameras.main.setBackgroundColor('#05080a');
-    const bg=this.add.image(480,270,texture),scale=Math.max(960/bg.width,540/bg.height);
-    bg.setScale(scale).setAlpha(0);
-    this.tweens.add({targets:bg,alpha:1,duration:450});
+    const backgrounds=isLevel && !level.url && level.layers?.length?level.layers.map(layer=>layer.key):[texture];
+    for(const key of backgrounds){
+      const bg=this.add.image(480,270,key),scale=Math.max(960/bg.width,540/bg.height);
+      bg.setScale(scale).setAlpha(0);
+      this.tweens.add({targets:bg,alpha:1,duration:450});
+    }
     const style={fontFamily:"'IBM Plex Mono', monospace",color:'#e8edce',align:'center',stroke:'#05080a',strokeThickness:5};
     if(isLevel) {
       this.add.rectangle(480,270,960,540,0x05080a,.6);
-      this.add.text(480,210,`NIVEL ${this.nextData.level+1} / 6`,{...style,fontSize:'20px',color:'#d6ed64'}).setOrigin(.5);
+      this.add.text(480,210,`NIVEL ${this.nextData.level+1}`,{...style,fontSize:'20px',color:'#d6ed64'}).setOrigin(.5);
       this.add.text(480,260,level.name.toUpperCase(),{...style,fontSize:'32px',fontStyle:'bold'}).setOrigin(.5);
     }
-    if(this.kind==='story') {
+    if(isCredits) {
+      this.add.rectangle(480,270,960,540,0x05080a,.35);
+      this.add.rectangle(480,275,840,250,0x05080a,.88);
+      this.add.rectangle(480,150,840,3,0xd6ed64);
+      this.add.text(480,192,'CRÉDITOS',{...style,fontSize:'24px',color:'#d6ed64',fontStyle:'bold'}).setOrigin(.5);
+      this.add.text(480,292,'Gracias por Jugar, juego creado por Aramgames (Andres Ramirez), cualquier apoyo será bien recompensado',{
+        ...style,fontSize:'22px',lineSpacing:14,wordWrap:{width:760,useAdvancedWrap:true},
+      }).setOrigin(.5);
+    } else if(this.kind==='story') {
       this.add.rectangle(480,432,960,216,0x05080a,.75);
       ['Debes sobrevivir en las tumultuosas calles de Bogotá.',
         'Serás objetivo de la fauna más variopinta',
@@ -42,7 +54,7 @@ export class IntroScene extends Phaser.Scene {
     } else this.add.rectangle(480,490,960,100,0x05080a,.8);
     const caption=isLevel?(level.mode==='crossing'?'DERROTA A LOS PEATONES · ESQUIVA LAS MOTOS':`${level.total} ENEMIGOS · OLEADAS DE DOS Y TRES`)
       :this.kind==='boss'?'DORMILÓN · EL ÚLTIMO TRÁMITE DE LA NOCHE':'A LOS TRAQUES POR BOGOTÁ.';
-    if(this.kind!=='story')this.add.text(480,467,caption,{...style,fontSize:'16px'}).setOrigin(.5);
+    if(this.kind!=='story' && !isCredits)this.add.text(480,467,caption,{...style,fontSize:'16px'}).setOrigin(.5);
     const prompt=this.add.text(480,510,'',{...style,fontSize:'12px',color:'#d6ed64'}).setOrigin(.5);
     if(this.children)for(const object of this.children.list)if(object.type==='Text')fitArcadeText(object);
     this.skip=(event)=>{

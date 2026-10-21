@@ -1,4 +1,5 @@
 import {ARCADE} from '../data/arcade.js';
+import {CAMPAIGN} from '../data/campaign.js';
 import {FixedClock} from './FixedClock.js';
 import {Player} from '../actors/Player.js';
 import {Enemy} from '../actors/Enemy.js';
@@ -36,22 +37,28 @@ export class ArcadeRuntime {
     }
     if(s.finished)return;
     s.combatTime+=ARCADE.clock.stepMs;this.combat.step(frame);
+    const previous={x:s.player.x,y:s.player.y},walking=this.player.state==='walk' && !this.combat.frozen(s.player);
     this.player.step({...this.input,...this.edges});this.edges={jump:false,dash:false};
+    s.stage?.rain?.slip(s.player,previous,walking && this.player.state==='walk');
     s.stage?.update(frame); // moves the camera and the floor span before enemies use it
     s.energyPickups?.update(frame);
+    s.motorcycles?.update();
     for(const actor of s.enemies){
       if(actor.hp<=0){this.combat.tokens.release(actor);continue;}
+      const previous={x:actor.x,y:actor.y};
       if(actor.crossing)s.updateCrossing(actor,1/ARCADE.clock.fps);
       else {
         if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
         if(!s.debugPreview)this.enemies.get(actor).step();
       }
+      const model=this.enemies.get(actor);
+      s.stage?.rain?.slip(actor,previous,!actor.crossing && !s.debugPreview && !this.combat.frozen(actor) && ['approach','circle'].includes(model?.state));
       s.placeFighter(actor,actor.z??0);
       actor.tell.setPosition(actor.x,actor.y-actor.config.height-30).setDepth(actor.y+2);
       actor.taunt?.setPosition(actor.x,actor.y-actor.config.height-40).setVisible(actor.hp>0 && s.combatTime<actor.tauntUntil);
       actor.healthBar.setPosition(actor.x-21,actor.y-actor.config.height-10).setDepth(actor.y+1);
     }
-    s.updateProjectiles(1/ARCADE.clock.fps);s.iphone?.update(1/ARCADE.clock.fps);s.books?.update(1/ARCADE.clock.fps);s.waves.update();
+    s.updateProjectiles(1/ARCADE.clock.fps);s.flock?.update();s.iphone?.update(1/ARCADE.clock.fps);s.books?.update(1/ARCADE.clock.fps);s.waves.update();
     if(s.health>0 && s.level.boss && s.waves.cleared && !s.boss && !s.miniBoss)s.beginBossIntro();
     s.miniBoss?.update();s.stains?.update();s.gas?.update();s.tickClock?.();
     if(s.boss){
@@ -76,17 +83,24 @@ export class ArcadeRuntime {
     if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
     this.enemies.get(actor).hurt(attack);this.combat.impact(this.scene.player,actor,attack);
   }
+  enemyPhase(actor){
+    if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
+    this.enemies.get(actor).checkShieldPhase();
+  }
   playerHit(combo,source){this.player.hurt(Boolean(combo?.finisher));if(!combo)this.combat.impact(source??null,this.scene.player,{finisher:false});}
-  resetPlayer(revive=false){this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
+  resetPlayer(revive=false){this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
   clearInput(){this.player.buffer.clear();this.edges={jump:false,dash:false};this.input={dx:0,dy:0};}
   win(){
     const s=this.scene;s.finished=true;this.player.transition('celebration');this.clearInput();this.combat.tokens.clear();
+    s.stage?.rain?.clear();
+    s.stage?.pigeons?.clear();
+    s.motorcycles?.clear();
     s.music?.stop();s.iphone?.clear();s.books?.clear();s.player.sprite.setAlpha(1);
-    s.projectiles.forEach(p=>p.sprite.destroy());s.projectiles=[];s.stains?.clear();s.gas?.clear();
+    s.projectiles.forEach(p=>p.sprite.destroy());s.projectiles=[];s.stains?.clear();s.gas?.clear();s.flock?.clear();s.sprayBarrage?.clear();
     for(const enemy of s.enemies){enemy.pending=null;enemy.tell.setVisible(false);if(enemy.hp>0)s.idle(enemy);}
-    const last=s.levelIndex===ARCADE.lanes.length-1;s.showOverlay(last?'BOGOTÁ DESPEJADA':'CUADRA DESPEJADA','ENTER PARA CONTINUAR');
+    const last=s.levelIndex===CAMPAIGN.length-1;s.showOverlay(last?'BOGOTÁ DESPEJADA':'CUADRA DESPEJADA','ENTER PARA CONTINUAR');
     s.play(s.player,'victory',ARCADE.flow.victoryFrames*ARCADE.clock.stepMs);s.game.events.emit('level-clear',s.levelIndex);s.game.events.emit('level-victory');
     s.pendingResult={won:true,last,bossCheckpoint:Boolean(s.boss||s.miniBoss),score:s.run.score,character:s.character.name};s.victoryRemaining=ARCADE.flow.resultDelayFrames*ARCADE.clock.stepMs;
   }
-  destroy(){if(this.destroyed)return;this.destroyed=true;this.clock.clear();this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
+  destroy(){if(this.destroyed)return;this.destroyed=true;this.clock.clear();for(const enemy of this.enemies.values()){enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
 }

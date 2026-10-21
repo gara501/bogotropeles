@@ -139,5 +139,35 @@ export function prepareCutout(scene,key,sourceKey,rect) {
   texture.context.drawImage(scene.textures.get(sourceKey).getSourceImage(),rect.x,rect.y,rect.width,rect.height,0,0,rect.width,rect.height);
   const pixels=texture.context.getImageData(0,0,rect.width,rect.height);
   for(let i=3;i<pixels.data.length;i+=4)if(pixels.data[i]<=32)pixels.data[i]=0;
+  // Chroma spill is removed only at the alpha edge; saturated clothing inside the person stays intact.
+  if(rect.cleanFringes)for(let pass=0;pass<3;pass++){
+    const remove=[];
+    for(let y=0;y<rect.height;y++)for(let x=0;x<rect.width;x++){
+      const i=(y*rect.width+x)*4,d=pixels.data;
+      if(!d[i+3] || !isStudentFringe(d[i],d[i+1],d[i+2]))continue;
+      let edge=false;
+      for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
+        const nx=x+dx,ny=y+dy;
+        if(nx<0 || ny<0 || nx>=rect.width || ny>=rect.height || !d[(ny*rect.width+nx)*4+3])edge=true;
+      }
+      if(edge)remove.push(i+3);
+    }
+    for(const i of remove)pixels.data[i]=0;
+  }
   texture.context.putImageData(pixels,0,0);texture.refresh();
 }
+
+/**
+ * Raw PNG sheets ("<name>-source", "<name>-append-N", "<name>-struggle-source") are only read once to build the runtime
+ * textures (prepareSheet/Effects/Cutout) and would otherwise stay uploaded to the GPU (about 6 MB each, hundreds of MB in total).
+ * Call releaseSources once everything has been prepared; preloads ask needsSource so a restart does not download them again.
+ */
+const RAW = /-source$|-append-\d+$/;
+export function releaseSources(scene) {
+  const spent = scene.game ? (scene.game.spentSources ??= new Set()) : new Set();
+  for (const name of Object.keys(scene.textures.list)) {
+    if (!RAW.test(name)) continue;
+    scene.textures.remove(name); spent.add(name);
+  }
+}
+export const needsSource = (scene, name) => !scene.textures.exists(name) && !scene.game?.spentSources?.has(name);

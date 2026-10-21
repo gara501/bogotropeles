@@ -1,30 +1,59 @@
-import walkerUrl from './enemy_1.png?url';
+import walkerUrl from './enemies/enemy_1.png?url';
+import {MOTORATA} from './motorata.js';
+import {HOMELESS} from './homeless.js';
 import {ARCADE,toFrames} from './arcade.js';
-import riderUrl from './enemy_2.png?url';
-import throwerUrl from './enemy_3.png?url';
-import guardUrl from './enemy_4.png?url';
-import chainUrl from './enemy_5.png?url';
-import brawlerUrl from './enemy_6.png?url';
-import fanUrl from './enemy_7.png?url';
-import sweeperUrl from './enemy_8.png?url';
-import vendorUrl from './enemy_9.png?url';
-import bellyUrl from './enemy_10.png?url';
-import leashUrl from './enemy_11.png?url';
-import knifeUrl from './knife_clean.png?url';
-import barraUrl from './boss_level1.png?url';
-import ballUrl from './balon.png?url';
-import palomeraUrl from './enemy_boss_3.png?url';
-import pigeonUrl from './paloma.png?url';
-import grafiteroUrl from './enemy_boss_2.png?url';
-import sprayCanUrl from './spray_can.png?url';
-import cabecillaUrl from './enemy_boss_4.png?url';
-import studentsUrl from './enemy_boss_4_2.png?url';
-import riotUrl from './enemy_boss_5.png?url';
-import yulitzaUrl from './enemy_12.png?url';
+import riderUrl from './enemies/enemy_2.png?url';
+import throwerUrl from './enemies/enemy_3.png?url';
+import guardUrl from './enemies/enemy_4.png?url';
+import chainUrl from './enemies/enemy_5.png?url';
+import brawlerUrl from './enemies/enemy_6.png?url';
+import fanUrl from './enemies/enemy_7.png?url';
+import sweeperUrl from './enemies/enemy_8.png?url';
+import vendorUrl from './enemies/enemy_9.png?url';
+import bellyUrl from './enemies/enemy_10.png?url';
+import leashUrl from './enemies/enemy_11.png?url';
+import knifeUrl from './UI/knife_clean.png?url';
+import barraUrl from './bosses/enemy_boss_1.png?url';
+import barraWhistleUrl from './bosses/enemy_boss_1_whistle.png?url';
+import barristasUrl from './enemies/barristas.png?url';
+import ballUrl from './UI/balon.png?url';
+import palomeraUrl from './bosses/enemy_boss_3.png?url';
+import palomeraSummonUrl from './bosses/enemy_boss_3_summon_pigeons.png?url';
+import pigeonFlightUrl from './bosses/pigeon_flight.png?url';
+import pigeonUrl from './UI/paloma.png?url';
+import grafiteroUrl from './bosses/enemy_boss_2.png?url';
+import sprayCanUrl from './UI/spray_can.png?url';
+import cabecillaUrl from './bosses/enemy_boss_4.png?url';
+import studentsUrl from './bosses/enemy_boss_4_2.png?url';
+import riotUrl from './bosses/enemy_boss_5.png?url';
+import yulitzaUrl from './enemies/enemy_12.png?url';
+import walkerStruggleUrl from './enemies/enemy_1_grab_struggle.png?url';
+import riderStruggleUrl from './enemies/enemy_2_grab_struggle.png?url';
+import throwerStruggleUrl from './enemies/enemy_3_grab_struggle.png?url';
+import guardStruggleUrl from './enemies/enemy_4_grab_struggle.png?url';
+import chainStruggleUrl from './enemies/enemy_5_grab_struggle.png?url';
+import brawlerStruggleUrl from './enemies/enemy_6_grab_struggle.png?url';
+import fanStruggleUrl from './enemies/enemy_7_grab_struggle.png?url';
+import sweeperStruggleUrl from './enemies/enemy_8_grab_struggle.png?url';
+import vendorStruggleUrl from './enemies/enemy_9_grab_struggle.png?url';
+import bellyStruggleUrl from './enemies/enemy_10_grab_struggle.png?url';
+import leashStruggleUrl from './enemies/enemy_11_grab_struggle.png?url';
+import yulitzaStruggleUrl from './enemies/enemy_12_grab_struggle.png?url';
 import { sequence } from './spriteSheets.js';
+import {RIOT_PHASE} from './riotPhase.js';
+import {BRAYATAN_SPRITE} from './brayatan.js';
+import {PACHO_SPRITE} from './pacho.js';
+import {RAT_SPRITE} from './rat.js';
+import {GUITARIST} from './guitarist.js';
 
 const animations = { walk: sequence(0, 5), attack: sequence(6, 11), hurt: sequence(12, 17), defeat: sequence(18, 23) };
 export const enemies = {
+  motorata:MOTORATA,
+  homeless:HOMELESS,
+  brayatan:BRAYATAN_SPRITE,
+  pacho:PACHO_SPRITE,
+  rat:RAT_SPRITE,
+  guitarist:GUITARIST,
   // enemy_12.png (4×6): guard · run · machete slash · leaping slash · crouch/hop · lunges. The fastest fighter in the game:
   // a 2-slash machete combo and, when the player swings at her up close, a lightning hop to the other side of the player.
   // No hurt/defeat rows in the sheet: the crouch poses stand in for them.
@@ -78,6 +107,10 @@ export const enemies = {
     // Pink spray: the cloud hurts up close and leaves 3 pink stains ahead that hurt to walk on and fade in 3 s.
     paint:{stains:3,spacing:70,start:80,width:72,height:22,color:0xff2fb4,ms:3000,damage:6},
     throw:{minRange:240,maxRange:680,windup:520,active:3,recovery:420,cooldown:2200,speed:400,damage:9,texture:'spraycan',width:64,height:33,lift:92,offset:110,hitFrame:2},
+    // Phase two: faster movement and random volleys across the visible arena, with marked landing spots.
+    barrage:{below:.5,speedMultiplier:1.2,first:350,cooldown:[4500,6500],count:[8,11],windup:700,recovery:500,
+      damage:6,stagger:55,flight:[800,1250],arc:150,radius:24,depth:16,
+      stain:{width:48,height:18,color:0xff43c6,ms:1800,damage:3}},
     // The jump (3rd row): after 3 quick hits, or right after painting if the player is still close,
     // he hops backwards spraying, leaving cyan stains where he takes off and where he lands.
     evade:{hits:3,window:1500,distance:220,height:60,duration:560,poses:[8,9,9,9,10,11],rushSpeed:1.2,afterAttack:150,
@@ -86,34 +119,63 @@ export const enemies = {
   // Level 2 boss (enemy_boss_3.png, 4×7 poses). Detached pigeons are separate blobs, so poses use explicit
   // rects (pigeon included) and isolate the body except where a loose pigeon belongs to the drawing.
   // Rows: walk · pigeon jab · pigeon thrust · white-dove ritual (heal, pose 14) · big pigeon push/throw · idle/hurt · defeat.
-  palomera:{name:'PALOMERA',url:palomeraUrl,rows:[4,4,4,4,4,4,4],height:118,speed:170,hp:1300,range:125,damage:10,idle:20,boss:true,
+  palomera:{name:'PALOMERA',url:palomeraUrl,rows:[4,4,4,4,4,4,4,6],height:118,speed:170,hp:1300,range:125,damage:10,idle:20,boss:true,
     frameRects:[[83,8,157,193],[374,8,155,191],[667,8,163,192],[966,5,158,195],[66,214,140,170],[325,221,199,163],[586,214,325,170],[958,213,163,171],
       [59,390,185,181],[344,393,184,177],[584,395,349,175],[979,390,168,182],[71,580,151,186],[341,563,184,203],[604,599,339,167],[984,578,179,188],
       [67,776,150,179],[326,776,205,179],[593,790,375,167],[1005,777,150,180],[66,961,165,176],[333,962,233,186],[657,982,149,157],[968,966,153,175],
-      [51,1154,185,150],[324,1155,228,151],[590,1151,275,146],[903,1173,262,124]].map(([x,y,width,height])=>({x,y,width,height})),
-    isolateFrames:true,keepDetachedFrames:[6,10,14,18,21,24,25,26],
+      [51,1154,185,150],[324,1155,228,151],[590,1151,275,146],[903,1173,262,124],
+      // 28-33: enemy_boss_3_summon_pigeons.png (6 cells of 256×256) appended under the main sheet (y + 1312).
+      ...Array.from({length:6},(_,i)=>[i*256,1312,256,256])].map(([x,y,width,height])=>({x,y,width,height})),
+    appendUrls:[palomeraSummonUrl],
+    isolateFrames:true,keepDetachedFrames:[6,10,14,18,21,24,25,26,28,29,30,31,32,33],
+    frameScales:{28:1.3,29:1.3,30:1.3,31:1.3,32:1.3,33:1.3}, // the summon sheet is drawn smaller than the main one
     frameAnchors:{0:159,1:443,2:732,3:1032,4:134,5:424,6:661,7:1042,8:129,9:438,10:667,11:1059,12:134,13:433,14:682,15:1056,
-      16:135,17:424,18:668,19:1067,20:142,21:443,22:719,23:1038,24:135,25:438,26:727,27:1034},
-    combo:{windup:420,interval:300,recovery:560,cooldown:1500,hitFrames:[2,2,2],ranges:[125,125,175],confirmFirst:false,followThrough:true},
-    throw:{minRange:260,maxRange:700,windup:600,active:3,recovery:450,cooldown:2400,speed:380,damage:9,texture:'paloma',width:58,height:34,lift:80,offset:120,hitFrame:2},
+      16:135,17:424,18:668,19:1067,20:142,21:443,22:719,23:1038,24:135,25:438,26:727,27:1034,28:128,29:384,30:640,31:896,32:1152,33:1408},
+    // recovery: how long she holds each strike's last pose (was 560 ms: she looked frozen after every punch).
+    combo:{windup:420,interval:300,recovery:200,cooldown:1300,hitFrames:[2,2,2],ranges:[125,125,175],confirmFirst:false,followThrough:true},
+    // Her main ranged attack: thrown often and from a little closer than before.
+    throw:{keepAway:true,minRange:200,maxRange:700,windup:520,active:3,recovery:400,cooldown:1300,speed:380,damage:9,texture:'paloma',width:58,height:34,lift:80,offset:120,hitFrame:2},
+    // From half health: "nube de palomas". She raises her arms (poses 28-33) and `birds` pigeons fly over the player, each
+    // dropping `drops` poops around them (`spread` px apart). A shadow marks each landing spot for `fall` ms;
+    // a poop landing within `hitRadius`/`depth` of the player takes `damage` health. See boss/PigeonFlock.js.
+    flock:{below:.5,first:500,cooldown:7500,windup:750,recovery:650,poses:[28,29,30,31,32,33],hitFrame:3,
+      birds:8,stagger:120,speed:300,altitude:[115,175],scale:.42,drops:2,spread:140,fall:650,hitRadius:24,depth:16,damage:6,url:pigeonFlightUrl},
+    // Right after each pigeon cloud: "escudo de palomas". For `duration` ms `birds` pigeons circle her and she can't be hurt
+    // (multicolour glow, `colors`); she throws a pigeon every `interval` ms at the player's lane (± `laneSpread` px).
+    // Touching the ring (`radius`/`depth`) hurts and pushes the player back: the answer is to back off and dodge.
+    pigeonShield:{duration:5000,interval:450,throwPoses:[16,17,18,19],release:.55,laneSpread:30,birds:7,radius:82,depth:26,height:62,spin:.11,damage:7,scale:.36,
+      colors:[0xff8a8a,0xffd36b,0x9dff8a,0x7ad8ff,0xc9a0ff,0xff9ee6]},
     evade:{hits:3,window:1500,distance:200,height:40,duration:440,pose:20,rushSpeed:1.25},
     // Below 60% health and with the player far away she raises the white dove and holds pose 14,
     // regaining 5% of max health per second for up to 5 s. Any hit interrupts it.
-    heal:{below:.6,minDistance:280,windup:500,duration:5000,perSecond:.05,cooldown:10000,interruptCooldown:4000,startPoses:[12,13],pose:14},
+    // loopPoses: the ritual is animated (cycles these poses, `framesPerPose` each) instead of holding pose 14, which looked frozen.
+    heal:{below:.6,minDistance:280,windup:500,duration:3000,perSecond:.07,cooldown:10000,interruptCooldown:4000,startPoses:[12,13],pose:14,
+      loopPoses:[13,14,15,14],framesPerPose:9},
     animations:{walk:sequence(0,3),attack:sequence(4,7),attack1:sequence(4,7),attack2:sequence(8,11),attack3:sequence(16,19),
       throw:sequence(16,19),heal:sequence(12,15),hurt:[21,22],defeat:sequence(24,27)}},
-  // Level 1 boss (boss_level1.png, 4×7 poses): runs in fast, 3-slash knife combo, throws footballs from range.
+  // Level 1 boss (bosses/enemy_boss_1.png, 4×7 poses): runs in fast, 3-slash knife combo, throws footballs from range.
   // Anchors are the hip centre of each pose so lunges and wind-ups do not shift the body.
-  barra:{name:'THE CHIKEN GOMEZ',url:barraUrl,rows:[4,4,4,4,4,4,4],height:122,speed:250,hp:900,range:118,damage:9,idle:20,boss:true,
+  barra:{name:'THE CHIKEN GOMEZ',url:barraUrl,rows:[4,4,4,4,4,4,4,6],height:122,speed:250,hp:900,range:118,damage:9,idle:20,boss:true,
+    appendUrls:[barraWhistleUrl],
+    frameScales:{28:.85,29:.85,30:.85,31:.85,32:.85,33:.85},
     frameAnchors:{0:172,1:413,2:662,3:948,4:152,5:388,6:634,7:904,8:143,9:395,10:698,11:952,12:140,13:391,14:642,15:948,
-      16:129,17:407,18:625,19:945,20:135,21:419,22:673,23:948,24:136,25:396,26:662,27:923},
+      16:129,17:407,18:625,19:945,20:135,21:419,22:673,23:948,24:136,25:396,26:662,27:923,
+      28:128,29:384,30:640,31:896,32:1152,33:1408},
     combo:{windup:380,interval:260,recovery:520,cooldown:1400,hitFrames:[2,1,2],ranges:[118,118,150],confirmFirst:false,followThrough:true},
     // After `hits` hits inside `window` ms (e.g. Gymbro's full combo) he hops back out of reach,
     // untouchable while airborne, then runs straight back in with the knife combo.
     evade:{hits:3,window:1500,distance:190,height:46,duration:420,pose:4,rushSpeed:1.35},
     throw:{minRange:260,maxRange:640,windup:520,active:3,recovery:420,cooldown:2600,speed:430,damage:8,texture:'balon',width:30,height:30,spin:14,lift:70,offset:70,hitFrame:2},
+    // Below half health he whistles for stick-carrying supporters. Never more than four of his minions alive.
+    summon:{enemy:'barrista',variants:2,counts:[2,3],maxAlive:4,below:.5,first:300,cooldown:10000,windup:800,recovery:550,
+      poses:[28,29,30,31,32,33],hitFrame:3,sound:'whistle',label:'¡REFUERZOS!'},
     animations:{walk:sequence(0,3),attack:sequence(4,7),attack1:sequence(4,7),attack2:sequence(8,11),attack3:sequence(12,15),
-      throw:sequence(16,19),hurt:[21,22],defeat:sequence(24,27)}},
+      throw:sequence(16,19),summon:sequence(28,33),hurt:[21,22],defeat:sequence(24,27)}},
+  // Two supporters: four running poses, one stick strike and one recoil pose per row.
+  barrista:{name:'BARRISTA',url:barristasUrl,rows:[6,6],height:112,speed:310,hp:100,range:110,damage:7,idle:0,minion:true,
+    frameRects:Array.from({length:12},(_,i)=>({x:i%6*256,y:Math.floor(i/6)*256,width:256,height:256,anchor:i%6*256+128})),trimFrames:true,
+    attackFrames:{startup:16,active:4,recovery:20,cooldown:55},
+    animations:{walk:sequence(0,3),attack:[3,4,3],hurt:[5],defeat:[5]}},
   belly:{name:'UBER JOSE',url:bellyUrl,taunt:{text:'¡POR ALLÁ NO VOY!',ms:2500},rows:[4,4,4,4,4,4],height:120,speed:78,hp:305,range:110,damage:12,idle:4,melee:true,
     charge:{windup:750,speed:510,distance:510,recovery:650,cooldown:1600,triggerRange:440},
     frameRects:[
@@ -150,7 +212,7 @@ export const enemies = {
       ...[0,384,768,1152].map(x=>({x,y:636,width:384,height:207})),
       ...[0,384,768,1152].map(x=>({x,y:847,width:384,height:177}))],
     animations:{walk:sequence(0,3),prepare:[4],rush:[5,6,7,8],brake:[9,10,11],attack:sequence(4,8),hurt:sequence(12,15),defeat:sequence(16,19)}},
-  // Toughness, in hits of the strongest normal strike (kick 45) on every level they appear in:
+  // Toughness in hits of the strongest normal strike (kick 45), at their original introduction multipliers:
   // walker/brawler/fan 7, belly (enemy_10) 6, leash (enemy_11) 8, thrower (enemy_3) 9.
   walker: {name:'VERCETI', url: walkerUrl, taunt:{text:'¡DESPÉGUELO PAPU!',ms:2500}, rows: [6, 6, 6, 6], height: 116, speed: 70, hp: 365, range: 60, damage: 6, animations },
   rider: {name:'COROMOTO', url: riderUrl, rows: [6, 6, 6, 6], height: 108, speed: 200, walkRate: 12, hp: 120, range: 80, damage: 8, animations },
@@ -185,10 +247,24 @@ export const enemies = {
     frameAnchors:{4:170,5:542,6:885,7:1260,8:155,9:545,10:875,11:1270,12:170,13:545,14:880,15:1280,16:180,17:565,18:910,19:1265},
     animations:{walk:sequence(0,3),attack:sequence(4,7),attack1:sequence(4,7),attack2:[11,9,10,11],attack3:sequence(12,15),hurt:sequence(16,19),defeat:sequence(20,23)}},
 };
+const riot=enemies.antidisturbios;
+riot.appendUrls=[RIOT_PHASE.url];riot.shieldBreak=RIOT_PHASE;
+riot.rows.push(4,4,4,4,4,4);
+riot.frameRects.push(...RIOT_PHASE.rects.map(([x,y,width,height],i)=>({x,y:y+1659,width,height,anchor:RIOT_PHASE.anchors[i]})));
+riot.frameScales=Object.fromEntries(RIOT_PHASE.rects.map((_,i)=>[24+i,240/253]));
+riot.keepDetachedFrames=[24,25,26];
+for(const [state,frames] of Object.entries(RIOT_PHASE.animations))riot.animations[RIOT_PHASE.animationKeys[state]]=frames;
 for(const enemy of Object.values(enemies)){
   enemy.attackFrames={startup:ARCADE.ai.windup,active:ARCADE.ai.active,recovery:ARCADE.ai.recovery,cooldown:enemy.ranged?ARCADE.ai.rangedCooldown:ARCADE.ai.cooldown,...enemy.attackFrames};
   if(enemy.charge)enemy.charge.frames={startup:toFrames(enemy.charge.windup),activePoses:[...enemy.animations.rush],recovery:toFrames(enemy.charge.recovery),...enemy.charge.frames};
 }
+// Grabbed by the player: enemies/enemy_N_grab_struggle.png, 6 poses of 256×256 (feet on the bottom edge), looped while held.
+// struggle.scale: size relative to the main sheet's pixels (1 = same pixel scale as enemy_N.png).
+const STRUGGLE = { walker: walkerStruggleUrl, rider: riderStruggleUrl, thrower: throwerStruggleUrl, guard: guardStruggleUrl, chain: chainStruggleUrl, brawler: brawlerStruggleUrl, fan: fanStruggleUrl, sweeper: sweeperStruggleUrl, vendor: vendorStruggleUrl, belly: bellyStruggleUrl, leash: leashStruggleUrl, yulitza: yulitzaStruggleUrl };
+for (const [key, url] of Object.entries(STRUGGLE)) enemies[key].struggle = { url, ...enemies[key].struggle };
+enemies.leash.struggle.scale = .74; // her struggle sheet is drawn bigger than enemy_11.png
+export const STRUGGLE_SHEET = { rows: [6], trimFrames: true,
+  frameRects: Array.from({ length: 6 }, (_, i) => ({ x: i * 256, y: 0, width: 256, height: 256, anchor: i * 256 + 128 })) };
 export const knife = { url: knifeUrl, speed: 280, width: 34 };
 // Textures thrown by enemies (throw.texture → url).
 export const projectileTextures = { balon: ballUrl, paloma: pigeonUrl, spraycan: sprayCanUrl };

@@ -2,10 +2,11 @@ import { CAMPAIGN } from './campaign.js';
 const backgrounds = import.meta.glob('../scenes/level_*.png', {
   eager: true, query: '?url', import: 'default',
 });
-const artFiles = import.meta.glob('../scenes/level*/game/*.png', {
+const artFiles = import.meta.glob(['../scenes/level*/game/*.png','../scenes/level*/*.png'], {
   eager: true, query: '?url', import: 'default',
 });
-const asset = (art, file) => ({ key: `${art.folder}-${file}`, url: artFiles[`../scenes/${art.folder}/game/${file}.png`] });
+const asset = (art, file) => ({ key: `${art.folder}-${file}`,
+  url: artFiles[`../scenes/${art.folder}/game/${file}.png`] ?? artFiles[`../scenes/${art.folder}/${file}.png`] });
 
 export const levels = CAMPAIGN.map((level, index) => {
   const base = { ...level, key: `level-${index + 1}`, url: backgrounds[`../scenes/level_${index + 1}.png`] };

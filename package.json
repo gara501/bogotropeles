@@ -8,7 +8,7 @@
     "build": "vite build",
     "build:itch": "vite build --base=./ --outDir dist-itch",
     "package:itch": "npm run build:itch && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-itch.ps1",
-    "test": "node --test",
+    "test": "node --test tests/*.test.js",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {

@@ -2,11 +2,11 @@ import Phaser from 'phaser';
 import { StreetScene } from './StreetScene.js';
 import { characters } from '../data/characters.js';
 import { registerAnimations } from '../data/spriteSheets.js';
-import office from '../data/player_1_profile.png?url';
-import student from '../data/player_2_profile.png?url';
-import teleperforman from '../data/player_3_profile.png?url';
-import gymbro from '../data/player_4_profile.png?url';
-import magolita from '../data/player_5_profile.png?url';
+import office from '../data/players/player_1_profile.png?url';
+import student from '../data/players/player_2_profile.png?url';
+import teleperforman from '../data/players/player_3_profile.png?url';
+import gymbro from '../data/players/player_4_profile.png?url';
+import magolita from '../data/players/player_5_profile.png?url';
 
 // Illustrated portraits for the character selection (player_N_profile.png). Characters without one fall back to their idle sprite.
 const PROFILES = { office, student, teleperforman, gymbro, magolita };

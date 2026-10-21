@@ -1,14 +1,17 @@
 import {PROPS,propLayout} from '../data/props.js';
+import {ARCADE} from '../data/arcade.js';
+import {viewLeft} from './scroll.js';
 
 /** Places a level's background props (carts, cars, bus passengers) behind the fighters. */
 export class StageProps {
   constructor(scene,config,width){
     this.scene=scene;this.items=[];this.time=0;this.width=width;
     if(!config)return;
+    this.edgeMargin=config.edgeMargin;this.edgeFade=config.edgeFade??24;
     const top=scene.floor.top,index=scene.levelIndex??0;
     // scrollFactor: props glued to a parallax layer (e.g. bus passengers next to the .9 seat row) scroll with it;
     // their world span shrinks accordingly.
-    const factor=config.scrollFactor??1,span=width*factor+960*(1-factor);
+    const factor=config.scrollFactor??1,span=width*factor+ARCADE.screen.width*(1-factor);
     for(const p of propLayout(config,span,index+1)){
       const def=PROPS[p.kind];if(!def || !scene.textures?.exists?.(def.texture))continue;
       const y=top+(config.baseline??-2)+p.offset;
@@ -25,8 +28,9 @@ export class StageProps {
       }
       // Pedestrians drawn mid-stride walk the way they face (mirrored ones the other way) and wrap around the street.
       const walk=def.walk?{speed:def.walk.speed,dir:def.walk.dir*((def.noFlip?false:p.flip)?-1:1)}:null;
-      this.items.push({sprite,shadow,y,sway:def.sway,walk,phase:p.x*.013});
+      this.items.push({sprite,shadow,y,sway:def.sway,walk,phase:p.x*.013,factor});
     }
+    if(this.edgeMargin!=null)this.update(0);
   }
   /** Passengers sway a little with the bus. */
   update(dt=1000/60){
@@ -39,6 +43,13 @@ export class StageProps {
     }
     for(const item of this.items)if(item.sway){
       const t=this.time/1000+item.phase;item.sprite.y=item.y+Math.round(Math.sin(t*2.1));item.sprite.rotation=Math.sin(t*1.3)*.012;
+    }
+    if(this.edgeMargin!=null)for(const item of this.items){
+      const sprite=item.sprite,x=sprite.x-viewLeft(this.scene)*item.factor,half=sprite.displayWidth/2;
+      const gap=Math.min(x-half,ARCADE.screen.width-x-half);
+      const alpha=Math.max(0,Math.min(1,(gap-this.edgeMargin)/Math.max(1,this.edgeFade)));
+      sprite.setVisible(alpha>0).setAlpha(alpha);
+      item.shadow?.setVisible(alpha>0).setAlpha(alpha);
     }
   }
   destroy(){for(const item of this.items){item.sprite.destroy();item.shadow?.destroy();}this.items=[];}

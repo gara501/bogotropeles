@@ -90,7 +90,7 @@ Este panel y sus accesos no están disponibles en producción.
 Para probar el especial contra Dormilón usa la consola de desarrollo existente:
 `streetDebug.start('office')`, después `streetDebug.attack('shield')` o
 `streetDebug.attack('rain')`, y lanza con K desde ambos lados. La partida normal
-continúa usando los seis niveles existentes, ahora en orden de campaña.
+continúa recorriendo las peleas por Bogotá en orden de campaña.
 
 ## Archivos
 

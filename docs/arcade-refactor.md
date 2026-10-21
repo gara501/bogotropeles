@@ -83,14 +83,14 @@ Los números compartidos están en `arcade.js`; las fases y poses por ataque en 
 | Invulnerabilidad al reaparecer | 180 f | Conserva los tres segundos del sistema de vidas. |
 | Especial | 10 de vida | Se cobra una vez al activarse; requiere más de 10 para no causar suicidio. |
 
-Carriles Y por nivel: 400–500, 410–500, 415–500, 355–500, 375–500 y 410–500. Se editan en `ARCADE.lanes`.
+Los carriles Y se definen con `top` y `bottom` en cada registro de `src/data/campaign.js`; `bottom` usa 500 por defecto. No existe una lista paralela de carriles que limite la cantidad de escenarios.
 
 ## Checklist jugable
 
 Ejecuta `npm run dev`; abre `/?playerPreview=gymbro`. El panel muestra estado, fase, frame, tokens y la resolución real. Usa **Enemigos cerca**, **Hitboxes** y **Activar / pausar IA**. Las cajas verdes son hurtboxes; amarillo indica ataque no activo y rojo frame activo.
 
 - [ ] Pulsa y suelta WASD/flechas: arranque y frenado inmediatos; Y más lento; diagonales sin aceleración adicional.
-- [ ] Recorre los extremos superior e inferior de los seis escenarios: no se sale del carril.
+- [ ] Recorre los extremos superior e inferior de los escenarios de la campaña: no se sale del carril.
 - [ ] Con IA detenida, golpea a un enemigo a la misma Y y después desplázate a otro carril: el segundo golpe falla aunque los sprites se solapen visualmente.
 - [ ] Observa el cambio amarillo/rojo: solo la pose activa causa daño; una víctima recibe un impacto por etapa.
 - [ ] Un toque de H produce un jab. Mantenerlo no completa el combo. Enlaza H cerca del final de la recuperación para cruzado y uppercut.

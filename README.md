@@ -19,7 +19,7 @@ La compilación queda en `dist/` para hosting estático.
 
 ## Contenido y controles
 
-Cuatro jugadores seleccionables, seis escenarios consecutivos y ocho tipos de enemigo.
+Personajes seleccionables y peleas contra la fauna urbana por las calles de Bogotá.
 Teleperforman (player 3) golpea con la diadema usando K: alcance 185, daño 40.
 Gymbro (player 4) tiene dash con Shift y pisotón con K:
 afecta a todos los enemigos en un radio de 145, delante o detrás, hace 45 de daño
@@ -71,16 +71,16 @@ El indicador bajo la salud muestra cuándo está listo. La pausa congela sus tie
   el cuchillo. Golpearlo durante la preparación cancela el lanzamiento. Se puede
   esquivar con salto, movimiento entre carriles, patada baja o dash.
 
-La campaña avanza del nivel 1 al 6, sin selector de niveles. Solo ganar habilita
+La campaña recorre los escenarios de Bogotá en el orden de `src/data/campaign.js`. Solo ganar habilita
 Enter o Siguiente para avanzar, pasando antes por la pantalla de entrada del
 nivel siguiente. Reiniciar conserva el escenario actual y restablece la salud.
 Cambiar de personaje conserva el nivel, los enemigos, las vidas y los puntos; la pelea se pausa durante la selección.
-Cada nivel empieza con salud completa; el jefe conserva la salud restante del nivel 6.
+Cada nivel empieza con salud completa; los jefes conservan la salud restante de su nivel.
 
-Al comenzar se muestra `intro_juego.png`. Tras los 30 enemigos del nivel 6 aparece
-`intro_boss.png`, antes de enfrentar a Dormilón. Las intros esperan una tecla o
-clic tras un breve tiempo de lectura. El combate y la música se pausan durante
-la intro del jefe.
+Al comenzar se muestra `intro_juego.png`. Las intros esperan una tecla o clic tras
+un breve tiempo de lectura. Cada escenario puede tener un jefe configurado; al
+vencerlo se continúa al siguiente escenario. La victoria de campaña se determina
+por el último registro disponible, sin anunciar un número fijo de niveles.
 
 | Nivel | Enemigos | Total | Objetivo |
 | --- | --- | --- | --- |
@@ -89,7 +89,8 @@ la intro del jefe.
 | 3 | enemy_3, enemy_6, enemy_7, enemy_8 | 20 | Derrotar oleadas de 2 y 3 |
 | 4 | enemy_5, enemy_6, enemy_7, enemy_8 | 20 | Derrotar oleadas de 2 y 3 |
 | 5 | enemy_4, enemy_5, enemy_1, enemy_8 | 20 | Derrotar oleadas de 2 y 3 |
-| 6 | enemy_4, enemy_2, enemy_1, enemy_8 | 30 + jefe | Completar oleadas, ver intro_boss y vencer a Dormilón |
+| 6 | enemy_4, enemy_2, enemy_1, enemy_8 | 30 + jefe | Completar oleadas y vencer a Brayatan para seguir a Zona Rosa |
+| 7 · Zona Rosa | enemy_4, enemy_5, enemy_6, enemy_7, enemy_8, enemy_10, enemy_11, enemy_12 | 30 | Completar las oleadas frente al Andino |
 
 La resistencia, velocidad, daño y frecuencia de ataques aumentan por nivel.
 Solo enemy_2 cruza el nivel 2 manteniendo dirección y carril; cuenta al salir
@@ -140,9 +141,9 @@ Solo se conserva decodificada la música del nivel actual. El navegador puede
 requerir un clic o una tecla para habilitar el audio.
 El jefe también incluye avisos sonoros sintetizados. Incluye controles táctiles y récord local; no incluye multijugador.
 
-## Jefe final: Dormilón
+## Controlador de jefe: Dormilón
 
-Tras limpiar los 30 enemigos del nivel 6 y continuar desde `intro_boss` aparece Dormilón, con tres fases y seis
+El controlador opcional Dormilón se puede asignar a un escenario con `boss:'dormilon'`. Tiene tres fases y seis
 poderes: Pico y placa, Obra eterna, Trancón, Aguacero bogotano, Trámite infinito
 y Vuelva mañana. H repetidamente sacude los formularios; el pisotón de Gymbro
 destruye obras cercanas. El corredor superior siempre permite escapar y acercarse.
@@ -197,7 +198,7 @@ Para itch.io ejecuta npm run package:itch. El ZIP listo para subir queda en rele
 
 En celulares y tablets hay controles táctiles automáticos: joystick de ocho direcciones con intensidad analógica, puño, patada, especial, salto, dash y pausa. Universitaria incluye patada baja; Gymbro usa el especial para pisotón. En horizontal los controles están fuera del escenario, a sus lados; en vertical se ubican debajo. Se admite movimiento y acciones simultáneos y se liberan al cancelar el toque, pausar, girar o salir de la pantalla. Solo aparecen en dispositivos móviles/táctiles; reducir la ventana de escritorio no los muestra. QA de desarrollo: `ejemplos/mobile-preview.html`.
 
-Enemy_10 aparece en niveles 2–6: cruceta a corta distancia y carga recta con barrigazo a media distancia (aviso 750 ms; carrera 510 px/s), interrumpible con un golpe. Enemy_11 aparece en niveles 4–6: persigue a 230 px/s, retrocede si te acercas demasiado y ejecuta tres golpes de correa con alcances 160/220/170 px. Cada golpe puede esquivarse saltando o cambiando de carril. Los totales de enemigos y las oleadas 2/3 se conservan. QA: `/?enemyTest=belly` y `/?enemyTest=leash`.
+Enemy_10 aparece desde el nivel 2: cruceta a corta distancia y carga recta con barrigazo a media distancia (aviso 750 ms; carrera 510 px/s), interrumpible con un golpe. Enemy_11 aparece desde el nivel 4: persigue a 230 px/s, retrocede si te acercas demasiado y ejecuta tres golpes de correa con alcances 160/220/170 px. Cada golpe puede esquivarse saltando o cambiando de carril. Los totales de enemigos y las oleadas 2/3 se conservan. QA: `/?enemyTest=belly` y `/?enemyTest=leash`.
 
 ## Partida arcade, vidas y récord
 

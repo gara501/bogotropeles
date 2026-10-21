@@ -1,8 +1,8 @@
-# Dormilón: jefe final del nivel 6
+# Dormilón: controlador de jefe opcional
 
-El encuentro empieza tras resolver los 30 enemigos de Calles del centro y continuar desde intro_boss.
-Los niveles 1–5 conservan su flujo. Vencer a Dormilón cancela los peligros,
-reproduce su caída y muestra la victoria final: «BOGOTÁ DESPEJADA».
+Este documento describe el controlador Dormilón, que puede asignarse a un escenario con `boss:'dormilon'`.
+Calles del centro usa actualmente a Brayatan y después se continúa a Zona Rosa.
+Vencer a Dormilón cancela los peligros y reproduce su caída; el cierre de campaña depende del último escenario configurado.
 
 Se mantiene Phaser + JavaScript. No se añadieron dependencias. El balance tiene
 tipos JSDoc en `src/boss/balance.js`; las imágenes y recortes están en `config.js`.

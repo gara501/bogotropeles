@@ -22,6 +22,7 @@ export class Player {
     if(airborne && type!=='kick')return false;
     if(type===s.character.special && (s.combatTime<s.specialReadyAt || !canSpendSpecialEnergy(s)))return false;
     const data=playerAttackData(s.character,type,stage,airborne);if(!data)return false;
+    if(this.state==='jump' && !airborne)this.transition('walk'); // landing frame: the jump state ends this same step
     this.transition(type===s.character.special?'special':'attack');
     this.action={data,index:0,displayedFrame:data.frames[0],targets:new Set(),committed:false};
     s.playerAttack={...data,start:s.combatTime,facing:s.facing,hit:false};
@@ -29,6 +30,8 @@ export class Player {
     return true;
   }
   dash(dx,dy){
+    // Only from states that may dash (not while grabbing, hurt, down…): an invalid transition would throw inside the game loop.
+    if(this.state!=='dash' && !transitions[this.state]?.includes('dash'))return false;
     if(this.runtime.frame<this.dashReady || ['hurt','knockdown','celebration'].includes(this.state) || this.actor.z>0)return false;
     const length=Math.hypot(dx,dy)||1;this.vector=dx||dy?{x:dx/length,y:dy/length}:{x:this.scene.facing,y:0};
     this.transition('dash');this.buffer.clear();this.dashReady=this.runtime.frame+ARCADE.dash.cooldown;
@@ -36,8 +39,10 @@ export class Player {
     this.scene.invulnerableUntil=this.scene.combatTime+ARCADE.dash.invulnerable*ARCADE.clock.stepMs;return true;
   }
   hurt(finisher=false){
+    if(this.state==='celebration')return; // level already won
     this.lastCombo=null;
-    this.transition(this.scene.health<=0 || finisher?'knockdown':'hurt');this.buffer.clear();
+    // A combo follow-up can land while the player is already down: stay down (knockdown → hurt is not a valid transition).
+    this.transition(this.scene.health<=0 || finisher || this.state==='knockdown'?'knockdown':'hurt');this.buffer.clear();
     this.actor.z=0;this.jumpAge=ARCADE.jump.frames;
     const frames=this.state==='knockdown'?ARCADE.player.knockdownFrames+ARCADE.player.wakeInvulnerable:ARCADE.player.hitInvulnerable;
     this.scene.invulnerableUntil=this.scene.combatTime+frames*ARCADE.clock.stepMs;

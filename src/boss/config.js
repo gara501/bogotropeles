@@ -1,5 +1,5 @@
-import bossUrl from '../data/enemy_boss.png?url';
-import effectsUrl from '../data/enemy_attacks.png?url';
+import bossUrl from '../data/bosses/enemy_boss.png?url';
+import effectsUrl from '../data/bosses/enemy_attacks.png?url';
 import { sequence } from '../data/spriteSheets.js';
 
 import { BOSS } from './balance.js';

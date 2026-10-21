@@ -1,7 +1,7 @@
 // Enemy keys retain their existing sprites: walker=1, rider=2, thrower=3,
 import {ARCADE} from './arcade.js';
 // guard=4, chain=5, brawler=6, fan=7, sweeper=8, vendor=9, belly=10, leash=11.
-// Parallax art lives in src/scenes/<folder>/game/*.png (960×540, transparent PNG).
+// Parallax art lives in src/scenes/<folder>/game/*.png or directly in <folder> (960×540 PNG).
 // factor: 0 = fixed sky … 1 = moves with the fighters; front layers are drawn over them.
 const LEVEL1_ART={folder:'level1',
   layers:[{file:'sky',factor:.08},{file:'skyline',factor:.2},{file:'buildings',factor:.45},{file:'floor',factor:1},{file:'front',factor:1.3,front:true}],
@@ -21,14 +21,22 @@ const LEVEL5_ART={folder:'level5',
 // Calles del centro: the street is taken from the original level_6.png; clouds drift slowly.
 const LEVEL6_ART={folder:'level6',
   layers:[{file:'sky',factor:.06,drift:6},{file:'skyline',factor:.2},{file:'buildings',factor:.6},{file:'floor',factor:1}]};
+const LEVEL7_ART={folder:'level7',
+  layers:[{file:'sky',factor:.06},{file:'skyline',factor:.18},{file:'buildings',factor:.55},{file:'floor',factor:1},
+    {file:'streetlights',factor:.85},{file:'front',factor:1.25,front:true}]};
 export const CAMPAIGN = [
   {name:'TransMilenio · Exterior',art:LEVEL1_ART,boss:'barra',top:400,enemies:['fan','brawler'],total:15,hp:.65,speed:.85,damage:.8,pressure:.8,gap:1100,props:{kinds:['station0','station4','station8','station5','station15','station9','station1','station10','station12','station6','station3','station13','station11','station14','station2','station7'],start:180,spacing:260,jitter:80,baseline:-18,depthJitter:3}},
-  {name:'Plaza de Bolívar',art:LEVEL2_ART,boss:'palomera',top:410,enemies:['walker','rider','vendor','belly'],total:20,mode:'crossing',crossingEnemies:['rider'],hp:.75,speed:.95,damage:.9,pressure:.9,gap:1000},
-  {name:'La Candelaria',art:LEVEL3_ART,boss:'grafitero',top:415,enemies:['thrower','brawler','fan','sweeper','vendor','belly','yulitza'],total:20,hp:.85,speed:1,damage:1,pressure:1,gap:900,props:{kinds:['lechona','merengon'],start:520,spacing:780,jitter:120,baseline:-4}},
-  {name:'TransMilenio · Estación',art:LEVEL4_ART,boss:'cabecilla',top:355,enemies:['chain','brawler','fan','sweeper','belly','leash','yulitza'],total:20,hp:1,speed:1.08,damage:1.1,pressure:1.1,gap:800,props:{kinds:['passenger0','passenger6','passenger1','passenger9','passenger7','passenger5','passenger10'],scrollFactor:.9,slots:{period:595,offsets:[196,400,595],fill:.7},start:120,baseline:24,flip:false}},
-  {name:'Chorro de Quevedo',art:LEVEL5_ART,boss:'antidisturbios',top:375,enemies:['guard','chain','walker','sweeper','belly','leash','yulitza'],total:20,hp:1.12,speed:1.15,damage:1.2,pressure:1.2,gap:700,props:{kinds:['chorro0','chorro5','chorro13','chorro9','chorro2','chorro11','chorro14','chorro7','chorro1','chorro10','chorro4','chorro15','chorro3','chorro8','chorro12','chorro6'],start:160,spacing:240,jitter:90,baseline:-14,depthJitter:3}},
-  {name:'Calles del centro',art:LEVEL6_ART,top:410,enemies:['guard','rider','walker','sweeper','belly','leash','yulitza'],total:30,hp:1.25,speed:1.22,damage:1.3,pressure:1.3,gap:600,boss:'dormilon',props:{kinds:['samber0','samber4','samber13','samber9','samber2','samber10','samber15','samber5','samber3','samber8','samber12','samber6','samber1','samber11','samber14','samber7'],start:180,spacing:250,jitter:90,baseline:-14,depthJitter:3}},
-];
+  {name:'Plaza de Bolívar',art:LEVEL2_ART,boss:'palomera',top:410,enemies:['walker','rider','vendor','belly'],total:20,mode:'crossing',crossingEnemies:['rider'],hp:.75,speed:.95,damage:.9,pressure:.9,gap:1000,
+    groundPigeons:{at:.5,groups:3,birds:4,respawn:4500,radius:95,depth:32,hitDepth:20,tell:450,flight:1700,damage:5}},
+  {name:'La Candelaria',art:LEVEL3_ART,boss:'grafitero',top:415,enemies:['guitarist','vendor','sweeper','chain','guard','leash'],total:20,hp:.85,speed:1,damage:1,pressure:1,gap:900,props:{kinds:['lechona','merengon'],start:520,spacing:780,jitter:120,baseline:-4}},
+  {name:'TransMilenio · Estación',art:LEVEL4_ART,boss:'cabecilla',top:355,enemies:['brawler','fan','sweeper','guard','yulitza'],total:20,hp:1,speed:1.08,damage:1.1,pressure:1.1,gap:800,props:{kinds:['passenger0','passenger6','passenger1','passenger9','passenger7','passenger5','passenger10'],scrollFactor:.9,slots:{period:595,offsets:[196,400,595],fill:.7},start:120,baseline:24,flip:false}},
+  {name:'Chorro de Quevedo',art:LEVEL5_ART,boss:'antidisturbios',top:375,enemies:['guitarist','motorata','vendor','thrower','belly'],total:20,hp:1.12,speed:1.15,damage:1.2,pressure:1.2,gap:700,props:{kinds:['chorro0','chorro5','chorro13','chorro9','chorro2','chorro11','chorro14','chorro7','chorro1','chorro10','chorro4','chorro15','chorro3','chorro8','chorro12','chorro6'],start:160,spacing:240,jitter:90,baseline:-14,depthJitter:3}},
+  {name:'Calles del centro',art:LEVEL6_ART,top:410,enemies:['motorata','walker','thrower','sweeper','belly','yulitza'],total:30,hp:1.25,speed:1.22,damage:1.3,pressure:1.3,gap:600,boss:'brayatan',props:{kinds:['samber0','samber4','samber13','samber9','samber2','samber10','samber15','samber5','samber3','samber8','samber12','samber6','samber1','samber11','samber14','samber7'],start:180,spacing:250,jitter:90,baseline:-14,depthJitter:3}},
+  {name:'Zona Rosa',art:LEVEL7_ART,top:415,enemies:['guard','belly','motorata','leash','vendor'],total:30,hp:1.35,speed:1.26,damage:1.4,pressure:1.4,gap:550,boss:'pacho',
+    props:{kinds:['politico0','politico1','politico2','politico3','politico4','politico5','politico6','politico7'],scrollFactor:.55,
+      slots:{period:960,offsets:[210,340,630,765],fill:1},baseline:-4,depthJitter:3,edgeMargin:32,edgeFade:24}},
+].map((level,index)=>({...level,enemies:index>=2?[...level.enemies,'homeless']:level.enemies,
+  ...(index===3?{}:{rain:{delay:[3000,60000],duration:20000}})}));
 
 export function waveSize(wave,remaining){return Math.min(wave%2?3:2,remaining);}
 export function scaledEnemy(base,level) {

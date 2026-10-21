@@ -22,7 +22,7 @@ Los anclajes fijan el torso cuando la escoba se extiende. El asset conserva
 residuos rojos y azules alrededor del personaje; queda pendiente su limpieza
 artística, sin modificar el PNG original.
 
-Aparece en los niveles 3, 4, 5 y 6, conservando sus totales 20/20/20/30 y el
+Aparece desde el nivel 3 en adelante, respetando los totales configurados y el
 límite de 2–3 enemigos vivos. Base: vida 110, velocidad 100, alcance 148 y daño
 5 por golpe. Anticipación 430 ms, separación entre impactos 300 ms, recuperación
 520 ms y cooldown 2500 ms. Aplica los multiplicadores de cada nivel. Ejecuta

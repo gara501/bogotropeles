@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {prepareSheet} from '../src/data/spriteSheets.js';
+import {prepareSheet,prepareCutout} from '../src/data/spriteSheets.js';
+
+test('NPC cutouts clean chroma only along the silhouette and preserve saturated clothing inside',()=>{
+  const data=new Uint8ClampedArray(5*5*4);
+  for(let i=0;i<data.length;i+=4)data.set([80,90,100,255],i);
+  data.set([255,0,0,255],(2*5)*4);data.set([255,0,0,255],(2*5+2)*4);
+  data.set([230,70,35,255],(2*5+4)*4);
+  const texture={context:{drawImage(){},getImageData:()=>({data}),putImageData(){}},refresh(){}};
+  const scene={textures:{exists:()=>false,createCanvas:()=>texture,get:()=>({getSourceImage(){}})}};
+  prepareCutout(scene,'npc','source',{x:0,y:0,width:5,height:5,cleanFringes:true});
+  assert.equal(data[(2*5)*4+3],0,'red spill at the silhouette is removed');
+  assert.equal(data[(2*5+2)*4+3],255,'red shirt inside the silhouette stays opaque');
+  assert.equal(data[(2*5+4)*4+3],255,'muted fabric at the boundary is preserved');
+});
 
 // Minimal canvas fixture exercises the production pixel masks and packing,
 // without requiring a browser or mirroring the player animation lists.

@@ -59,6 +59,12 @@ export function enemySummonData(config){
   return {damage:0,range:0,lane:ARCADE.body.lane,finisher:false,summon:true,
     frames:timeline({startup:toFrames(m.windup),active:2,recovery:toFrames(m.recovery),startupPose:art.slice(0,Math.max(1,hit)),activePose:art[hit],recoveryPose:art.slice(hit+1).length?art.slice(hit+1):config.idle})};
 }
+/** Palomera's pigeon cloud: arms up (wind-up poses), release, arms down. */
+export function enemyFlockData(config){
+  const f=config.flock,art=f.poses,hit=f.hitFrame??Math.floor(art.length/2);
+  return {damage:0,range:0,lane:ARCADE.body.lane,finisher:false,flock:true,
+    frames:timeline({startup:toFrames(f.windup),active:2,recovery:toFrames(f.recovery),startupPose:art.slice(0,Math.max(1,hit)),activePose:art[hit],recoveryPose:art.slice(hit+1).length?art.slice(hit+1):config.idle})};
+}
 /** Ranged throw (e.g. the level 1 boss's football): wind-up poses, release pose, follow-through. */
 export function enemyThrowData(config,damageScale=1){
   const t=config.throw,art=config.animations.throw,hit=t.hitFrame??Math.floor(art.length/2);
@@ -73,7 +79,7 @@ export function enemyAttackData(config,stage=0){
   const active=tuning.active,recovery=combo?toFrames(combo.recovery):tuning.recovery;
   // hitFrames: per-stage contact pose (each slash of a boss combo strikes on a different drawing).
   const hit=combo?.hitFrames?.[stage]??combo?.hitFrame??Math.floor(art.length/2);
-  return {damage:config.damage,range:combo?.ranges?.[stage]??config.range,lane:ARCADE.body.lane,
+  return {damage:config.damage,range:combo?.ranges?.[stage]??tuning.range??config.range,lane:tuning.lane??ARCADE.body.lane,
     startup,active,recovery,finisher:Boolean(combo && stage===(combo.stages??ARCADE.ai.comboStages)-1),
     frames:timeline({startup,active,recovery,startupPose:art.slice(0,Math.max(1,hit)),activePose:art[hit],
       recoveryPose:(combo?.followThrough??config.followThrough) && hit<art.length-1?art.slice(hit+1):config.idle??art.at(-1)})};

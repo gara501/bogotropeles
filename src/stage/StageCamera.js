@@ -3,6 +3,8 @@ import {stageLayout,arenaScroll,nextScroll,stepScroll,floorSpan} from './scroll.
 import {ParallaxBackground} from './ParallaxBackground.js';
 import {AmbientTraffic} from './AmbientTraffic.js';
 import {StageProps} from './StageProps.js';
+import {StageRain} from './StageRain.js';
+import {GroundPigeons} from './GroundPigeons.js';
 
 /** Owns the camera scroll, the walkable floor span, the parallax layers and the GO → prompt. */
 export class StageCamera {
@@ -13,6 +15,8 @@ export class StageCamera {
       .setOrigin(1,.5).setScrollFactor(0).setDepth(1000).setVisible(false);
     this.traffic=scene.level.traffic?new AmbientTraffic(scene,scene.level.traffic,this.background):null;
     this.props=new StageProps(scene,scene.level.props,this.layout.width);
+    this.rain=scene.level.rain?new StageRain(scene,scene.level.rain):null;
+    this.pigeons=scene.level.groundPigeons?new GroundPigeons(scene,scene.level.groundPigeons,this.layout.width):null;
     this.apply(0);
   }
   get wavesPerArena(){return this.layout.perArena;}
@@ -27,6 +31,8 @@ export class StageCamera {
     this.background.update(this.scrollX,this.time);
     this.traffic?.update(this.scrollX);
     this.props?.update(ARCADE.clock.stepMs);
+    this.rain?.update(ARCADE.clock.stepMs/1000);
+    this.pigeons?.update();
     const waiting=Boolean(s.waves?.awaitingAdvance) && !s.finished && s.health>0;
     this.go.setVisible(waiting && frame%40<26);
   }
@@ -41,5 +47,5 @@ export class StageCamera {
     const p=this.scene.player,{left,right}=this.scene.floor;
     if(p){p.x=Math.max(left,Math.min(right,p.x<left?left+135:p.x));this.scene.placeFighter?.(p,p.z??0);}
   }
-  destroy(){this.background.destroy();this.traffic?.destroy();this.props?.destroy();this.go.destroy();}
+  destroy(){this.background.destroy();this.traffic?.destroy();this.props?.destroy();this.rain?.destroy();this.pigeons?.destroy();this.go.destroy();}
 }

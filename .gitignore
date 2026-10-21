@@ -5,6 +5,8 @@ releases/
 *.local
 .DS_Store
 backups/
+tmp/
+output/
 ejemplos/
 preview.png
 enemies-preview.png

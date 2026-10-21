@@ -3,18 +3,19 @@ import {ENEMY_ATTACK_SOUNDS} from '../audio/SoundEffects.js';
 
 function playStage(scene,enemy,index,windup) {
   const state=`attack${index+1}`,frames=enemy.config.animations[state];
-  scene.play(enemy,state,windup*frames.length/enemy.config.combo.hitFrame);
+  const combo=enemy.config.combo,hit=combo.hitFrames?.[index]??combo.hitFrame??Math.floor(frames.length/2);
+  scene.play(enemy,state,windup*frames.length/Math.max(1,hit));
 }
 
 export function beginEnemyAttack(scene,enemy,facing) {
   const now=scene.combatTime,combo=enemy.config.combo,windup=combo?.windup??ENEMY_TIMING.windup;
-  const duration=windup+(combo?combo.interval*2+combo.recovery:ENEMY_TIMING.recovery);
+  const duration=windup+(combo?combo.interval*((combo.stages??3)-1)+combo.recovery:ENEMY_TIMING.recovery);
   enemy.pending={enemy,release:now+windup,facing,index:0,connected:false,animateAt:0,stageToPlay:0};
   enemy.actionUntil=now+duration;
   enemy.nextHit=now+(combo?.cooldown??(enemy.config.ranged?ENEMY_TIMING.rangedCooldown:ENEMY_TIMING.cooldown))/scene.level.pressure;
   scene.nextGroupAttack=now+Math.max(ENEMY_TIMING.groupSpacing/scene.level.pressure,combo?duration:0);
   if(combo)playStage(scene,enemy,0,windup);else scene.play(enemy,'attack',windup*2);
-  enemy.tell.setText(combo?'! ×3':'!').setVisible(true);
+  enemy.tell.setText(combo?`! ×${combo.stages??3}`:'!').setVisible(true);
   if(enemy.key==='rider')scene.sfx?.play('moto');
 }
 
@@ -38,9 +39,9 @@ export function updateEnemyAttack(scene,enemy) {
   const connected=contact && scene.hitPlayer(enemy.config.damage,pending);
   if(connected)pending.connected=true;
   const frames=enemy.config.animations[`attack${pending.index+1}`];
-  enemy.sprite.stop().setFrame(frames[combo.hitFrame]);
+  enemy.sprite.stop().setFrame(frames[combo.hitFrames?.[pending.index]??combo.hitFrame??Math.floor(frames.length/2)]);
   pending.index++;
-  if(pending.index===3 || (pending.index===1 && combo.confirmFirst && !connected) || scene.health<=0) {
+  if(pending.index===(combo.stages??3) || (pending.index===1 && combo.confirmFirst && !connected) || scene.health<=0) {
     enemy.pending=null;enemy.actionUntil=now+combo.recovery;enemy.recoveryPoseUntil=now+90;
     if(scene.comboVictim===pending)scene.comboVictim=null;
   } else {

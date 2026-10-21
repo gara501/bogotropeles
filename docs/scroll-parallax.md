@@ -21,12 +21,45 @@
   (`waves.skipToEnd()` + `stage.jumpToArena()`).
 
 Longitudes actuales: nivel 1 = 3 arenas (2400 px); niveles 2–5 = 4 arenas (3120 px);
-nivel 6 = 6 arenas (4560 px).
+nivel 6 y Zona Rosa = 6 arenas (4560 px) cada uno.
+
+Todos los niveles salvo el 4 configuran `rain:{delay:[3000,60000],duration:20000}`.
+`StageRain` sortea un inicio entre los 3 y 60 segundos de juego activo en cada intento,
+sin depender del avance ni de la posición del jugador: puede llover desde la primera arena.
+El aguacero dura 20 segundos del reloj de combate (la pausa y
+las pantallas de continuación detienen el conteo), con oscurecimiento gradual, gotas y
+ondas sobre el piso, debajo del HUD. Mientras llueve, el jugador y los enemigos que
+caminan conservan una inercia leve al frenar o girar, sin alterar saltos, golpes, agarres
+ni reacciones al daño. Al terminar la lluvia vuelve el control normal; victoria, game over
+y salida del escenario limpian el efecto. Reiniciar el nivel permite que vuelva a llover.
+
+En Plaza de Bolívar, `groundPigeons` activa `GroundPigeons` al cruzar la mitad del mundo
+(x=1560). Mantiene hasta tres grupos de cuatro palomas que picotean el piso con
+`NPC/pigeon_ground.png` (4 celdas de 128×128). Se distribuyen por tres franjas del suelo
+y se reponen cada 4,5 segundos cuando queda un hueco, evitando aparecer encima del jugador.
+Acercarse a menos de 95 px en horizontal y 32 px en profundidad las alerta: tras 450 ms
+vuelan hacia la posición marcada del jugador usando `pigeon_flight.png`. Cambiar de franja
+o saltar permite esquivarlas; cada grupo puede hacer daño una sola vez y luego se va.
+No cuentan como enemigos de las oleadas ni otorgan puntos. Al comenzar la entrada del jefe,
+incluidos los checkpoints, se retiran todas y dejan de reaparecer. Comparten el reloj de
+combate para congelarse durante la pausa y las continuaciones.
 
 ## Agregar capas de parallax a un nivel
 
-Hoy cada nivel usa su imagen única repetida (`level_N.png`, factor 1). Para usar capas,
-agrega `layers` al nivel y carga las imágenes con su clave:
+Los escenarios se registran en `src/data/campaign.js` con su carpeta de arte y sus capas.
+El cargador acepta PNG en `src/scenes/levelN/game/` o directamente en `src/scenes/levelN/`,
+con prioridad para `game/` si hay nombres duplicados. `level_N.png` es opcional: si falta,
+la intro compone las mismas capas del nivel. La zona caminable se toma de `top` y `bottom` del escenario.
+
+Zona Rosa usa `level7/`: `sky`, `skyline`, `buildings`, `floor`, `streetlights` y `front`.
+Los factores son 0.06, 0.18, 0.55, 1, 0.85 y 1.25; `front` se dibuja delante de los personajes.
+Los peatones de `npc_politicos.png`, basados en la foto de referencia, reemplazan a los gomelos y se reparten en doce posiciones con ocho personajes distintos.
+Comparten factor 0.55 con la fachada, con los pies sobre el piso frente a la terraza. Los huecos de 960 px
+evitan las jardineras de las esquinas. `edgeMargin:32` y `edgeFade:24` ocultan suavemente cada sprite
+antes de que sus manos, zapatos o sombra alcancen el borde de la vista; esta opción solo se aplica a Zona Rosa.
+Para agregar otro escenario basta con añadir su registro de campaña y sus PNG; no hay un contador fijo de niveles.
+
+Ejemplo de capas resueltas:
 
 ```js
 layers:[

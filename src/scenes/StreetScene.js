@@ -1,12 +1,18 @@
 import Phaser from 'phaser';
 import { characters } from '../data/characters.js';
 import { levels, levelTextures } from '../data/levels.js';
-import { enemies, knife, projectileTextures } from '../data/enemies.js';
+import { enemies, knife, projectileTextures, STRUGGLE_SHEET } from '../data/enemies.js';
 import { bossFor, BOSS_MUSIC } from '../data/bosses.js';
 import { MiniBoss } from '../boss/MiniBoss.js';
+import { PigeonFlock, PIGEON_FLIGHT } from '../boss/PigeonFlock.js';
+import {GROUND_PIGEON} from '../stage/GroundPigeons.js';
+import {MOTORATA_ENTRY} from '../data/motorata.js';
+import {MotorcycleArrivals} from '../actors/MotorcycleArrivals.js';
+import groundPigeonUrl from '../data/NPC/pigeon_ground.png?url';
+import { SprayBarrage } from '../boss/SprayBarrage.js';
 import { GroundStains } from '../game/GroundStains.js';
 import { GasClouds } from '../game/GasClouds.js';
-import { registerAnimations, prepareEffects, prepareCutout } from '../data/spriteSheets.js';
+import { registerAnimations, prepareEffects, prepareCutout, prepareSheet, releaseSources, needsSource } from '../data/spriteSheets.js';
 import { IPHONE } from '../data/iphone.js';
 import { IPhoneSpecial } from '../projectiles/IPhoneSpecial.js';
 import { OrbitingBooks, prepareBookTextures } from '../specials/OrbitingBooks.js';
@@ -27,12 +33,15 @@ import {ArcadeRuntime} from '../game/ArcadeRuntime.js';
 import {EnergyPickups} from '../game/EnergyPickups.js';
 import {preloadPickups,preparePickups} from '../data/pickups.js';
 import {preloadProps,prepareProps} from '../data/props.js';
+import {preloadPacho,preparePacho} from '../data/pacho.js';
 import {StageCamera} from '../stage/StageCamera.js';
 import {viewLeft} from '../stage/scroll.js';
 import {Hud} from '../ui/Hud.js';
 
 const FONT = "'IBM Plex Mono', monospace";
 const FLOOR = { bottom: 500, left: 65, right: 895 };
+// Every runtime sheet built from a raw PNG (see prepareSheet/prepareEffects): key → config with its url.
+const ACTOR_SHEETS = { ...characters, ...enemies, dormilon: bossSprite, 'boss-effects': bossEffects, 'motorata-entry': MOTORATA_ENTRY };
 
 export class StreetScene extends Phaser.Scene {
   constructor() { super('Street'); }
@@ -42,7 +51,7 @@ export class StreetScene extends Phaser.Scene {
     this.run=data.run??this.game?.run??new RunState();this.run.level=this.levelIndex;
     this.level = {...levels[this.levelIndex],music:chooseMusic(this.game?.lastMusicKey)};
     if(this.game)this.game.lastMusicKey=this.level.music.key;
-    this.floor = { ...FLOOR, top: this.level.top };
+    this.floor = { ...FLOOR, top: this.level.top, bottom: this.level.bottom??FLOOR.bottom };
     this.characterKey = data.character || 'office';
     this.character = characters[this.characterKey];
     this.combatTime = 0;
@@ -78,20 +87,25 @@ export class StreetScene extends Phaser.Scene {
     this.comboVictim = null;
     this.bossCheckpoint = Boolean(data.bossCheckpoint && this.level.boss);
     this.bossTest = import.meta.env.DEV ? data.bossTest : null;
+    if(this.bossTest)this.level={...this.level,boss:'dormilon'}; // Keep the old controller's opt-in QA route.
     this.enemyTest = import.meta.env.DEV ? data.enemyTest : null;
     this.debugPreview = import.meta.env.DEV && Boolean(data.playerPreview);
   }
 
   preload() {
-    preloadPickups(this);preloadProps(this);
+    if(this.level?.groundPigeons && !this.textures.exists(GROUND_PIGEON.key))this.load.spritesheet(GROUND_PIGEON.key,groundPigeonUrl,{frameWidth:GROUND_PIGEON.frameWidth,frameHeight:GROUND_PIGEON.frameHeight});
+    preloadPickups(this);preloadProps(this);preloadPacho(this);
     if(this.cameras?.main?.setZoom)fitArcadeCamera(this);
     preloadEffects(this);
     const label = this.add.text(480, 270, 'CARGANDO LA CIUDAD…', { fontFamily: FONT, fontSize: '18px', color: '#d6ed64' }).setOrigin(.5);
     this.load.once('complete', () => label.destroy());
     for (const level of levels) for (const asset of levelTextures(level)) if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.url);
-    for (const [key, actor] of Object.entries({ ...characters, ...enemies, dormilon: bossSprite, 'boss-effects': bossEffects })) {
-      if (!this.textures.exists(`${key}-source`)) this.load.image(`${key}-source`, actor.url);
-      (actor.appendUrls ?? []).forEach((url, i) => { if (!this.textures.exists(`${key}-append-${i}`)) this.load.image(`${key}-append-${i}`, url); });
+    for (const [key, actor] of Object.entries(ACTOR_SHEETS)) {
+      if (this.textures.exists(key)) continue; // already built (and its raw PNG released) in an earlier run: nothing to download or upload
+      if (needsSource(this, `${key}-source`)) this.load.image(`${key}-source`, actor.url);
+      (actor.appendUrls ?? []).forEach((url, i) => { if (needsSource(this, `${key}-append-${i}`)) this.load.image(`${key}-append-${i}`, url); });
+      if (actor.flock && !this.textures.exists(PIGEON_FLIGHT.key)) this.load.spritesheet(PIGEON_FLIGHT.key, actor.flock.url, { frameWidth: PIGEON_FLIGHT.frameWidth, frameHeight: PIGEON_FLIGHT.frameHeight });
+      if (actor.struggle && !this.textures.exists(`${key}-struggle`) && needsSource(this, `${key}-struggle-source`)) this.load.image(`${key}-struggle-source`, actor.struggle.url);
     }
     if (!this.textures.exists('knife')) this.load.image('knife', knife.url);
     for (const [key, url] of Object.entries(projectileTextures)) if (!this.textures.exists(key)) this.load.image(key, url);
@@ -105,22 +119,24 @@ export class StreetScene extends Phaser.Scene {
   }
 
   create() {
-    preparePickups(this);prepareProps(this);
+    preparePickups(this);prepareProps(this);preparePacho(this);
     fitArcadeCamera(this);
     applyPixelFilter(this);
     for (const [key, config] of Object.entries({ ...characters, ...enemies })) registerAnimations(this, key, config);
     registerAnimations(this, 'dormilon', bossSprite);
+    registerAnimations(this,'motorata-entry',MOTORATA_ENTRY);
+    for (const [key, config] of Object.entries(enemies)) if (config.struggle) prepareSheet(this, `${key}-struggle`, config.struggle.sheet??STRUGGLE_SHEET);
     prepareEffects(this, 'boss-effects', bossEffects);
     prepareCutout(this,IPHONE.texture,'office-source',IPHONE.sourceRect);
     // Tear-gas canister and cloud stages from the level 5 boss sheet.
     enemies.antidisturbios.gasRects.forEach(([x,y,width,height],i)=>prepareCutout(this,`gas-${i}`,'antidisturbios-source',{x,y,width,height}));
+    releaseSources(this);
     this.drawStreet();
     this.player = this.makeFighter(200, 450, this.characterKey, this.character);
     if(this.characterKey==='office')this.iphone=new IPhoneSpecial(this);
     if(this.characterKey==='student'){prepareBookTextures(this);this.books=new OrbitingBooks(this);}
     this.enemies = [];
     this.arcade=new ArcadeRuntime(this);
-    Object.assign(this.floor,ARCADE.lanes[this.levelIndex]);
     this.waves = new WaveDirector(this);
     this.energyPickups=new EnergyPickups(this);
     this.keys = this.input.keyboard.addKeys('W,A,S,D,H,J,K,L,SHIFT,SPACE,P,R,ENTER,UP,DOWN,LEFT,RIGHT');
@@ -159,11 +175,13 @@ export class StreetScene extends Phaser.Scene {
       this.invulnerableUntil=Infinity;
       this.enemies.forEach((enemy,index)=>{enemy.x=560+index*120;enemy.y=index?this.floor.top:450;});
     }
-    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge)) {
-      for(const enemy of this.enemies)for(const object of [enemy.sprite,enemy.shadow,enemy.healthBar,enemy.tell])object.destroy();
+    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap)) {
+      for(const enemy of this.enemies)for(const object of [enemy.sprite,enemy.shadow,enemy.healthBar,enemy.tell,enemy.taunt])object?.destroy();
       this.enemies=[];this.waves.spawned=this.level.total;this.defeated=this.level.total-1;
-      const enemy=this.spawnEnemy(this.enemyTest,0,0,2,0);
-      enemy.x=450;enemy.y=450;enemy.config.speed=0;enemy.nextHit=Infinity;
+      const isPacho=Boolean(enemies[this.enemyTest].pacho);
+      if(isPacho){this.defeated=this.level.total;this.bossIntroShown=true;}
+      const enemy=isPacho?this.spawnMiniBoss(bossFor(this.level)).enemy:this.spawnEnemy(this.enemyTest,0,0,2,0);
+      enemy.x=450;enemy.y=450;if(!enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
       this.player.x=400;this.player.y=450;this.nextGroupAttack=Infinity;this.updateCounter();
     }
     this.game.events.emit('level-start', this.levelIndex);
@@ -172,6 +190,7 @@ export class StreetScene extends Phaser.Scene {
     for(const object of this.children.list)if(object.type==='Text' && object.depth>=999)fitArcadeText(object);
     for(const object of this.overlay.list)if(object.type==='Text')fitArcadeText(object);
     this.events.once('shutdown', () => {
+      this.motorcycles?.destroy();this.motorcycles=null;
       this.energyPickups?.destroy();this.energyPickups=null;
       this.arcade?.destroy();this.arcade=null;
       this.music?.destroy(); this.music = null;
@@ -184,6 +203,8 @@ export class StreetScene extends Phaser.Scene {
       this.miniBoss?.destroy(); this.miniBoss = null;
       this.stains?.clear(); this.stains = null;
       this.gas?.clear(); this.gas = null;
+      this.flock?.clear(); this.flock = null;
+      this.sprayBarrage?.clear(); this.sprayBarrage = null;
     });
     if (this.bossTest && this.level.boss) {
       this.enemies.forEach(enemy => { enemy.hp=0; enemy.sprite.setVisible(false); enemy.shadow.setVisible(false); enemy.healthBar.setVisible(false); enemy.tell.setVisible(false); });
@@ -208,6 +229,7 @@ export class StreetScene extends Phaser.Scene {
     const enemy=this.makeFighter(x,y,key,config);
     Object.assign(enemy,{hp:config.hp,index,slot,nextHit:this.combatTime+1400+slot*300,
       actionUntil:0,pending:null,crossing,facing,crossingHit:false});
+    if(config.pacho){enemy.invulnerableUntil=Infinity;enemy.sprite.setVisible(false);enemy.shadow.setVisible(false);}
     enemy.healthBar=this.add.rectangle(x,y-config.height-10,42,4,0xd6ed64).setOrigin(0,.5);
     const entrance=ENEMY_SPAWN_SOUNDS[key];if(entrance)this.sfx?.play(entrance);
     enemy.tell=this.add.text(x,y-config.height-30,'!',{fontFamily:FONT,fontSize:'22px',color:'#ffcf69',fontStyle:'bold'}).setOrigin(.5).setVisible(false);
@@ -223,6 +245,7 @@ export class StreetScene extends Phaser.Scene {
       enemy.sprite.play({key:`${key}-attack`,repeat:-1});
     }
     enemy.sprite.setFlipX(facing<0);this.enemies.push(enemy);this.placeFighter(enemy);
+    if(config.motorcycle)(this.motorcycles??=new MotorcycleArrivals(this)).start(enemy);
     return enemy;
   }
 
@@ -235,7 +258,7 @@ export class StreetScene extends Phaser.Scene {
 
   play(actor, state, duration) {
     actor.sprite.anims.timeScale = duration ? actor.config.animations[state].length / 12 * 1000 / duration : 1;
-    actor.sprite.play(`${actor.key}-${state}`, true);
+    actor.sprite.play(`${actor.key}-${actor.config.animationKeys?.[state]??state}`, true);
   }
 
   idle(actor) {
@@ -260,7 +283,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   updateCounter() {
-    this.counter.setText(`NIVEL ${this.levelIndex + 1}/6 · ${this.boss ? 'JEFE FINAL' : this.miniBoss ? 'JEFE' : `${this.defeated}/${this.level.total} ${this.level.mode==='crossing'?'RESUELTOS':'DERROTADOS'}`}`);
+    this.counter.setText(`NIVEL ${this.levelIndex + 1} · ${this.boss || this.miniBoss ? 'JEFE' : `${this.defeated}/${this.level.total} ${this.level.mode==='crossing'?'RESUELTOS':'DERROTADOS'}`}`);
   }
 
   updateRunStatus(){this.runStatus?.setText(`VIDAS ${this.run.lives} · PUNTOS ${this.run.score}`);}
@@ -290,7 +313,7 @@ export class StreetScene extends Phaser.Scene {
     if(this.deathHandled)return;
     this.deathHandled=true;this.run.loseLife();this.updateRunStatus();
     this.iphone?.clear();this.books?.clear();this.playerAttack=null;this.comboVictim=null;
-    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];
+    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     this.enemies.forEach(e=>{e.pending=null;e.tell.setVisible(false);e.sprite.anims.pause();});
     this.boss?.setPaused(true);this.music?.setPaused(true);this.sfx?.stop();
     const deathSound=PLAYER_DEATH_SOUNDS[this.characterKey];if(deathSound)this.sfx?.play(deathSound);
@@ -319,16 +342,20 @@ export class StreetScene extends Phaser.Scene {
 
   endRun() {
     this.waitingContinue=false;this.finished=true;this.gameOver=true;
+    this.motorcycles?.clear();
+    this.stage?.pigeons?.clear();
+    this.stage?.rain?.clear();
     this.music?.stop();this.boss?.finish();this.game.events.emit('game-over');
   }
 
   beginBossIntro() {
     if(this.bossIntroShown || this.boss || this.miniBoss || !this.level.boss || !this.waves.cleared || this.health<=0)return false;
+    this.stage?.pigeons?.clear();
     // Enemy-type bosses skip the intro screen: they run in with an on-screen notice and their own music.
     if(bossFor(this.level)?.kind==='enemy'){this.bossIntroShown=true;this.spawnBoss();return true;}
     this.bossIntroShown=true;this.cinematic=true;this.playerAttack=null;
     if(this.arcade){this.arcade.player.transition('walk');this.arcade.clearInput();this.arcade.combat.tokens.clear();}
-    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];
+    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     this.iphone?.clear();this.books?.clear();this.music?.setPaused(true);
     this.sfx?.stop();
     for(const enemy of this.enemies) {
@@ -346,10 +373,11 @@ export class StreetScene extends Phaser.Scene {
 
   spawnBoss() {
     if(this.boss || this.miniBoss || !this.level.boss) return;
+    this.stage?.pigeons?.clear();
     this.dropBossRefill();
     const def=bossFor(this.level);
     if(def?.kind==='enemy')return this.spawnMiniBoss(def);
-    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];
+    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     this.playerAttack=null;this.invulnerableUntil=this.combatTime+2000;
     this.boss=new BossController(this,bossSprite);this.updateCounter();
   }
@@ -362,7 +390,8 @@ export class StreetScene extends Phaser.Scene {
   }
 
   spawnMiniBoss(def) {
-    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];
+    this.stage?.pigeons?.clear();
+    this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     const enemy=this.spawnEnemy(def.enemy,this.level.total,0,1,0);
     enemy.healthBar.setVisible(false);enemy.y=Math.round((this.floor.top+this.floor.bottom)/2);this.placeFighter(enemy);
     this.miniBoss=new MiniBoss(this,enemy,def);
@@ -423,7 +452,14 @@ export class StreetScene extends Phaser.Scene {
   }
 
   hitEnemy(enemy, attack) {
-    if(enemy.hp<=0 || this.combatTime<(enemy.invulnerableUntil??0))return; // e.g. a boss mid-evade
+    if(enemy.sackSpinning || enemy.hp<=0 || this.combatTime<(enemy.invulnerableUntil??0)){ // e.g. a boss mid-evade
+      if((enemy.pigeonShielded || enemy.sackSpinning) && this.add?.text && this.combatTime>=(enemy.immuneLabelAt??0)){ // show why the attack is blocked
+        enemy.immuneLabelAt=this.combatTime+600;
+        const label=this.add.text(enemy.x,enemy.y-enemy.config.height-26,'¡INVENCIBLE!',{fontFamily:FONT,fontSize:'12px',color:'#ffe37a',stroke:'#142127',strokeThickness:3}).setOrigin(.5).setDepth(951);
+        this.tweens?.add?.({targets:label,y:label.y-18,alpha:0,duration:520,onComplete:()=>label.destroy()});
+      }
+      return;
+    }
     this.lastHit={enemy,at:this.combatTime};
     enemy.jitterUntil=this.combatTime+(attack.finisher?200:120); // the hit body shudders for a moment
     if(enemy.config.shield && this.shieldBlocks(enemy,attack)) {
@@ -488,6 +524,7 @@ export class StreetScene extends Phaser.Scene {
   /** Blocked: chip damage only, no stagger or knockback; the attacker bounces off the shield. */
   blockHit(enemy,damage) {
     enemy.hp-=damage;enemy.healthBar.width=42*enemy.hp/enemy.config.hp;
+    this.arcade?.enemyPhase(enemy);
     this.sfx?.play('metalCrack');
     const facing=enemy.facing??(enemy.sprite.flipX?-1:1);
     this.player.x=Phaser.Math.Clamp(this.player.x+facing*14,this.floor.left,this.floor.right);
@@ -515,6 +552,16 @@ export class StreetScene extends Phaser.Scene {
     return true;
   }
 
+  /** Palomera's pigeon shield: ring of pigeons around her (boss/PigeonFlock.js). */
+  pigeonShieldStep(enemy, config) { (this.flock ??= new PigeonFlock(this)).shieldStep(enemy, config); }
+  stopPigeonShield() { this.flock?.stopShield(); }
+
+  /** Palomera's pigeon cloud (boss/PigeonFlock.js). */
+  launchFlock(enemy, config) {
+    this.flock ??= new PigeonFlock(this);
+    this.flock.launch(enemy, config);
+  }
+
   throwKnife(enemy, facing) {
     this.sfx?.play('knife');
     const x = enemy.x + facing * 55;
@@ -523,7 +570,7 @@ export class StreetScene extends Phaser.Scene {
     this.projectiles.push({ x, y: enemy.y, facing, damage: enemy.config.damage, sprite,owner:enemy });
   }
 
-  /** A wave of minions running in from both screen edges (level 4 boss). */
+  /** A wave of minions running in from both screen edges (level 1 and 4 bosses). */
   summonMinions(owner, summon) {
     owner.summonWave = (owner.summonWave ?? 0) + 1;
     const alive = this.enemies.filter(e => e.hp > 0 && e.summoner === owner).length;
@@ -566,7 +613,13 @@ export class StreetScene extends Phaser.Scene {
       gas:config.gas, startX:x, landX:config.gas ? x + facing * target : null, lift:config.lift ?? 70 });
   }
 
+  launchSprayBarrage(owner,config,damage){
+    this.sprayBarrage??=new SprayBarrage(this);
+    return this.sprayBarrage.launch(owner,config,damage);
+  }
+
   updateProjectiles(dt) {
+    this.sprayBarrage?.update();
     this.projectiles = this.projectiles.filter(projectile => {
       const previous = projectile.x;
       projectile.x += projectile.facing * (projectile.speed ?? knife.speed) * dt;
@@ -657,7 +710,19 @@ export class StreetScene extends Phaser.Scene {
     if(this.timeLeft===0){this.invulnerableUntil=0;this.respawnProtectedUntil=0;this.hitPlayer(this.health);}
   }
 
-  update(_time, delta) {
+  // Safety net: an exception inside Phaser's update stops the whole game loop (the picture freezes while the music
+  // keeps playing). Log it and keep the game running instead; each distinct error is reported once.
+  update(time, delta) {
+    try { this.updateFrame(time, delta); }
+    catch (error) {
+      if (!import.meta.env) throw error; // node --test: let the tests see it
+      this.reportedErrors ??= new Set();
+      const key = String(error?.message ?? error);
+      if (!this.reportedErrors.has(key)) { this.reportedErrors.add(key); console.error('[StreetScene] error en el ciclo del juego:', error); }
+      this.arcade?.clearInput?.();
+    }
+  }
+  updateFrame(_time, delta) {
     this.hud?.update();
     if(this.arcade){
       const runtime=this.arcade;
@@ -778,7 +843,7 @@ export class StreetScene extends Phaser.Scene {
       : (this.combatTime >= this.dashReadyAt ? 'SHIFT / DASH LISTO' : 'SHIFT / RECARGANDO…'));
     this.placeFighter(this.player, this.jumpHeight);
     this.updateEnemies(dt);
-    this.updateProjectiles(dt);
+    this.updateProjectiles(dt);this.flock?.update();
     this.iphone?.update(dt);
     this.books?.update(dt);
     this.waves.update();
@@ -794,7 +859,7 @@ export class StreetScene extends Phaser.Scene {
       const won = this.health > 0, last = this.levelIndex === levels.length - 1;
       if(!won){this.sfx?.stop();this.sfx?.play('lose');}
       if(!won) this.boss?.finish();
-      this.projectiles.forEach(p => p.sprite.destroy()); this.projectiles = [];
+      this.projectiles.forEach(p => p.sprite.destroy()); this.projectiles = [];this.flock?.clear();this.sprayBarrage?.clear();
       this.enemies.forEach(e => { e.pending = null; e.tell.setVisible(false); if (e.hp > 0) this.idle(e); });
       this.showOverlay(won ? (last ? 'BOGOTÁ DESPEJADA' : 'CUADRA DESPEJADA') : 'TE FALTÓ TINTO',
         won && !last ? 'ENTER PARA CONTINUAR' : 'R O ENTER PARA REINICIAR');
