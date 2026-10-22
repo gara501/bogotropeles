@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {ARCADE} from '../src/data/arcade.js';
-import {CAMPAIGN} from '../src/data/campaign.js';
+import {COMBAT_CAMPAIGN as CAMPAIGN} from '../src/data/campaign.js';
 import {waveSizes,stageLayout,arenaScroll,nextScroll,floorSpan,viewLeft} from '../src/stage/scroll.js';
 import {WaveDirector} from '../src/combat/WaveDirector.js';
 

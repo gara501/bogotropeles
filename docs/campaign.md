@@ -42,7 +42,7 @@ sin declarar victoria cuando termina una oleada intermedia.
 | 7 · Zona Rosa | enemy_4 / enemy_10 / motorata / enemy_11 / enemy_9 | 30 + jefe | 1,35 | 1,26 | 1,4 | 1,4 | 550 ms |
 
 A las listas de los niveles 3 en adelante se agrega `homeless` (El Costal), sin cambiar los totales ni los jefes.
-Su ataque da cinco vueltas invencibles y termina con dos segundos de mareo vulnerable; ver `docs/homeless.md`.
+Su ataque da tres vueltas invencibles y termina con dos segundos de mareo vulnerable; ver `docs/homeless.md`.
 
 La presión divide el descanso entre ataques y la separación del grupo; se
 conserva el aviso normal de 480 ms. Los combos tienen sus propios plazos y enemy_9 siempre prepara durante 1000 ms. Los multiplicadores se aplican

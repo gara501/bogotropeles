@@ -135,20 +135,24 @@ export function prepareEffects(scene, key, config) {
 
 export function prepareCutout(scene,key,sourceKey,rect) {
   if(scene.textures.exists(key))return;
-  const texture=scene.textures.createCanvas(key,rect.width,rect.height);
-  texture.context.drawImage(scene.textures.get(sourceKey).getSourceImage(),rect.x,rect.y,rect.width,rect.height,0,0,rect.width,rect.height);
-  const pixels=texture.context.getImageData(0,0,rect.width,rect.height);
+  // rect.scale (<1): resample the cut-out smaller (props drawn at a fraction of their source size would otherwise keep
+  // several MB of unused pixels on the GPU). The caller must compensate when it sizes the sprite.
+  const shrink=rect.scale&&rect.scale<1,cw=shrink?Math.max(1,Math.round(rect.width*rect.scale)):rect.width,ch=shrink?Math.max(1,Math.round(rect.height*rect.scale)):rect.height;
+  const texture=scene.textures.createCanvas(key,cw,ch);
+  if(shrink){texture.context.imageSmoothingEnabled=true;texture.context.imageSmoothingQuality='high';}
+  texture.context.drawImage(scene.textures.get(sourceKey).getSourceImage(),rect.x,rect.y,rect.width,rect.height,0,0,cw,ch);
+  const pixels=texture.context.getImageData(0,0,cw,ch);
   for(let i=3;i<pixels.data.length;i+=4)if(pixels.data[i]<=32)pixels.data[i]=0;
   // Chroma spill is removed only at the alpha edge; saturated clothing inside the person stays intact.
   if(rect.cleanFringes)for(let pass=0;pass<3;pass++){
     const remove=[];
-    for(let y=0;y<rect.height;y++)for(let x=0;x<rect.width;x++){
-      const i=(y*rect.width+x)*4,d=pixels.data;
+    for(let y=0;y<ch;y++)for(let x=0;x<cw;x++){
+      const i=(y*cw+x)*4,d=pixels.data;
       if(!d[i+3] || !isStudentFringe(d[i],d[i+1],d[i+2]))continue;
       let edge=false;
       for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){
         const nx=x+dx,ny=y+dy;
-        if(nx<0 || ny<0 || nx>=rect.width || ny>=rect.height || !d[(ny*rect.width+nx)*4+3])edge=true;
+        if(nx<0 || ny<0 || nx>=cw || ny>=ch || !d[(ny*cw+nx)*4+3])edge=true;
       }
       if(edge)remove.push(i+3);
     }

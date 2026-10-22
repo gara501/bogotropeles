@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {StageRain} from '../src/stage/StageRain.js';
-import {CAMPAIGN} from '../src/data/campaign.js';
+import {COMBAT_CAMPAIGN as CAMPAIGN} from '../src/data/campaign.js';
 
 class Visual {
   setDepth(value){this.depth=value;return this;}

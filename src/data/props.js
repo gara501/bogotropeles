@@ -34,8 +34,8 @@ const PASSENGER_RECTS=[[156,8,172,352],[494,11,172,351],[800,5,158,355],[1137,6,
 export const PROPS={
   // height: on-screen height of the tallest drawing; scale is shared so passengers keep their relative sizes.
   // noFlip: they carry lettering, so they are never mirrored. shadow: ground shadow width (share of the sprite width).
-  lechona:{texture:'prop-lechona',source:'prop-lechona-source',rect:[11,22,1292,1167],height:132,noFlip:true,shadow:.82},
-  merengon:{texture:'prop-merengon',source:'prop-merengon-source',rect:[93,13,1405,1000],height:112,noFlip:true,shadow:.9},
+  lechona:{texture:'prop-lechona',source:'prop-lechona-source',rect:[11,22,1292,1167],height:132,cutScale:.25,noFlip:true,shadow:.82},
+  merengon:{texture:'prop-merengon',source:'prop-merengon-source',rect:[93,13,1405,1000],height:112,cutScale:.25,noFlip:true,shadow:.9},
   ...Object.fromEntries(PASSENGER_RECTS.map((rect,i)=>[`passenger${i}`,{texture:`prop-passenger-${i}`,source:'prop-passengers-source',rect,
     scale:110/355,tint:0xe2e2e2,shadow:.55}])),
   ...Object.fromEntries(STATION.map(([rect,dir,speed],i)=>[`station${i}`,{texture:`prop-station-${i}`,source:'prop-station-source',rect,
@@ -61,7 +61,7 @@ export const POLITICO_NPCS=POLITICOS.map((_,i)=>`politico${i}`);
 export const STATION_NPCS=STATION.map((_,i)=>`station${i}`);
 export function preloadProps(scene){for(const [key,url] of Object.entries(SOURCES))if(needsSource(scene,key))scene.load.image(key,url);}
 export function prepareProps(scene){
-  for(const p of Object.values(PROPS)){const [x,y,width,height]=p.rect;prepareCutout(scene,p.texture,p.source,{x,y,width,height,cleanFringes:p.cleanFringes});}
+  for(const p of Object.values(PROPS)){const [x,y,width,height]=p.rect;prepareCutout(scene,p.texture,p.source,{x,y,width,height,cleanFringes:p.cleanFringes,scale:p.cutScale});}
 }
 /**
  * World positions for a level's props: from `start`, one every `spacing` px (± `jitter`, deterministic per level),

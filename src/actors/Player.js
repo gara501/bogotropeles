@@ -21,7 +21,8 @@ export class Player {
     const s=this.scene,airborne=this.jumpAge<ARCADE.jump.frames;this.lastCombo=null;
     if(airborne && type!=='kick')return false;
     if(type===s.character.special && (s.combatTime<s.specialReadyAt || !canSpendSpecialEnergy(s)))return false;
-    const data=playerAttackData(s.character,type,stage,airborne);if(!data)return false;
+    let data=playerAttackData(s.character,type,stage,airborne);if(!data)return false;
+    if(!airborne)data=s.vuvuzela?.attack(data)??data;
     if(this.state==='jump' && !airborne)this.transition('walk'); // landing frame: the jump state ends this same step
     this.transition(type===s.character.special?'special':'attack');
     this.action={data,index:0,displayedFrame:data.frames[0],targets:new Set(),committed:false};
@@ -50,8 +51,10 @@ export class Player {
   pose(state,age=this.age){const art=this.scene.character.animations[state];if(art?.length){const index=Math.floor(age/ARCADE.animation.walkFramesPerPose);this.actor.sprite.stop().setFrame(art[state==='walk'||state==='dash'?index%art.length:Math.min(art.length-1,index)]);}}
   move(dx,dy,multiplier=1){
     const s=this.scene,n=Math.max(1,Math.hypot(dx,dy)),speed=s.character.speed*multiplier;
+    const previous={x:this.actor.x,y:this.actor.y};
     this.actor.x=clamp(this.actor.x+dx/n*speed/ARCADE.clock.fps,s.floor.left,s.floor.right);
     this.actor.y=clamp(this.actor.y+dy/n*speed*ARCADE.movement.depthRatio/ARCADE.clock.fps,s.floor.top,s.floor.bottom);
+    s.chivaBonus?.resolveMovement?.(previous);
   }
   step(input){
     const s=this.scene,combat=this.runtime.combat;this.buffer.expire(this.runtime.frame);
@@ -119,7 +122,7 @@ export class Player {
   /** Walking into a grabbable enemy for a few frames seizes it. */
   tryGrab(input){
     const s=this.scene,p=this.actor,g=ARCADE.grab,dir=Math.sign(input.dx);
-    if(!dir || (p.z??0)>0){this.grabTouch=null;return false;}
+    if(!dir || (p.z??0)>0 || s.vuvuzela?.remaining){this.grabTouch=null;return false;}
     const target=s.enemies.find(e=>{
       const model=this.runtime.enemies.get(e);
       return model?.grabbable() && Math.sign(e.x-p.x)===dir && Math.abs(e.x-p.x)<=g.reach && Math.abs(e.y-p.y)<=g.depth;
@@ -180,6 +183,7 @@ export class Player {
   contact(action){
     const s=this.scene,attack=s.playerAttack;if(!attack)return;
     if(!action.committed){
+      s.vuvuzela?.commit(action);
       if(attack.type==='iphone'){action.committed=true;s.iphone?.release(attack);return;}
       if(attack.type==='books'){action.committed=true;s.books?.summon(attack);return;}
       if(attack.type===s.character.special){

@@ -1,12 +1,12 @@
 import {PICKUPS as C,CONTAINERS,ITEMS,containersFor} from '../data/pickups.js';
 import {ARCADE} from '../data/arcade.js';
 
-/** Breakable containers (can / taquilla / parking) that drop items: every C.fullEvery-th drop of the level a
+/** Breakable containers (can / taquilla / parking / boxes) that drop items: every C.fullEvery-th drop of the level a
  * changua (all energy); otherwise a TuLlave card (+1000 points, C.moneyChance) or a pandebono (+25 energy).
  * `cans` holds every container, whatever its kind (specials and combat target that list). */
 export class EnergyPickups {
   constructor(scene,random=Math.random){this.scene=scene;this.random=random;this.rolled=new Set();this.cans=[];this.items=[];this.drops=0;}
-  spawn(x,y,kind=containersFor(this.scene.levelIndex??0)[0]){
+  spawn(x,y,kind=containersFor(this.scene.level.combatIndex??this.scene.levelIndex??0)[0]){
     const s=this.scene,c=CONTAINERS[kind],sprite=s.add.image(x,y,`${kind}-0`).setOrigin(.5,1).setScale(c.height/c.rects[0][3]).setDepth(y);
     const can={x,y,kind,hp:C.hits,config:{height:c.height,hurtbox:{halfWidth:C.halfWidth,halfDepth:C.halfDepth}},sprite,brokenAt:null,hitAt:null};
     this.cans.push(can);return can;
@@ -34,7 +34,7 @@ export class EnergyPickups {
     if(!this.rolled.has(arena) && (!s.stage || s.stage.reached(arena))){
       this.rolled.add(arena);
       if(this.random()<C.chance){
-        const left=s.stage?.arenaScroll(arena)??0,kinds=containersFor(s.levelIndex??0);
+        const left=s.stage?.arenaScroll(arena)??0,kinds=containersFor(s.level.combatIndex??s.levelIndex??0);
         const x=left+ARCADE.screen.width*(C.spawnLeft+this.random()*(C.spawnRight-C.spawnLeft));
         const y=s.floor.top+C.laneMargin+this.random()*Math.max(0,s.floor.bottom-s.floor.top-2*C.laneMargin);
         this.spawn(x,y,kinds.length>1?kinds[Math.min(kinds.length-1,Math.floor(this.random()*kinds.length))]:kinds[0]);

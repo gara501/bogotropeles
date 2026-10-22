@@ -1,6 +1,6 @@
 import {ARCADE,toFrames} from '../data/arcade.js';
 
-/** Five full sack rotations, then a fixed two-second vulnerable recovery. */
+/** Three full sack rotations, then a fixed two-second vulnerable recovery. */
 export class SackSpin {
   constructor(model){this.model=model;this.scene=model.scene;this.actor=model.actor;this.phase=null;this.age=0;}
   begin(){

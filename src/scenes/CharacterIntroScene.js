@@ -67,13 +67,24 @@ export class CharacterIntroScene extends Phaser.Scene {
       }
     }
 
+    // Measure the full story before typing so longer intros and endings fit above the controls.
+    this.body = this.add.text(36, 0, '', {
+      fontFamily: mono, fontSize: '16px', color: INK, lineSpacing: 7,
+      wordWrap: { width: W - 72, useAdvancedWrap: true },
+    }).setDepth(1);
+    this.fullText = this.body.getWrappedText(this.story.text).join('\n');
+    this.body.setText(this.fullText);
+    const panelTop = Math.min(PANEL_TOP, H - 56 - this.body.height - 40);
+    this.body.setText('').setY(panelTop + 20);
+    this.shown = 0; this.wait = 0;
+
     // Cinematic bars + text panel.
     const topBar = this.add.rectangle(W / 2, -14, W, 28, 0x000000).setOrigin(.5, .5);
     this.tweens.add({ targets: topBar, y: 14, duration: 500, ease: 'Cubic.easeOut' });
     const panel = this.add.container(0, H);
-    panel.add(this.add.rectangle(0, 0, W, H - PANEL_TOP, 0x05080a, .86).setOrigin(0));
+    panel.add(this.add.rectangle(0, 0, W, H - panelTop, 0x05080a, .86).setOrigin(0));
     panel.add(this.add.rectangle(0, 0, W, 3, 0xd6ed64).setOrigin(0));
-    this.tweens.add({ targets: panel, y: PANEL_TOP, duration: 550, delay: 250, ease: 'Cubic.easeOut' });
+    this.tweens.add({ targets: panel, y: panelTop, duration: 550, delay: 250, ease: 'Cubic.easeOut' });
 
     // Name plate.
     const right = this.story.nameSide === 'right', from = right ? W + 300 : -300, to = right ? W - 36 : 36;
@@ -81,18 +92,14 @@ export class CharacterIntroScene extends Phaser.Scene {
     const tag = this.add.text(from, 40, ending ? `FINAL · PLAYER ${n}` : `PLAYER ${n}`, { fontFamily: mono, fontSize: '13px', color: ACCENT, stroke: DARK, strokeThickness: 4, fontStyle: '600' });
     const name = this.add.text(from, 56, this.story.name, { fontFamily: title, fontSize: '52px', fontStyle: '900', color: '#ffffff', stroke: DARK, strokeThickness: 8 });
     name.setShadow(4, 4, '#000000', 0, true, true);
-    if (right) { tag.setOrigin(1, 0); name.setOrigin(1, 0); }
-    this.tweens.add({ targets: [tag, name], x: to, duration: 520, delay: 450, ease: 'Back.easeOut' });
-
-    // Story text: wrap once with the final width so words never jump lines while typing.
-    this.body = this.add.text(36, PANEL_TOP + 20, '', {
-      fontFamily: mono, fontSize: '16px', color: INK, lineSpacing: 7,
-      wordWrap: { width: W - 72, useAdvancedWrap: true },
+    const description = this.add.text(from, 122, this.story.description ?? '', {
+      fontFamily: mono, fontSize: '13px', color: INK, stroke: DARK, strokeThickness: 4,
+      align: right ? 'right' : 'left', lineSpacing: 3, wordWrap: { width: 650, useAdvancedWrap: true },
     });
-    this.fullText = this.body.getWrappedText(this.story.text).join('\n');
-    this.shown = 0; this.wait = 0;
+    if (right) { tag.setOrigin(1, 0); name.setOrigin(1, 0); description.setOrigin(1, 0); }
+    this.tweens.add({ targets: [tag, name, description], x: to, duration: 520, delay: 450, ease: 'Back.easeOut' });
 
-    this.cursor = this.add.text(0, 0, '▌', { fontFamily: mono, fontSize: '16px', color: ACCENT });
+    this.cursor = this.add.text(0, 0, '▌', { fontFamily: mono, fontSize: '16px', color: ACCENT }).setDepth(1);
     this.tweens.add({ targets: this.cursor, alpha: 0, duration: 260, yoyo: true, repeat: -1 });
 
     const touch = this.game.touchControls?.mobile?.();

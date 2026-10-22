@@ -24,7 +24,7 @@ const LEVEL6_ART={folder:'level6',
 const LEVEL7_ART={folder:'level7',
   layers:[{file:'sky',factor:.06},{file:'skyline',factor:.18},{file:'buildings',factor:.55},{file:'floor',factor:1},
     {file:'streetlights',factor:.85},{file:'front',factor:1.25,front:true}]};
-export const CAMPAIGN = [
+export const COMBAT_CAMPAIGN = [
   {name:'TransMilenio · Exterior',art:LEVEL1_ART,boss:'barra',top:400,enemies:['fan','brawler'],total:15,hp:.65,speed:.85,damage:.8,pressure:.8,gap:1100,props:{kinds:['station0','station4','station8','station5','station15','station9','station1','station10','station12','station6','station3','station13','station11','station14','station2','station7'],start:180,spacing:260,jitter:80,baseline:-18,depthJitter:3}},
   {name:'Plaza de Bolívar',art:LEVEL2_ART,boss:'palomera',top:410,enemies:['walker','rider','vendor','belly'],total:20,mode:'crossing',crossingEnemies:['rider'],hp:.75,speed:.95,damage:.9,pressure:.9,gap:1000,
     groundPigeons:{at:.5,groups:3,birds:4,respawn:4500,radius:95,depth:32,hitDepth:20,tell:450,flight:1700,damage:5}},
@@ -35,8 +35,13 @@ export const CAMPAIGN = [
   {name:'Zona Rosa',art:LEVEL7_ART,top:415,enemies:['guard','belly','motorata','leash','vendor'],total:30,hp:1.35,speed:1.26,damage:1.4,pressure:1.4,gap:550,boss:'pacho',
     props:{kinds:['politico0','politico1','politico2','politico3','politico4','politico5','politico6','politico7'],scrollFactor:.55,
       slots:{period:960,offsets:[210,340,630,765],fill:1},baseline:-4,depthJitter:3,edgeMargin:32,edgeFade:24}},
-].map((level,index)=>({...level,enemies:index>=2?[...level.enemies,'homeless']:level.enemies,
+].map((level,index)=>({...level,combatIndex:index,enemies:[...(index>=2?[...level.enemies,'homeless']:level.enemies),...([1,2,4,5,6].includes(index)?['malabarista']:[]),...([1,2,4].includes(index)?['parlanchin']:[])],
   ...(index===3?{}:{rain:{delay:[3000,60000],duration:20000}})}));
+
+export const CYCLING_LEVEL={name:'Ciclovía',mode:'cycling',top:300,bottom:485,enemies:[],total:0,boss:null,rain:null,
+  hp:.7,speed:.9,damage:.85,pressure:.85,gap:0};
+export const CAMPAIGN=[COMBAT_CAMPAIGN[0],CYCLING_LEVEL,...COMBAT_CAMPAIGN.slice(1)];
+export const campaignIndexForCombat=index=>index===0?0:index+1;
 
 export function waveSize(wave,remaining){return Math.min(wave%2?3:2,remaining);}
 export function scaledEnemy(base,level) {

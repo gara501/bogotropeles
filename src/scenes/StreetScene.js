@@ -14,6 +14,7 @@ import { GroundStains } from '../game/GroundStains.js';
 import { GasClouds } from '../game/GasClouds.js';
 import { registerAnimations, prepareEffects, prepareCutout, prepareSheet, releaseSources, needsSource } from '../data/spriteSheets.js';
 import { IPHONE } from '../data/iphone.js';
+import { actorsFor } from '../data/actorSet.js';
 import { IPhoneSpecial } from '../projectiles/IPhoneSpecial.js';
 import { OrbitingBooks, prepareBookTextures } from '../specials/OrbitingBooks.js';
 import { bossSprite, bossEffects } from '../boss/config.js';
@@ -31,17 +32,52 @@ import { playerAttackHits, knifeHits, DASH, enemyCanAdvance, dashDirection } fro
 import {ARCADE,fitArcadeCamera,fitArcadeText,applyPixelFilter} from '../data/arcade.js';
 import {ArcadeRuntime} from '../game/ArcadeRuntime.js';
 import {EnergyPickups} from '../game/EnergyPickups.js';
-import {preloadPickups,preparePickups} from '../data/pickups.js';
+import {Vuvuzela,VUVUZELA_TEXTURE,prepareVuvuzela} from '../game/Vuvuzela.js';
+import vuvuzelaUrl from '../data/items/item_vuvuzela.png?url';
+import {preloadVuvuzelaPlayer,prepareVuvuzelaPlayer} from '../data/vuvuzelaPlayers.js';
+import {preloadPickups,preparePickups,preloadItem} from '../data/pickups.js';
 import {preloadProps,prepareProps} from '../data/props.js';
 import {preloadPacho,preparePacho} from '../data/pacho.js';
 import {StageCamera} from '../stage/StageCamera.js';
 import {viewLeft} from '../stage/scroll.js';
 import {Hud} from '../ui/Hud.js';
+import {ChivaBonus} from '../bonus/ChivaBonus.js';
+import {preloadChivaBonus,prepareChivaBonus} from '../data/chivaBonus.js';
+import {JUGGLING_CLUB_RECT} from '../data/juggler.js';
+import {CyclingStage} from '../cycling/CyclingStage.js';
+import {preloadCycling,CYCLING_ASSETS} from '../data/cycling.js';
 
 const FONT = "'IBM Plex Mono', monospace";
 const FLOOR = { bottom: 500, left: 65, right: 895 };
 // Every runtime sheet built from a raw PNG (see prepareSheet/prepareEffects): key → config with its url.
 const ACTOR_SHEETS = { ...characters, ...enemies, dormilon: bossSprite, 'boss-effects': bossEffects, 'motorata-entry': MOTORATA_ENTRY };
+
+function loadActor(scene, key, actor) {
+  if (!actor || scene.textures.exists(key)) return; // already built (and its raw PNG released) in an earlier run: nothing to download or upload
+  if (needsSource(scene, `${key}-source`)) scene.load.image(`${key}-source`, actor.url);
+  (actor.appendUrls ?? []).forEach((url, i) => { if (needsSource(scene, `${key}-append-${i}`)) scene.load.image(`${key}-append-${i}`, url); });
+  if (actor.flock && !scene.textures.exists(PIGEON_FLIGHT.key)) scene.load.spritesheet(PIGEON_FLIGHT.key, actor.flock.url, { frameWidth: PIGEON_FLIGHT.frameWidth, frameHeight: PIGEON_FLIGHT.frameHeight });
+  if (actor.struggle && !scene.textures.exists(`${key}-struggle`) && needsSource(scene, `${key}-struggle-source`)) scene.load.image(`${key}-struggle-source`, actor.struggle.url);
+}
+
+function prepareActor(scene, key, actor) {
+  if (key === 'boss-effects') prepareEffects(scene, key, actor);
+  else registerAnimations(scene, key, actor);
+  if (actor.struggle) prepareSheet(scene, `${key}-struggle`, actor.struggle.sheet ?? STRUGGLE_SHEET);
+}
+
+/** Frees the sheets of actors this run does not use (a previous level or fighter) and lets them be downloaded again if needed later. */
+function evictActors(scene, wanted) {
+  const spent = scene.game?.spentSources;
+  for (const [key, actor] of Object.entries(ACTOR_SHEETS)) {
+    if (wanted.has(key)) continue;
+    for (const name of [key, `${key}-struggle`, `${key}-vuvuzela`]) if (scene.textures.exists(name)) scene.textures.remove(name);
+    // Animations keep references to the old frames: drop them so registerAnimations rebuilds them on the next load.
+    for (const state of Object.keys(actor.animations ?? {})) scene.anims.remove(`${key}-${state}`);
+    const raws = [`${key}-source`, `${key}-struggle-source`, `${key}-vuvuzela-source`, ...(actor.appendUrls ?? []).map((_, i) => `${key}-append-${i}`)];
+    for (const name of raws) spent?.delete(name);
+  }
+}
 
 export class StreetScene extends Phaser.Scene {
   constructor() { super('Street'); }
@@ -50,10 +86,15 @@ export class StreetScene extends Phaser.Scene {
     this.levelIndex = Phaser.Math.Clamp(data.level ?? 0, 0, levels.length - 1);
     this.run=data.run??this.game?.run??new RunState();this.run.level=this.levelIndex;
     this.level = {...levels[this.levelIndex],music:chooseMusic(this.game?.lastMusicKey)};
+    this.isChivaBonus=Boolean(data.chivaBonus);this.chivaBonus=null;this.bonusReturnLevel=data.returnLevel??3;
+    if(this.isChivaBonus)this.level={...this.level,name:'BONUS · LA CHIVA',total:0,boss:null,enemies:[],crossingEnemies:[],
+      top:400,bottom:500,props:null,rain:null,traffic:null,groundPigeons:null};
+    this.isCycling=this.level.mode==='cycling' && !this.isChivaBonus;this.cycling=null;
     if(this.game)this.game.lastMusicKey=this.level.music.key;
     this.floor = { ...FLOOR, top: this.level.top, bottom: this.level.bottom??FLOOR.bottom };
     this.characterKey = data.character || 'office';
     this.character = characters[this.characterKey];
+    this.wanted = actorsFor(this.level, this.characterKey, [...(import.meta.env.DEV && data.bossTest ? ['dormilon'] : []), ...(import.meta.env.DEV && data.enemyTest ? [data.enemyTest] : [])]);
     this.combatTime = 0;
     this.health = 100;
     this.deathHandled=false;this.waitingContinue=false;this.gameOver=false;this.respawnDelay=0;
@@ -93,20 +134,31 @@ export class StreetScene extends Phaser.Scene {
   }
 
   preload() {
+    if(this.isCycling){
+      evictActors(this,new Set()); // the street fighters' sheets (tens of MB) are not used while cycling; they reload on demand
+      preloadCycling(this);preloadEffects(this);preloadItem(this,'money');preloadItem(this,'full');
+      if(!this.cache.audio.exists(this.level.music.key))this.load.audio(this.level.music.key,this.level.music.url);
+      return;
+    }
+    // Leaving the bicycle stage: its five rider sheets, obstacles and background are no longer needed (they reload on demand).
+    for(const key of Object.keys(CYCLING_ASSETS))if(this.textures.exists(key))this.textures.remove(key);
+    if(this.isChivaBonus)preloadChivaBonus(this);
+    preloadVuvuzelaPlayer(this);
+    if(!this.textures.exists(VUVUZELA_TEXTURE))this.load.image(VUVUZELA_TEXTURE,vuvuzelaUrl);
     if(this.level?.groundPigeons && !this.textures.exists(GROUND_PIGEON.key))this.load.spritesheet(GROUND_PIGEON.key,groundPigeonUrl,{frameWidth:GROUND_PIGEON.frameWidth,frameHeight:GROUND_PIGEON.frameHeight});
     preloadPickups(this);preloadProps(this);preloadPacho(this);
     if(this.cameras?.main?.setZoom)fitArcadeCamera(this);
     preloadEffects(this);
     const label = this.add.text(480, 270, 'CARGANDO LA CIUDAD…', { fontFamily: FONT, fontSize: '18px', color: '#d6ed64' }).setOrigin(.5);
     this.load.once('complete', () => label.destroy());
-    for (const level of levels) for (const asset of levelTextures(level)) if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.url);
-    for (const [key, actor] of Object.entries(ACTOR_SHEETS)) {
-      if (this.textures.exists(key)) continue; // already built (and its raw PNG released) in an earlier run: nothing to download or upload
-      if (needsSource(this, `${key}-source`)) this.load.image(`${key}-source`, actor.url);
-      (actor.appendUrls ?? []).forEach((url, i) => { if (needsSource(this, `${key}-append-${i}`)) this.load.image(`${key}-append-${i}`, url); });
-      if (actor.flock && !this.textures.exists(PIGEON_FLIGHT.key)) this.load.spritesheet(PIGEON_FLIGHT.key, actor.flock.url, { frameWidth: PIGEON_FLIGHT.frameWidth, frameHeight: PIGEON_FLIGHT.frameHeight });
-      if (actor.struggle && !this.textures.exists(`${key}-struggle`) && needsSource(this, `${key}-struggle-source`)) this.load.image(`${key}-struggle-source`, actor.struggle.url);
-    }
+    // Only the current level's backgrounds (the menu has none): the other levels' parallax layers are freed so they never sit in GPU memory.
+    const currentArt = this.level ? levelTextures(this.level) : [], keepArt = new Set(currentArt.map(asset => asset.key));
+    for (const level of levels) for (const asset of levelTextures(level)) if (!keepArt.has(asset.key) && this.textures.exists(asset.key)) this.textures.remove(asset.key);
+    for (const asset of currentArt) if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.url);
+    // Only the fighter, enemies and boss this level needs; the menu (no level yet) loads none.
+    const wanted = this.wanted ?? new Set();
+    evictActors(this, wanted);
+    for (const key of wanted) loadActor(this, key, ACTOR_SHEETS[key]);
     if (!this.textures.exists('knife')) this.load.image('knife', knife.url);
     for (const [key, url] of Object.entries(projectileTextures)) if (!this.textures.exists(key)) this.load.image(key, url);
     if (bossFor(this.level)?.music && !this.cache.audio.exists(BOSS_MUSIC.key)) this.load.audio(BOSS_MUSIC.key, BOSS_MUSIC.url);
@@ -119,17 +171,18 @@ export class StreetScene extends Phaser.Scene {
   }
 
   create() {
+    if(this.isCycling){this.cycling=new CyclingStage(this);this.cycling.create();return;}
+    if(this.isChivaBonus)prepareChivaBonus(this);
+    prepareVuvuzelaPlayer(this);
+    prepareVuvuzela(this);
     preparePickups(this);prepareProps(this);preparePacho(this);
+    prepareCutout(this,'juggling-club','juggling-club-source',JUGGLING_CLUB_RECT);
     fitArcadeCamera(this);
     applyPixelFilter(this);
-    for (const [key, config] of Object.entries({ ...characters, ...enemies })) registerAnimations(this, key, config);
-    registerAnimations(this, 'dormilon', bossSprite);
-    registerAnimations(this,'motorata-entry',MOTORATA_ENTRY);
-    for (const [key, config] of Object.entries(enemies)) if (config.struggle) prepareSheet(this, `${key}-struggle`, config.struggle.sheet??STRUGGLE_SHEET);
-    prepareEffects(this, 'boss-effects', bossEffects);
-    prepareCutout(this,IPHONE.texture,'office-source',IPHONE.sourceRect);
+    for (const key of this.wanted) if (ACTOR_SHEETS[key]) prepareActor(this, key, ACTOR_SHEETS[key]);
+    if (this.wanted.has('office')) prepareCutout(this,IPHONE.texture,'office-source',IPHONE.sourceRect);
     // Tear-gas canister and cloud stages from the level 5 boss sheet.
-    enemies.antidisturbios.gasRects.forEach(([x,y,width,height],i)=>prepareCutout(this,`gas-${i}`,'antidisturbios-source',{x,y,width,height}));
+    if (this.wanted.has('antidisturbios')) enemies.antidisturbios.gasRects.forEach(([x,y,width,height],i)=>prepareCutout(this,`gas-${i}`,'antidisturbios-source',{x,y,width,height}));
     releaseSources(this);
     this.drawStreet();
     this.player = this.makeFighter(200, 450, this.characterKey, this.character);
@@ -139,6 +192,7 @@ export class StreetScene extends Phaser.Scene {
     this.arcade=new ArcadeRuntime(this);
     this.waves = new WaveDirector(this);
     this.energyPickups=new EnergyPickups(this);
+    this.vuvuzela=new Vuvuzela(this);
     this.keys = this.input.keyboard.addKeys('W,A,S,D,H,J,K,L,SHIFT,SPACE,P,R,ENTER,UP,DOWN,LEFT,RIGHT');
     this.input.keyboard.addCapture(['SPACE', 'UP', 'DOWN', 'LEFT', 'RIGHT']);
     this.playerName=this.add.text(26, 22, `${String(Object.keys(characters).indexOf(this.characterKey) + 1).padStart(2, '0')} / ${this.character.name}`, { fontFamily: FONT, fontSize: '15px', color: '#e8edce', fontStyle: 'bold' }).setDepth(1000);
@@ -168,6 +222,10 @@ export class StreetScene extends Phaser.Scene {
     ]).setDepth(2000).setVisible(false);
     this.music = new LevelMusic(this, this.level.music.key);
     this.sfx = new SoundEffects(this.sound,this.cache.audio);
+    if(this.isChivaBonus){
+      this.energyPickups.destroy();this.chivaBonus=new ChivaBonus(this);this.energyPickups=this.chivaBonus;
+      this.player.x=245;this.player.y=450;this.invulnerableUntil=0;
+    }
     if(this.bossCheckpoint) {
       this.waves.skipToEnd();this.stage.jumpToArena(this.waves.arena);this.defeated=this.level.total;this.bossIntroShown=true;this.spawnBoss();
     } else this.waves.update();
@@ -175,13 +233,13 @@ export class StreetScene extends Phaser.Scene {
       this.invulnerableUntil=Infinity;
       this.enemies.forEach((enemy,index)=>{enemy.x=560+index*120;enemy.y=index?this.floor.top:450;});
     }
-    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap)) {
+    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap || enemies[this.enemyTest]?.juggler || enemies[this.enemyTest]?.paint)) {
       for(const enemy of this.enemies)for(const object of [enemy.sprite,enemy.shadow,enemy.healthBar,enemy.tell,enemy.taunt])object?.destroy();
       this.enemies=[];this.waves.spawned=this.level.total;this.defeated=this.level.total-1;
       const isPacho=Boolean(enemies[this.enemyTest].pacho);
       if(isPacho){this.defeated=this.level.total;this.bossIntroShown=true;}
       const enemy=isPacho?this.spawnMiniBoss(bossFor(this.level)).enemy:this.spawnEnemy(this.enemyTest,0,0,2,0);
-      enemy.x=450;enemy.y=450;if(!enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
+      enemy.x=450;enemy.y=450;if(!enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap && !enemy.config.juggler && !enemy.config.paint)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
       this.player.x=400;this.player.y=450;this.nextGroupAttack=Infinity;this.updateCounter();
     }
     this.game.events.emit('level-start', this.levelIndex);
@@ -192,6 +250,8 @@ export class StreetScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       this.motorcycles?.destroy();this.motorcycles=null;
       this.energyPickups?.destroy();this.energyPickups=null;
+      this.chivaBonus=null;
+      this.vuvuzela?.destroy();this.vuvuzela=null;
       this.arcade?.destroy();this.arcade=null;
       this.music?.destroy(); this.music = null;
       this.sfx?.destroy();this.sfx=null;
@@ -267,6 +327,13 @@ export class StreetScene extends Phaser.Scene {
   }
 
   nextLevel() {
+    if(this.isChivaBonus){
+      if(this.chivaBonus?.ready && !this.transitioning){
+        this.transitioning=true;this.run.advance(this.bonusReturnLevel);
+        this.game.events.emit('level-transition',{character:this.characterKey,level:this.bonusReturnLevel});
+      }
+      return;
+    }
     if (this.finished && this.health > 0 && !this.transitioning && !this.victoryRemaining && this.levelIndex < levels.length - 1) {
       this.transitioning=true;
       this.run.advance(this.levelIndex+1);
@@ -275,6 +342,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   restartLevel() {
+    if(this.isChivaBonus)return false; // one bonus attempt; restarting cannot duplicate its reward
     if(this.restarting || this.cinematic || this.waitingContinue || this.gameOver || (this.finished && this.level.boss))return false;
     this.restarting=true;
     if(!this.boss && !this.miniBoss)this.run.score=this.run.levelStartScore;
@@ -283,14 +351,34 @@ export class StreetScene extends Phaser.Scene {
   }
 
   updateCounter() {
+    if(this.isChivaBonus){this.counter.setText('BONUS · LA CHIVA');return;}
     this.counter.setText(`NIVEL ${this.levelIndex + 1} · ${this.boss || this.miniBoss ? 'JEFE' : `${this.defeated}/${this.level.total} ${this.level.mode==='crossing'?'RESUELTOS':'DERROTADOS'}`}`);
   }
 
   updateRunStatus(){this.runStatus?.setText(`VIDAS ${this.run.lives} · PUNTOS ${this.run.score}`);}
   addScore(points){this.run.award(points);this.updateRunStatus();}
 
+  /** Changing fighter from the pause menu: its sheet may not be loaded yet (only the chosen one is), so load it first. */
+  ensureCharacter(key, done) {
+    if(this.isCycling)return done(); // All five bicycle sheets are prepared together.
+    if (!characters[key]) return done();
+    if(this.textures.exists(key) && this.textures.exists(`${key}-vuvuzela`))return done();
+    this.wanted.add(key);
+    loadActor(this, key, characters[key]);
+    preloadVuvuzelaPlayer(this,key);
+    this.load.once('complete', () => {
+      prepareActor(this, key, characters[key]);
+      prepareVuvuzelaPlayer(this,key);
+      if (key === 'office') prepareCutout(this, IPHONE.texture, 'office-source', IPHONE.sourceRect);
+      releaseSources(this);
+      done();
+    });
+    this.load.start();
+  }
+
   switchCharacter(key) {
     if(!characters[key] || this.gameOver)return false;
+    if(this.cycling){this.cycling.setCharacter(key);return true;}
     this.iphone?.destroy();this.books?.destroy();this.iphone=null;this.books=null;
     this.characterKey=key;this.character=characters[key];this.player.key=key;this.player.config=this.character;
     this.playerAttack=null;this.comboVictim=null;this.dashUntil=0;this.dashReadyAt=0;this.specialReadyAt=0;
@@ -312,6 +400,7 @@ export class StreetScene extends Phaser.Scene {
   handleDeath() {
     if(this.deathHandled)return;
     this.deathHandled=true;this.run.loseLife();this.updateRunStatus();
+    this.vuvuzela?.clearHeld();
     this.iphone?.clear();this.books?.clear();this.playerAttack=null;this.comboVictim=null;
     this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     this.enemies.forEach(e=>{e.pending=null;e.tell.setVisible(false);e.sprite.anims.pause();});
@@ -324,6 +413,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   respawn() {
+    if(this.cycling)return this.cycling.respawn();
     this.health=100;this.healthBar.width=200;this.deathHandled=false;this.respawnDelay=0;this.timeLeft=ARCADE.hud.timeLimit*1000;
     this.player.x=this.floor.left+135;this.player.y=Math.max(this.floor.top,Math.min(450,this.floor.bottom));
     this.playerAttack=null;this.comboVictim=null;this.jumpStart=-1000;this.jumpHeight=0;this.dashUntil=0;this.hurtUntil=0;
@@ -702,6 +792,7 @@ export class StreetScene extends Phaser.Scene {
 
   /** TIME countdown: restarts in each arena and when the boss appears; at 0 the player loses a life. */
   tickClock() {
+    if(this.isChivaBonus)return; // the bonus timer pays partial points instead of taking a life
     const limit=ARCADE.hud.timeLimit*1000;if(!this.hud || !limit)return;
     const section=`${this.waves?.arena}|${Boolean(this.boss || this.miniBoss)}`;
     if(section!==this.clockSection){this.clockSection=section;this.timeLeft=limit;}
@@ -723,6 +814,7 @@ export class StreetScene extends Phaser.Scene {
     }
   }
   updateFrame(_time, delta) {
+    if(this.cycling){this.cycling.update(delta);return;}
     this.hud?.update();
     if(this.arcade){
       const runtime=this.arcade;

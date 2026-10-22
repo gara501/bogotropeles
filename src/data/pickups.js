@@ -1,6 +1,7 @@
 import canUrl from './items/can.png?url';
 import taquillaUrl from './items/taquilla.png?url';
 import parkingUrl from './items/parking.png?url';
+import boxesUrl from './items/boxes.png?url';
 import energyUrl from './items/item_energy.png?url';
 import fullEnergyUrl from './items/item_full_energy.png?url';
 import moneyUrl from './items/item_money.png?url';
@@ -12,7 +13,7 @@ const strip=(top,bottom,cell=543)=>[0,1,2,3].map(i=>[i*cell,top,cell,bottom-top+
 // size (centred horizontally; `align` 'bottom' keeps the ground line, 'center' keeps a spinning card centred).
 
 // Breakable containers. poses: which frame shows when hit, while dented, and the breaking sequence.
-// can/taquilla have 6 poses (intact, hit, dented, three breaking); parking has 4 (intact, cracked, bursting, rubble).
+// can/taquilla/boxes have 6 poses (intact, hit, dented, three breaking); parking has 4 (intact, cracked, bursting, rubble).
 // levels: 0-based level indexes where each one can appear.
 export const CONTAINERS={
   can:{source:'can-source',url:canUrl,height:76,levels:[0,1,4,5,6],poses:{hit:1,dented:2,breaking:[3,4,5]},
@@ -22,6 +23,9 @@ export const CONTAINERS={
   // Parking meter: outdoor street levels.
   parking:{source:'parking-source',url:parkingUrl,height:96,levels:[0,2,4,5,6],poses:{hit:1,dented:1,breaking:[2,3]},align:'bottom',
     rects:[[131,19,302,695],[610,19,301,695],[1042,32,458,682],[1500,32,647,682]]},
+  // Fruit crates can appear in every arena's container pool. Shared canvas preserves debris size and the floor line.
+  boxes:{source:'boxes-source',url:boxesUrl,height:76,levels:[0,1,2,3,4,5,6],poses:{hit:1,dented:2,breaking:[3,4,5]},align:'bottom',
+    rects:[[26,207,290,413],[356,213,340,407],[713,218,347,402],[1065,159,347,466],[1424,212,366,413],[1810,462,356,163]]},
 };
 // Drops from any broken container: every `fullEvery`-th drop of a level is the changua (refills all energy);
 // otherwise a TuLlave card (+1000 points) with `moneyChance`, or the pandebono with chocolate (+25 energy).
@@ -44,6 +48,11 @@ export const containersFor=levelIndex=>{
   return kinds.length?kinds:['can'];
 };
 const ITEM_URLS={'item-energy-source':energyUrl,'item-money-source':moneyUrl,'item-full-source':fullEnergyUrl};
+/** Load one existing pickup for modes that do not use destructible containers. */
+export function preloadItem(scene,kind){
+  const item=ITEMS[kind];
+  if(!scene.textures.exists(item.texture) && needsSource(scene,item.source))scene.load.image(item.source,ITEM_URLS[item.source]);
+}
 export function preloadPickups(scene){
   for(const c of Object.values(CONTAINERS))if(needsSource(scene,c.source))scene.load.image(c.source,c.url);
   for(const [key,url] of Object.entries(ITEM_URLS))if(needsSource(scene,key))scene.load.image(key,url);
@@ -66,4 +75,7 @@ function prepareStrip(scene,prefix,source,rects,align){
 export function preparePickups(scene){
   for(const [kind,c] of Object.entries(CONTAINERS))prepareStrip(scene,kind,c.source,c.rects,c.align);
   for(const item of Object.values(ITEMS))prepareStrip(scene,item.prefix,item.source,item.rects,item.align);
+}
+export function prepareItem(scene,kind){
+  const item=ITEMS[kind];prepareStrip(scene,item.prefix,item.source,item.rects,item.align);
 }

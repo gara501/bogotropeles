@@ -108,7 +108,8 @@ export class Hud {
     this.record.setText(`TOP ${Math.max(this.bestRecord,s.run.score)}`);
     this.level.setText(s.counter?.text??'');
     const seconds=Math.max(0,Math.ceil((s.timeLeft??0)/1000));this.time.setText(String(seconds).padStart(2,'0'));
-    this.time.setColor(seconds<=10 && Math.floor(now/250)%2?'#ffffff':PINK);
+    const timeColor=seconds<=10 && Math.floor(now/250)%2?'#ffffff':PINK;
+    if(timeColor!==this.timeColor){this.timeColor=timeColor;this.time.setColor(timeColor);} // setColor repaints the text: only on change
     const enemy=this.target();this.showEnemy(enemy);
     if(enemy){
       const boss=s.boss && enemy===s.boss.actor;

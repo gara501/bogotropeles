@@ -7,25 +7,26 @@ class Visual {
   setPosition(x,y){this.x=x;this.y=y;return this;}
   setVisible(value){this.visible=value;return this;}
   setDepth(){return this;}
-  setDisplaySize(){return this;}
+  setDisplaySize(width,height){this.displayWidth=width;this.displayHeight=height;return this;}
   setAlpha(){return this;}
   destroy(){this.destroyed=true;}
 }
 const config={count:[8,11],stagger:55,flight:[800,1250],arc:150,radius:24,depth:16,
-  stain:{width:48,height:18,color:0xff43c6,ms:1800,damage:3}};
+  stain:{width:48,height:18,color:0xff43c6,ms:800,damage:3}};
 function setup(){
   const hits=[],paint=[];
   const s={floor:{left:785,right:1615,top:415,bottom:500},cameras:{main:{scrollX:720}},
     player:{x:1100,y:460,z:0},combatTime:0,jumpHeight:0,
     add:{image:(x,y)=>new Visual(x,y),ellipse:(x,y)=>new Visual(x,y)},
     hitPlayer:(...args)=>hits.push(args),paintStain:(...args)=>paint.push(args)};
-  const owner={x:1450,y:460,hp:500,facing:-1,config:{throw:{lift:92,texture:'spraycan'}}};
+  const owner={x:1450,y:460,hp:500,facing:-1,config:{throw:{lift:92,texture:'spraycan',width:30,height:30}}};
   const barrage=new SprayBarrage(s,()=>.5);barrage.launch(owner,config,6);
   return {s,owner,barrage,hits,paint};
 }
 
 test('a volley spans the scrolled screen, telegraphs its fixed targets and cannot stack',()=>{
   const {s,owner,barrage,hits}=setup();assert.equal(barrage.cans.length,10);
+  assert.ok(barrage.cans.every(c=>c.sprite.displayWidth===30 && c.sprite.displayHeight===30),'volley keeps the can proportions too');
   assert.ok(barrage.cans.every(c=>c.x>=785 && c.x<=1615 && c.y>=427 && c.y<=488));
   assert.ok(new Set(barrage.cans.map(c=>c.x)).size>=8);
   assert.equal(barrage.launch(owner,config,6),false);

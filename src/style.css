@@ -106,3 +106,33 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 .selection{background:linear-gradient(#0a141acc,#0a141a99 45%,#0a141ad9),var(--selection-art) center/cover,#142127}
 .selection .fighter-card{background:#213138e6}
 .selection .fighter-card[aria-pressed=true]{background:#2d3b36f0}
+/* Game over: the six-frame laugh from gameOver.png over the game's Bogotá street. */
+.gameover-only{display:none}
+.result-modal[data-mode=gameover]{position:fixed;inset:0;z-index:100;isolation:isolate;padding:clamp(18px,4vh,44px) clamp(20px,6vw,96px);overflow:auto;background:linear-gradient(90deg,#070b1399,#0b1013d9 42%,#060a10f5),linear-gradient(0deg,#130a18b3,transparent 65%),url('./scenes/level_6.png') center/cover,#101419}
+.result-modal[data-mode=gameover]::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:repeating-linear-gradient(0deg,#0003 0 1px,transparent 1px 4px);box-shadow:inset 0 0 160px #0008}
+.result-modal[data-mode=gameover] .result-panel{display:grid;grid-template-columns:minmax(190px,340px) minmax(0,520px);column-gap:clamp(28px,5vw,76px);width:min(100%,1000px);max-height:100%;padding:12px 4px;background:none;border:0;box-shadow:none;text-align:left;overflow:auto;overflow-x:hidden;min-width:0;scrollbar-width:thin;scrollbar-color:#929a76 #152025;touch-action:pan-y}
+.result-modal[data-mode=gameover] .result-panel>:not(.gameover-portrait){grid-column:2}
+.result-modal[data-mode=gameover] .gameover-only{display:block}
+.result-modal[data-mode=gameover] .gameover-portrait{grid-column:1;grid-row:1/span 10;align-self:center;width:100%;aspect-ratio:362/490;background:url('./scenes/gameOver.png') 0% 68.4%/600% 147.755% no-repeat;image-rendering:pixelated;filter:drop-shadow(-12px 14px 0 #03070a80) drop-shadow(0 0 36px #eeab7433);animation:gameover-laugh 1.05s steps(1,end) infinite,gameover-arrive .5s ease-out both}
+.result-modal[data-mode=gameover] .eyebrow{color:#c4b6a0;font-size:10px;letter-spacing:4px;margin:0 0 10px}
+.result-modal[data-mode=gameover] #result-title{margin:0;color:#ffe14d;font-size:clamp(64px,8vw,112px);font-weight:900;line-height:.85;letter-spacing:-2px;text-shadow:4px 5px 0 #602b22,7px 9px 0 #0009;white-space:nowrap}
+.result-modal[data-mode=gameover] #gameover-taunt{max-width:18ch;margin:22px 0 16px;padding-left:18px;border-left:4px solid #e9674b;font:700 clamp(26px,3.3vw,43px)/1.04 'Barlow Condensed',Impact,sans-serif;color:#fff0d4}
+.result-modal[data-mode=gameover] #result-description{max-width:50ch;margin:0 0 12px;font-size:11px;line-height:1.7;color:#b9bcb5}
+.result-modal[data-mode=gameover] #result-score{margin:0;padding:12px 0;border-block:1px solid #fff0d42b;color:#e5d4af;font-size:10px;line-height:1.7;letter-spacing:.5px}
+.result-modal[data-mode=gameover] .ranking-entry{align-items:flex-start;margin:16px 0 0;gap:8px}
+.result-modal[data-mode=gameover] .ranking-entry label{font-size:9px;letter-spacing:1px;color:#dfd8ba}
+.result-modal[data-mode=gameover] .ranking-input input{font-size:32px;background:#070d13;border-color:#9d9d71}
+.result-modal[data-mode=gameover] .ranking-input button{min-height:44px;background:#dfd8ba;border-color:#dfd8ba}
+.result-modal[data-mode=gameover] .ranking-list{width:100%;max-height:148px;overflow:auto;margin:12px 0 0;scrollbar-color:#8c9c69 #10191b}
+.result-modal[data-mode=gameover] .ranking-list li{padding:5px 8px}
+.result-modal[data-mode=gameover] .result-actions{margin-top:18px;max-width:330px}
+.result-modal[data-mode=gameover] #new-game{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:52px;padding:14px 20px;background:#ffe14d;border-color:#ffe14d;color:#151d20;font-weight:600;letter-spacing:1.5px;box-shadow:4px 4px 0 #0008}
+.result-modal[data-mode=gameover] #new-game::after{content:'↗';font-size:22px;line-height:1}
+.result-modal[data-mode=gameover] #new-game:hover{background:#fff1a0;border-color:#fff1a0;transform:translateY(-1px)}
+.result-modal[data-mode=gameover] .gameover-keyhint{margin:12px 0 0;font-size:8px;line-height:1.5;letter-spacing:1.5px;color:#8e9c97}
+@keyframes gameover-laugh{0%,100%{background-position-x:0%}16.667%{background-position-x:20%}33.334%{background-position-x:40%}50%{background-position-x:60%}66.667%{background-position-x:80%}83.334%{background-position-x:100%}}
+@keyframes gameover-arrive{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@media(max-width:700px){.result-modal[data-mode=gameover]{padding:24px 20px}.result-modal[data-mode=gameover] .result-panel{grid-template-columns:minmax(100px,180px) minmax(0,1fr);column-gap:22px}.result-modal[data-mode=gameover] #result-title{font-size:clamp(48px,10vw,70px)}.result-modal[data-mode=gameover] #gameover-taunt{font-size:30px;padding-left:12px;margin-top:18px}.result-modal[data-mode=gameover] .ranking-list .who{letter-spacing:0;font-size:8px}}
+@media(max-width:480px){.result-modal[data-mode=gameover] .result-panel{position:relative;display:block;isolation:isolate;padding:12px 2px}.result-modal[data-mode=gameover] .gameover-portrait{position:absolute;z-index:-1;right:-8px;top:20px;width:145px;opacity:.42;animation:gameover-laugh 1.05s steps(1,end) infinite;filter:drop-shadow(0 10px 12px #000)}.result-modal[data-mode=gameover] #result-title{font-size:clamp(54px,17vw,76px)}.result-modal[data-mode=gameover] #gameover-taunt{max-width:13ch;margin-top:24px;margin-bottom:24px}.result-modal[data-mode=gameover] #result-description,.result-modal[data-mode=gameover] #result-score{background:#080f14b3}.result-modal[data-mode=gameover] .result-actions{max-width:none}.result-modal[data-mode=gameover] .ranking-entry label{max-width:30ch;line-height:1.6}.result-modal[data-mode=gameover] .ranking-list{max-height:128px}}
+@media(max-height:560px) and (min-width:481px){.result-modal[data-mode=gameover]{padding:14px 28px}.result-modal[data-mode=gameover] .result-panel{grid-template-columns:minmax(140px,230px) minmax(0,520px);column-gap:32px}.result-modal[data-mode=gameover] #result-title{font-size:60px}.result-modal[data-mode=gameover] #gameover-taunt{font-size:28px;margin:14px 0 10px}.result-modal[data-mode=gameover] .ranking-list{max-height:88px}.result-modal[data-mode=gameover] .result-actions{margin-top:12px}.result-modal[data-mode=gameover] .eyebrow{margin-bottom:8px}}
+@media(prefers-reduced-motion:reduce){.result-modal[data-mode=gameover] .gameover-portrait{animation:gameover-laugh 1.05s steps(1,end) infinite}.result-modal[data-mode=gameover] #new-game:hover{transform:none}}

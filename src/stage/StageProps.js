@@ -16,7 +16,7 @@ export class StageProps {
       const def=PROPS[p.kind];if(!def || !scene.textures?.exists?.(def.texture))continue;
       const y=top+(config.baseline??-2)+p.offset;
       const sprite=scene.add.image(p.x,y,def.texture).setOrigin(.5,1).setFlipX(def.noFlip?false:p.flip);sprite.setScrollFactor?.(factor,1);
-      if(def.scale)sprite.setScale(def.scale);else sprite.setScale(def.height/def.rect[3]);
+      if(def.scale)sprite.setScale(def.scale);else sprite.setScale(def.height/(def.rect[3]*(def.cutScale??1))); // cutScale: the texture was stored smaller than its source rect
       if(def.tint)sprite.setTint(def.tint);
       // Always behind the fighters (whose depth is their y ≥ floor.top) but over the background layers.
       const depth=top-20+p.offset*.1;sprite.setDepth(depth);

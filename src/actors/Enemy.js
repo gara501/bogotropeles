@@ -1,11 +1,13 @@
 import {ARCADE,toFrames} from '../data/arcade.js';
 import {LeapingBite} from './LeapingBite.js';
 import {SackSpin} from './SackSpin.js';
+import {HealingAura} from './HealingAura.js';
 import {enemyAttackData,enemyThrowData,enemySummonData,enemyFlockData} from '../data/attacks.js';
 import {ENEMY_ATTACK_SOUNDS,BOSS_SOUNDS,chargeSound} from '../audio/SoundEffects.js';
 import {ShieldBreakPhase} from './ShieldBreakPhase.js';
 import {BrayatanController,BRAYATAN_STATES} from './BrayatanController.js';
 import {PachoController,PACHO_STATES} from './PachoController.js';
+import {BOSS_CORNER,nearBossCorner,bossEscapeTarget} from '../combat/bossCorner.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const ENEMY_STATES=['approach','circle','windup','attack','recover','hurt','evade','heal','grabbed','thrown','down','shield','phaseChange','bombRun'];
 // grabbed: held by the player · thrown: flying after a throw · down: knocked down on the floor, then getting up.
@@ -23,12 +25,18 @@ for(const state of PACHO_STATES)transitions[state]=['hurt','recover','approach',
 transitions.approach.push(...PACHO_STATES);transitions.circle.push(...PACHO_STATES);
 export class Enemy {
   constructor(runtime,actor){this.runtime=runtime;this.scene=runtime.scene;this.actor=actor;this.state='approach';this.age=0;this.clock=0;this.ready=Math.round((ARCADE.ai.initialCooldown+(actor.slot??(actor.index??0)%ARCADE.ai.spawnSlots)*ARCADE.ai.spawnStagger)/this.scene.level.pressure);this.action=null;this.stage=0;}
-  transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid enemy transition: ${this.state} → ${state}`);if(this.state==='grabbed' && state!=='grabbed')this.endStruggle();this.state=state;this.age=0;if(['circle','approach','recover','hurt'].includes(state))this.runtime.combat.tokens.release(this.actor);}
+  transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid enemy transition: ${this.state} → ${state}`);if(this.state==='grabbed' && state!=='grabbed')this.endStruggle();if(this.state==='heal' && state!=='heal'){this.healAura?.destroy();this.healAura=null;this.actor.sprite.clearTint?.();}this.state=state;this.age=0;if(['circle','approach','recover','hurt'].includes(state))this.runtime.combat.tokens.release(this.actor);}
   pose(name,pose){const a=this.actor,art=a.config.animations[name];if(pose===undefined)pose=art?.[Math.floor(this.age/ARCADE.animation.walkFramesPerPose)%art.length]??a.config.idle;a.sprite.stop().setFrame(pose+(a.config.frameOffset??0));return pose;} // frameOffset: sheet row of a minion variant
   hurt(attack=null){
     if(this.actor.arriving || this.actor.sackSpinning)return;
     this.sackSpin?.interrupt();
     this.action?.leap?.cancel();
+    if(this.actor.config.boss){
+      if(this.actor.config.pacho){this.pacho??=new PachoController(this);if(this.pacho.phaseCheck())return;}
+      else if(this.actor.config.brayatan){this.brayatan??=new BrayatanController(this);if(this.brayatan.phaseCheck())return;}
+      else if(this.checkShieldPhase())return;
+      if(this.bossCornerHit())return;
+    }
     if(this.actor.config.pacho){this.pacho??=new PachoController(this);this.pacho.hurt(attack);return;}
     if(this.actor.config.brayatan){this.brayatan??=new BrayatanController(this);this.brayatan.hurt(attack);return;}
     if(this.checkShieldPhase())return;
@@ -132,10 +140,68 @@ export class Enemy {
   }
   /** Boss escape: a backwards hop away from the player, invulnerable until it lands. */
   startEvade(){
+    if(this.actor.config.boss && nearBossCorner(this.actor,this.scene.floor) && this.startBossEscape())return;
     const a=this.actor,s=this.scene,ev=a.config.evade;this.transition('evade');this.runtime.combat.tokens.release(a);
     a.facing=Math.sign(s.player.x-a.x)||a.facing;a.sprite.setFlipX(a.facing<0);
     this.evade={dir:-a.facing,frames:toFrames(ev.duration)};a.invulnerableUntil=s.combatTime+ev.duration;
     if(ev.stain)s.paintStain?.(a.x,a.y,ev.stain,a); // takeoff mark
+  }
+  bossEscapeBlocked(){
+    return this.pacho?.entering || ['evade','phaseChange','shield','rage','pachoRage','pachoArrival','pachoExit','pachoLaugh','stompAir','stompLand'].includes(this.state)
+      || (this.actor.z??0)>0;
+  }
+  bossCornerHit(){
+    const a=this.actor,now=this.scene.combatTime;
+    if(a.hp<=0 || this.bossEscapeBlocked() || !nearBossCorner(a,this.scene.floor))return false;
+    this.bossCornerHits=(this.bossCornerHits??[]).filter(at=>now-at<=BOSS_CORNER.windowMs);this.bossCornerHits.push(now);
+    return this.bossCornerHits.length>=BOSS_CORNER.hits && this.startBossEscape();
+  }
+  startBossEscape(){
+    const a=this.actor,s=this.scene,now=s.combatTime;
+    if(a.hp<=0 || this.bossEscape || this.bossEscapeBlocked() || now<(this.bossEscapeReady??0))return false;
+    // Cancel each boss's choreography through its own cleanup path, preserving its phase and cooldowns.
+    if(this.pacho){
+      if(this.state==='pachoHeal')this.pacho.healReady=this.clock+this.pacho.config.heal.interruptCooldown;
+      this.pacho.reset();
+    }else if(this.brayatan)this.brayatan.cancel();
+    else {
+      if(this.state==='heal')this.healReady=this.clock+toFrames(a.config.heal.interruptCooldown);
+      if(this.state==='bombRun')this.shieldPhase?.interrupt();
+      this.action=null;a.pending=null;a.tell.setVisible(false);
+      if(this.state!=='hurt')this.transition('hurt');
+    }
+    this.transition('evade');this.runtime.combat.tokens.release(a);
+    a.sprite.clearTint?.();
+    this.bossEscape={from:{x:a.x,y:a.y},to:bossEscapeTarget(a,s.player,s.floor),born:now};
+    this.bossCornerHits=[];this.bossPinnedAt=null;this.rush=false;
+    this.bossEscapeReady=now+BOSS_CORNER.durationMs+BOSS_CORNER.cooldownMs;
+    a.invulnerableUntil=now+BOSS_CORNER.durationMs+BOSS_CORNER.landingGuardMs;
+    a.tell.setText('¡SALTO!').setVisible(true);s.sfx?.play('wave');return true;
+  }
+  /** Runs before hitstop and every specialised controller, so repeated stun cannot suppress the escape. */
+  bossCornerStep(){
+    const a=this.actor,s=this.scene,now=s.combatTime;
+    if(this.bossEscape){
+      const p=this.bossEscape,t=Math.min(1,(now-p.born)/BOSS_CORNER.durationMs);
+      this.clock++;this.age++;
+      a.x=p.from.x+(p.to.x-p.from.x)*t;a.y=p.from.y+(p.to.y-p.from.y)*t;a.z=Math.sin(t*Math.PI)*BOSS_CORNER.height;
+      const ev=a.config.evade,poses=ev?.poses??a.config.animations.jump;
+      const pose=poses?.[Math.min(poses.length-1,Math.floor(t*poses.length))]??ev?.pose??a.config.animations.walk?.[1]??a.config.idle;
+      this.pose('walk',pose);a.facing=Math.sign(s.player.x-a.x)||a.facing;a.sprite.setFlipX(a.facing<0);
+      if(t===1){
+        this.bossEscape=null;a.z=0;a.tell.setVisible(false);this.ready=this.clock+12;this.transition('approach');
+        a.invulnerableUntil=now+BOSS_CORNER.landingGuardMs;
+        if(ev?.summonAfter)this.summonReady=0;
+        this.runtime.combat.groundImpact(a);
+      }
+      return true;
+    }
+    const pressure=nearBossCorner(a,s.floor) && Math.abs(s.player.x-a.x)<=BOSS_CORNER.pressureRange
+      && Math.abs(s.player.y-a.y)<=BOSS_CORNER.depth;
+    if(!pressure){this.bossPinnedAt=null;this.bossCornerHits=[];return false;}
+    if(this.bossEscapeBlocked())return false;
+    this.bossPinnedAt??=now;
+    return now-this.bossPinnedAt>=BOSS_CORNER.pinMs && this.startBossEscape();
   }
   move(dx,dy,speed=this.actor.config.speed){const a=this.actor,n=Math.max(1,Math.hypot(dx,dy));if(this.barragePhase())speed*=a.config.barrage.speedMultiplier;a.x=clamp(a.x+dx/n*speed/ARCADE.clock.fps,this.scene.floor.left,this.scene.floor.right);a.y=clamp(a.y+dy/n*speed*ARCADE.ai.depthRatio/ARCADE.clock.fps,this.scene.floor.top,this.scene.floor.bottom);}
   begin(forceMelee=false){
@@ -155,7 +221,7 @@ export class Enemy {
     const a=this.actor;
     if(!this.runtime.combat.tokens.acquire(a)){this.action=null;a.pending=null;this.transition('circle');return;}
     this.action={data:enemyAttackData(a.config,this.stage),index:0,hit:false};
-    a.pending.finisher=this.action.data.finisher;a.tell.setText(a.config.leap?'¡MORDIDA!':a.config.combo?`! ×${a.config.combo.stages??ARCADE.ai.comboStages}`:'!').setVisible(true);this.transition('windup');
+    a.pending.finisher=this.action.data.finisher;a.tell.setText(a.config.leap?(a.config.leap.label??'¡MORDIDA!'):a.config.combo?`! ×${a.config.combo.stages??ARCADE.ai.comboStages}`:'!').setVisible(true);this.transition('windup');
   }
   hitPlayer(attack){
     const s=this.scene,a=this.actor;
@@ -168,6 +234,7 @@ export class Enemy {
   step(){
     const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){combat.tokens.release(a);this.sackSpin?.clear();this.endStruggle();return;}
     if(a.arriving)return;
+    if(a.config.boss && this.bossCornerStep())return;
     this.checkShieldPhase();
     if(combat.frozen(a))return;
     this.clock++;this.age++;
@@ -230,15 +297,22 @@ export class Enemy {
       const h=a.config.heal,startup=toFrames(h.windup),total=startup+toFrames(h.duration);
       if(this.age<startup)this.pose('heal',h.startPoses[Math.min(h.startPoses.length-1,Math.floor(this.age/startup*h.startPoses.length))]);
       else {
-        this.pose('heal',h.loopPoses?h.loopPoses[Math.floor((this.age-startup)/(h.framesPerPose??8))%h.loopPoses.length]:h.pose);a.hp=Math.min(a.config.hp,a.hp+a.config.hp*h.perSecond/ARCADE.clock.fps);
+        this.pose('heal',h.loopPoses?h.loopPoses[Math.floor((this.age-startup)/(h.framesPerPose??8))%h.loopPoses.length]:h.pose);
+        if(h.amount==null)a.hp=Math.min(a.config.hp,a.hp+a.config.hp*h.perSecond/ARCADE.clock.fps);
         if(Math.floor(this.age/8)%2)a.sprite.setTint?.(0xa8ffb0);else a.sprite.clearTint?.();
       }
-      if(this.age>=total){a.sprite.clearTint?.();a.tell.setVisible(false);this.healReady=this.clock+toFrames(h.cooldown);this.transition('approach');}
+      this.healAura?.update();
+      if(this.age>=total){
+        if(h.amount!=null){a.hp=Math.min(a.config.hp,a.hp+a.config.hp*h.amount);s.sfx?.play('item');}
+        a.sprite.clearTint?.();a.tell.setVisible(false);this.healReady=this.clock+toFrames(h.cooldown);this.transition('approach');
+      }
+      if(a.healthBar)a.healthBar.width=42*a.hp/a.config.hp;
       return;
     }
     if(this.state==='evade'){
       const ev=a.config.evade??{},p=this.evade,t=Math.min(1,this.age/p.frames);
       a.x=clamp(a.x+p.dir*(p.distance??ev.distance)/p.frames,s.floor.left,s.floor.right);a.z=Math.sin(t*Math.PI)*(p.height??ev.height);
+      if(p.toY!=null)a.y=p.fromY+(p.toY-p.fromY)*t;
       this.pose('evade',p.poses?p.poses[Math.min(p.poses.length-1,Math.floor(t*p.poses.length))]:p.pose??(ev.poses?ev.poses[Math.min(ev.poses.length-1,Math.floor(t*ev.poses.length))]:ev.pose));
       if(this.age>=p.frames){a.z=0;this.evade=null;if(ev.stain)s.paintStain?.(a.x,a.y,ev.stain,a); // landing mark
         // Summoners call a wave instead of rushing back in; a cornered enemy that escaped just regroups.
@@ -282,7 +356,16 @@ export class Enemy {
         }
         if(p.flock){if(!p.hit){p.hit=true;s.launchFlock?.(a,a.config.flock);}}
         else if(p.summon){if(!p.hit){p.hit=true;s.summonMinions?.(a,a.config.summon);}}
-        else if(p.throw){if(!p.hit){p.hit=true;if(p.barrage)s.launchSprayBarrage?.(a,a.config.barrage,p.data.damage);else s.throwProjectile(a,a.facing,a.config.throw,p.data.damage);}}
+        else if(p.throw){
+          if(a.config.juggler){
+            const tick=p.volleyTick??0;p.volleyTick=tick+1;
+            if(tick%3===0 && tick<=6){
+              s.throwProjectile(a,a.facing,a.config.throw,p.data.damage);
+              const pin=s.projectiles?.at(-1);
+              if(pin?.owner===a){pin.y=clamp(p.aimY+[-26,0,26][tick/3],s.floor.top,s.floor.bottom);pin.sprite.setPosition(pin.x,pin.y-a.config.throw.lift).setDepth(pin.y+1);}
+            }
+          }else if(!p.hit){p.hit=true;if(p.barrage)s.launchSprayBarrage?.(a,a.config.barrage,p.data.damage);else s.throwProjectile(a,a.facing,a.config.throw,p.data.damage);}
+        }
         else if(a.config.ranged){if(!p.hit){p.hit=true;s.throwKnife(a,a.facing);}}else if(biteActive)this.hitPlayer(p.data);
         if(a.config.paint && !p.throw && !p.summon && !p.painted){p.painted=true;s.paintFloor?.(a,a.facing,a.config.paint);}
       } else if(frame.phase==='recovery' && this.state!=='recover'){p.leap?.cancel();this.transition('recover');}
@@ -297,6 +380,7 @@ export class Enemy {
       return;
     }
     const dx=s.player.x-a.x,dy=s.player.y-a.y,range=a.config.charge?.triggerRange??a.config.range;
+    if(a.config.juggler && Math.abs(s.player.x-a.x)<a.config.juggler.hopRange && this.clock>=(this.juggleHopReady??0) && this.startJuggleHop())return;
     if(this.tryDodge())return;
     // Still outside the floor span (walking in from off-screen): step inside before anything else.
     if(a.x<s.floor.left || a.x>s.floor.right){this.move(a.x<s.floor.left?1:-1,0);this.pose('walk');return;}
@@ -306,8 +390,8 @@ export class Enemy {
     if(this.canFlock() && this.beginFlock())return;
     if(this.canSummon() && this.beginSummon())return;
     if(this.canBarrage() && this.beginBarrage())return;
+    if((!inRange || a.config.heal?.inRange) && !this.rush && this.canHeal(dx) && this.beginHeal())return;
     if(inRange && this.clock>=this.ready && this.begin())return;
-    if(!inRange && !this.rush && this.canHeal(dx) && this.beginHeal())return;
     if(!inRange && !this.rush && this.facesPlayer(dx) && this.canThrow(dx,dy) && this.beginThrow())return;
     if(combat.tokens.owners.size>=combat.tokens.limit || this.clock<this.ready){
       if(this.state!=='circle')this.transition('circle');
@@ -317,7 +401,7 @@ export class Enemy {
       // keepAway throwers always back off to throwing distance between attacks.
       const t=a.config.throw,keep=t && (t.keepAway || this.clock>=(this.throwReady??0)-ARCADE.ai.initialCooldown)?t.minRange+40:a.config.keepDistance??a.config.range+ARCADE.ai.circleX;
       // Bosses that keep their distance stay on their current side, switching only when it has no room.
-      if(a.config.boss && (a.config.keepDistance || t?.keepAway)){side=Math.sign(a.x-s.player.x)||1;const want=s.player.x+side*keep;if(want<s.floor.left||want>s.floor.right)side=-side;}
+      if((a.config.boss || a.config.juggler) && (a.config.keepDistance || t?.keepAway)){side=Math.sign(a.x-s.player.x)||1;const want=s.player.x+side*keep;if(want<s.floor.left||want>s.floor.right)side=-side;}
       const tx=clamp(s.player.x+side*keep,s.floor.left,s.floor.right);
       const ty=clamp(s.player.y+slot*ARCADE.ai.circleY,s.floor.top,s.floor.bottom);
       const mx=Math.abs(tx-a.x)>ARCADE.ai.alignY?Math.sign(tx-a.x):0,my=Math.abs(ty-a.y)>ARCADE.ai.alignY?Math.sign(ty-a.y):0;
@@ -325,9 +409,26 @@ export class Enemy {
     }
     if(this.state!=='approach')this.transition('approach');
     const desired=a.config.keepDistance??a.config.range-ARCADE.body.halfWidth;
+    if(a.config.juggler){
+      const mx=Math.abs(dx)<a.config.throw.minRange?-(Math.sign(dx)||1):Math.abs(dx)>desired?Math.sign(dx):0;
+      this.move(mx,Math.abs(dy)>ARCADE.ai.alignY?Math.sign(dy):0,a.config.speed*.8);this.pose(mx||Math.abs(dy)>ARCADE.ai.alignY?'walk':'idle');return;
+    }
     // After an evade the boss runs straight back in (faster) for the knife combo.
     this.move(Math.abs(dx)>desired?Math.sign(dx):0,Math.abs(dy)>ARCADE.ai.alignY?Math.sign(dy):0,a.config.speed*(this.rush?a.config.evade?.rushSpeed??1:1));this.pose('walk');
   }
+  /** Keep space for juggling; at a wall, vault past the player instead of retreating into it. */
+  startJuggleHop(){
+    const a=this.actor,s=this.scene,c=a.config.juggler,side=Math.sign(a.x-s.player.x)||1;
+    let target=a.x+side*c.hopDistance;
+    if(target<s.floor.left+20 || target>s.floor.right-20)target=s.player.x-side*c.hopDistance;
+    target=clamp(target,s.floor.left+20,s.floor.right-20);
+    this.transition('evade');this.action=null;a.pending=null;a.tell.setVisible(false);this.runtime.combat.tokens.release(a);
+    this.evade={dir:Math.sign(target-a.x)||-side,distance:Math.abs(target-a.x),frames:c.hopFrames,height:c.height,
+      poses:a.config.animations.jump,escape:true,fromY:a.y,toY:clamp(s.player.y+(a.y>(s.floor.top+s.floor.bottom)/2?-36:36),s.floor.top+5,s.floor.bottom-5)};
+    a.invulnerableUntil=s.combatTime+c.hopFrames*ARCADE.clock.stepMs;this.juggleHopReady=this.clock+c.hopCooldown;
+    s.sfx?.play('wave');return true;
+  }
+
   /** Turn toward the player; shield bearers (config.shield.turnMs) take a while to turn around. */
   face(dx){
     const a=this.actor,side=Math.sign(dx)||a.facing,turn=a.config.shield?.turnMs;
@@ -389,14 +490,15 @@ export class Enemy {
     const a=this.actor,s=this.scene;a.pigeonShielded=false;a.invulnerableUntil=0;a.sprite.clearTint?.();s.stopPigeonShield?.(a);
     this.ready=this.clock+Math.round(ARCADE.ai.initialCooldown/s.level.pressure);this.transition('circle');
   }
-  /** Healer bosses: when hurt enough and the player keeps away, start the ritual. */
+  /** Heal when hurt enough and the player leaves room for the gesture. */
   canHeal(dx){
     const a=this.actor,h=a.config.heal;
     return Boolean(h) && a.hp>0 && a.hp<a.config.hp*h.below && Math.abs(dx)>=h.minDistance && this.clock>=(this.healReady??0);
   }
   beginHeal(){
     const a=this.actor;this.runtime.combat.tokens.release(a);a.pending=null;this.action=null;
-    a.tell.setText('+').setVisible(true);this.scene.sfx?.play('spell');this.transition('heal');return true;
+    a.tell.setText(a.config.heal.label??'+').setVisible(true);this.scene.sfx?.play('spell');this.transition('heal');
+    if(a.config.heal.effect)this.healAura=new HealingAura(this);return true;
   }
   /** Thrower bosses: ranged attack only from mid distance, roughly aligned in depth, on its own cooldown. */
   canThrow(dx,dy){
@@ -407,7 +509,7 @@ export class Enemy {
   beginThrow(){
     const a=this.actor,s=this.scene;if(!this.runtime.combat.tokens.acquire(a))return false;
     a.facing=Math.sign(s.player.x-a.x)||1;a.sprite.setFlipX(a.facing<0);a.pending={enemy:a,connected:false,finisher:false};this.stage=0;
-    this.action={data:enemyThrowData(a.config,s.level.damage??1),index:0,hit:false,throw:true};
+    this.action={data:enemyThrowData(a.config,s.level.damage??1),index:0,hit:false,throw:true,aimY:s.player.y};
     this.throwReady=this.clock+Math.round(toFrames(a.config.throw.cooldown)/s.level.pressure);
     a.tell.setText('!').setVisible(true);this.transition('windup');return true;
   }

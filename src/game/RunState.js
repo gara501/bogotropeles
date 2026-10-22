@@ -2,7 +2,7 @@
 export const MAX_CONTINUES=3;
 export class RunState {
   constructor(){this.reset();}
-  reset(){this.level=0;this.lives=3;this.score=0;this.levelStartScore=0;this.continuesUsed=0;}
+  reset(){this.level=0;this.lives=3;this.score=0;this.levelStartScore=0;this.continuesUsed=0;this.chivaBonusPlayed=false;}
   award(points){this.score+=points;return this.score;}
   loseLife(){this.lives=Math.max(0,this.lives-1);return this.lives;}
   get continuesLeft(){return Math.max(0,MAX_CONTINUES-this.continuesUsed);}

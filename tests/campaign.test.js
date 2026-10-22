@@ -4,7 +4,7 @@ import {EventEmitter} from 'node:events';
 import {readFileSync,readdirSync,existsSync} from 'node:fs';
 import {TouchInput} from '../src/input/TouchInput.js';
 import {registerHooks} from 'node:module';
-import {CAMPAIGN,scaledEnemy,crossingHits} from '../src/data/campaign.js';
+import {COMBAT_CAMPAIGN as CAMPAIGN,CAMPAIGN as PLAYABLE_CAMPAIGN,campaignIndexForCombat,scaledEnemy,crossingHits} from '../src/data/campaign.js';
 import {WaveDirector} from '../src/combat/WaveDirector.js';
 import {beginEnemyCharge,updateEnemyCharge} from '../src/combat/enemyCharge.js';
 import {beginEnemyAttack,updateEnemyAttack} from '../src/combat/enemyAttacks.js';
@@ -40,21 +40,191 @@ const hooks=registerHooks({load(url,context,nextLoad){
 const {StreetScene}=await import('../src/scenes/StreetScene.js');
 const {IntroScene}=await import('../src/scenes/IntroScene.js');
 const {EnergyPickups}=await import('../src/game/EnergyPickups.js');
-const {levels,levelTextures}=await import('../src/data/levels.js');
+const {levels:playableLevels,levelTextures}=await import('../src/data/levels.js');
+const levels=playableLevels.filter(level=>level.mode!=='cycling');
 const {enemies}=await import('../src/data/enemies.js');
-const {MOTORATA_ENTRY}=await import('../src/data/motorata.js');hooks.deregister();
+const {MOTORATA_ENTRY}=await import('../src/data/motorata.js');
+const {actorsFor}=await import('../src/data/actorSet.js');hooks.deregister();
+const {CyclingStage}=await import('../src/cycling/CyclingStage.js');
+const {CYCLING}=await import('../src/cycling/CyclingRun.js');
+const {CYCLING_PLAYERS,CYCLING_ASSETS}=await import('../src/data/cycling.js');
+
+test('Ciclovía is the new second stage; every combat stage retains its boss, art and relative order',()=>{
+  assert.equal(PLAYABLE_CAMPAIGN.length,8);assert.equal(playableLevels.length,8);
+  assert.deepEqual(PLAYABLE_CAMPAIGN.map(l=>l.name),['TransMilenio · Exterior','Ciclovía','Plaza de Bolívar','La Candelaria','TransMilenio · Estación','Chorro de Quevedo','Calles del centro','Zona Rosa']);
+  assert.deepEqual(PLAYABLE_CAMPAIGN.filter(l=>l.mode!=='cycling'),CAMPAIGN);
+  assert.equal(playableLevels[1].boss,null);assert.deepEqual(playableLevels[1].enemies,[]);
+  assert.ok(playableLevels[1].url.includes('ciclovia/background.png'));
+  for(const c of Object.keys(CYCLING_PLAYERS))assert.ok(CYCLING_PLAYERS[c]);
+  assert.ok(CYCLING_ASSETS['cycling-guardian'].includes('cycling/guardian.png'));
+  assert.ok(CAMPAIGN.every(level=>!level.enemies.includes('guardian')),'guardians are exclusive to cycling');
+});
+
+
+function cyclingFixture(){
+  const s=setup(0);s.init({level:1,character:'office'});s.enemies=[];
+  s.cycling=new CyclingStage(s);s.cycling.render=()=>{};
+  s.player.sprite.clearTint=function(){return this;};s.add.ellipse=(x,y)=>new Visual(x,y);
+  const tick=(n=1)=>{for(let i=0;i<n;i++)s.update(0,1000/60);};
+  return {s,c:s.cycling,tick};
+}
+test('entering and restarting cycling replace the destroyed HUD before updating character text',()=>{
+  const s=setup(0),oldName={setText(){assert.fail('the previous scene text has been destroyed');}};
+  s.playerName=oldName;s.events=new EventEmitter();s.sound=new EventEmitter();s.cache={audio:{exists:()=>false}};
+  s.textures={exists:key=>!key.endsWith('-source'),get:()=>({referenceHeight:138,getSourceImage:()=>({width:1536,height:1024})})};
+  s.cameras.main.setZoom=function(){return this;};s.cameras.main.centerOn=function(){return this;};
+  s.input.keyboard.addKeys=()=>s.keys;
+  s.add.sprite=(x,y)=>new Visual(x,y);s.add.ellipse=(x,y)=>new Visual(x,y);
+  s.add.graphics=()=>{const v=new Visual();v.lines=[];v.clear=()=>{v.lines=[];return v;};v.lineStyle=()=>v;v.lineBetween=(...args)=>{v.lines.push(args);return v;};return v;};
+  s.add.tileSprite=(x,y)=>{const v=new Visual(x,y);v.setTileScale=function(scale){this.tileScaleX=scale;return this;};return v;};
+  s.add.container=(x,y,list=[])=>{const v=new Visual(x,y);v.list=list;v.add=item=>{v.list.push(item);return v;};return v;};
+  s.add.text=(x,y,value)=>new Visual(x,y).setText(value);
+  const run=s.run;run.score=500;run.lives=2;
+  for(let entry=0;entry<2;entry++){
+    s.init({level:1,character:'office',run});assert.doesNotThrow(()=>s.create());
+    assert.notEqual(s.playerName,oldName);assert.equal(s.playerName.text,s.character.name);
+    assert.equal(s.runStatus.text,'VIDAS 2 · PUNTOS 500');assert.equal(s.cycling.run.elapsed,0);
+    const c=s.cycling;c.run.nextWave=Infinity;c.run.startDash();c.run.step(100);c.render();
+    assert.ok(c.dashGhosts.every(ghost=>ghost.visible && ghost.x<s.player.x));assert.equal(c.dashFX.lines.length,18);
+    c.run.step(3000);c.render();assert.ok(c.dashGhosts.every(ghost=>!ghost.visible));assert.equal(c.dashFX.lines.length,0);
+    c.run.extraDistance=0;
+    for(const y of [CYCLING.top,390,CYCLING.bottom]){
+      s.cycling.run.y=y;s.cycling.run.elapsed=CYCLING.duration-1000;s.cycling.render();
+      assert.equal(s.cycling.finishLine.visible,true);
+      assert.ok(s.cycling.finishLine.depth>1,'finish paint draws above potholes');
+      assert.ok(s.cycling.finishLine.depth<s.player.shadow.depth,'finish paint stays below riders and shadows');
+      assert.ok(s.cycling.finishLine.depth<s.player.sprite.depth);
+    }
+    for(const key of Object.keys(CYCLING_PLAYERS)){
+      s.cycling.setCharacter(key);assert.equal(s.playerName.text,s.character.name);
+      assert.equal(s.player.key,key);
+    }
+    s.events.emit('shutdown');s.playerName=oldName;
+  }
+});
+test('cycling steering keeps normal pedaling frames and incoming dogs face the player',()=>{
+  const {s,c,tick}=cyclingFixture();
+  for(const key of ['background','banner','tip','progress','distance','time','finishLine'])c[key]=new Visual();
+  s.player.sprite.setFrame=function(frame){this.frame=frame;return this;};
+  s.textures={get:()=>({referenceHeight:100})};
+  s.add.image=(x,y)=>{const v=new Visual(x,y);v.setFlipX=function(flip){this.flipX=flip;return this;};v.setFrame=function(frame){this.frame=frame;return this;};return v;};
+  c.render=CyclingStage.prototype.render;
+  c.run.nextWave=Infinity;
+  c.run.obstacles=[{id:0,kind:'dog',x:1000,y:315,hit:false}];
+  for(const key of ['UP','DOWN']){
+    s.keys[key].isDown=true;c.run.y=390;const before=c.run.y;
+    for(let phase=0;phase<4;phase++){
+      c.run.elapsed=phase*115;tick();assert.equal(s.player.sprite.frame,phase);
+      assert.equal(s.player.sprite.y,c.run.y);
+    }
+    assert.ok(key==='UP'?c.run.y<before:c.run.y>before);s.keys[key].isDown=false;
+  }
+  assert.equal(c.visuals.get(0).sprite.flipX,true);
+  const cyclist=new Visual();cyclist.setFrame=function(frame){this.frame=frame;return this;};
+  const dog=c.visuals.get(0).sprite;dog.setFrame=function(frame){this.frame=frame;return this;};
+  c.run.obstacles.push({id:1,kind:'cyclist',variant:2,x:1000,y:465,hit:false});c.visuals.set(1,{sprite:cyclist});
+  c.run.elapsed=210;c.render();
+  assert.equal(s.player.sprite.frame,1);assert.equal(cyclist.frame,11);assert.equal(dog.frame,3);
+  c.flashUntil=c.run.elapsed+100;c.render();assert.equal(s.player.sprite.frame,6);
+  s.finished=true;c.render();assert.equal(s.player.sprite.frame,7);
+  const sounds=[];s.sfx={play:key=>sounds.push(key)};
+  c.run.obstacles.push({id:2,kind:'guardian',x:1000,y:390,born:0,hit:false});
+  c.run.elapsed=100;c.render();c.render();const guard=c.visuals.get(2).sprite;
+  assert.equal(guard.frame,5);assert.ok(!guard.flipX);assert.deepEqual(sounds,['whistle']);
+  c.run.elapsed=900;c.render();assert.equal(guard.frame,1);
+  c.run.elapsed=1500;c.render();assert.equal(guard.frame,7);
+});
+test('cycling road markings and potholes travel together at every background texture scale',()=>{
+  for(const scale of [.5,.625,1,2])for(const ms of [1000/60,50])for(const dash of [false,true]){
+    const {s,c,tick}=cyclingFixture();
+    if(dash)c.run.startDash();
+    for(const key of ['background','banner','tip','progress','distance','time','finishLine'])c[key]=new Visual();
+    c.background.tileScaleX=scale;c.render=CyclingStage.prototype.render;c.run.nextWave=Infinity;
+    const hole={id:0,kind:'hole',x:1000,y:315,hit:false},sprite=new Visual();
+    c.run.obstacles=[hole];c.visuals.set(hole.id,{sprite});c.render();
+    const startX=sprite.x,startOffset=c.background.tilePositionX;
+    for(let i=0;i<10;i++){
+      s.update(0,ms);
+      const roadMovement=-(c.background.tilePositionX-startOffset)*scale;
+      assert.ok(Math.abs(sprite.x-startX-roadMovement)<1e-8,`scale ${scale}, frame ${ms}`);
+    }
+    s.keys.P.justDown=true;tick();const pausedOffset=c.background.tilePositionX,pausedX=sprite.x;
+    tick(10);assert.equal(c.background.tilePositionX,pausedOffset);assert.equal(sprite.x,pausedX);
+  }
+});
+test('cycling pauses simulation, ignores horizontal/combat input, damages once and respawns in the same run',()=>{
+  const {s,c,tick}=cyclingFixture(),x=s.player.x;
+  s.keys.D.isDown=s.keys.H.isDown=s.keys.SPACE.isDown=true;tick(10);assert.equal(s.player.x,x);assert.equal(s.playerAttack,null);
+  s.keys.UP.isDown=true;tick(10);s.keys.UP.isDown=false;assert.ok(c.run.y<390);
+  const before=c.run.elapsed;s.keys.P.justDown=true;tick();tick(20);assert.equal(c.run.elapsed,before);assert.equal(s.paused,true);
+  s.keys.P.justDown=true;tick();assert.equal(s.paused,false);
+  c.run.obstacles=[{id:1,kind:'cyclist',x:CYCLING.playerX+2,y:c.run.y,hit:false}];tick();assert.equal(s.health,82);tick(5);assert.equal(s.health,82);
+  s.health=0;const elapsed=c.run.elapsed;for(let i=0;i<60 && s.health<=0;i++)tick();assert.equal(s.run.lives,2);assert.equal(s.health,100);assert.equal(c.run.elapsed,elapsed);
+  assert.equal(c.run.obstacles.length,0);assert.ok(c.run.invulnerableUntil>elapsed);assert.equal(s.run.level,1);
+});
+
+test('cycling dash accepts keyboard and touch taps, freezes during pause and does not repeat from a held key',()=>{
+  const {s,c,tick}=cyclingFixture();c.run.nextWave=Infinity;
+  s.keys.SHIFT.justDown=true;s.keys.SHIFT.isDown=true;tick();assert.equal(c.run.dashing,true);assert.equal(s.health,100);
+  s.keys.P.justDown=true;tick();const remaining=c.run.dashRemaining,offset=c.run.roadOffset;
+  tick(100);assert.equal(c.run.dashRemaining,remaining);assert.equal(c.run.roadOffset,offset);
+  s.keys.P.justDown=true;tick();tick(485);assert.equal(c.run.dashing,false);assert.equal(c.run.dashCooldown,0);
+  s.game.touchControls={input:new TouchInput()};const touch=s.game.touchControls.input;
+  touch.down('SHIFT',1);touch.up(1);tick();assert.equal(c.run.dashing,true);
+  const until=c.run.dashUntil;tick();assert.equal(c.run.dashUntil,until);
+});
+test('cycling finish awards once, waits for the result and advances to Plaza de Bolívar',()=>{
+  const {s,c,tick}=cyclingFixture(),results=[],transitions=[];
+  s.game.events.on('level-result',r=>results.push(r));s.game.events.on('level-transition',r=>transitions.push(r));
+  c.run.elapsed=CYCLING.duration-10;c.run.nextWave=Infinity;const score=s.run.score;tick();
+  assert.equal(s.finished,true);assert.equal(s.run.score,score+1500);s.nextLevel();assert.equal(transitions.length,0);
+  tick(80);assert.equal(results.length,1);assert.equal(results[0].cycling,true);assert.equal(results[0].last,false);
+  s.nextLevel();s.nextLevel();assert.deepEqual(transitions,[{character:'office',level:2}]);
+  assert.equal(s.run.levelStartScore,s.run.score);
+});
+test('cycling cards award the shared score once, stay frozen on pause and preserve earned points on respawn',()=>{
+  const {s,c,tick}=cyclingFixture();c.run.nextWave=Infinity;const score=s.run.score;
+  c.run.pickups=[{id:1,kind:'money',x:CYCLING.playerX+10,y:c.run.y}];
+  s.keys.P.justDown=true;tick();tick(10);assert.equal(s.run.score,score);assert.equal(c.run.pickups.length,1);
+  s.keys.P.justDown=true;tick();assert.equal(s.run.score,score+1000);assert.equal(c.run.cardsCollected,1);
+  tick(20);assert.equal(s.run.score,score+1000);assert.equal(c.run.pickups.length,0);
+  c.run.pickups=[{id:2,kind:'money',x:1000,y:c.run.y}];s.health=0;
+  for(let i=0;i<60 && s.health<=0;i++)tick();
+  assert.equal(c.run.pickups.length,0);assert.equal(c.run.cardsCollected,1);assert.equal(s.run.score,score+1000);
+});
+test('cycling changua refills energy once without awarding card points or increasing the card counter',()=>{
+  const {s,c,tick}=cyclingFixture();c.run.nextWave=Infinity;s.health=24;
+  const score=s.run.score,sounds=[];s.sfx={play:key=>sounds.push(key),setPaused(){},stop(){}};
+  c.run.pickups=[{id:900,kind:'full',x:CYCLING.playerX+10,y:c.run.y}];
+  s.keys.P.justDown=true;tick();tick(10);assert.equal(s.health,24);assert.equal(c.run.pickups.length,1);
+  s.keys.P.justDown=true;tick();assert.equal(s.health,100);assert.equal(s.healthBar.width,200);
+  assert.equal(s.run.score,score);assert.equal(c.run.cardsCollected,0);assert.deepEqual(sounds,['item']);
+  tick(10);assert.equal(s.health,100);assert.deepEqual(sounds,['item']);
+});
+
+test('cycling honors vertical touch steering and continues at the current distance; manual restart returns to level two',()=>{
+  const {s,c,tick}=cyclingFixture();s.game.touchControls={input:new TouchInput()};s.game.touchControls.input.y=1;
+  tick(5);assert.ok(c.run.y>390);s.game.touchControls.input.y=0;
+  c.run.elapsed=22000;s.run.lives=1;s.run.score=325;s.run.levelStartScore=100;s.health=0;tick();
+  assert.equal(s.waitingContinue,true);assert.equal(s.run.lives,0);tick(20);assert.equal(c.run.elapsed,22000);
+  assert.equal(s.continueRun(),true);assert.equal(s.run.lives,3);assert.equal(s.run.continuesUsed,1);
+  assert.equal(s.health,100);assert.equal(c.run.elapsed,22000);assert.equal(s.run.score,325);
+  assert.equal(s.restartLevel(),true);assert.equal(s.restartedWith.level,1);assert.equal(s.run.score,100);
+});
 
 class Visual {
-  constructor(x=0,y=0){this.x=x;this.y=y;this.scaleY=1;this.width=960;this.height=540;this.anims={isPlaying:true,pause(){},resume(){}};}
+  constructor(x=0,y=0){this.x=x;this.y=y;this.scaleY=1;this.tileScaleX=1;this.width=960;this.height=540;this.anims={isPlaying:true,pause(){},resume(){}};}
   setPosition(x,y){this.x=x;this.y=y;return this;}
+  setX(x){this.x=x;return this;}
+  setDepth(value){this.depth=value;return this;}
   setText(v){this.text=v;return this;}
   setVisible(v){this.visible=v;return this;}
   play(key){this.animation=key;this.anims.isPlaying=true;return this;}
   destroy(){this.destroyed=true;}
 }
-for(const method of ['setOrigin','setScale','setAlpha','setDepth','setFlipX','setFrame','stop'])Visual.prototype[method]=function(){return this;};
+for(const method of ['setOrigin','setScale','setAlpha','setFlipX','setFrame','setDisplaySize','setTexture','stop'])Visual.prototype[method]=function(){return this;};
 function setup(index,character='office') {
-  const s=new StreetScene();s.init({level:index,character});
+  const s=new StreetScene();s.init({level:campaignIndexForCombat(index),character});
   s.enemies=[];s.player={x:200,y:450,key:character,config:s.character,sprite:new Visual(),shadow:new Visual()};
   s.counter=new Visual();s.dashStatus=new Visual();s.healthBar=new Visual();s.overlay=new Visual();s.overlay.list=[new Visual(),new Visual(),new Visual()];
   s.add={rectangle:(x,y)=>new Visual(x,y),text:(x,y)=>new Visual(x,y)};
@@ -68,6 +238,98 @@ function setup(index,character='office') {
   s.input={keyboard:{resetKeys(){}}};s.waves=new WaveDirector(s);s.waves.update();return s;
 }
 const strike={damage:10000,knockback:0,facing:1};
+function cornerBossSetup(index){
+  if(index===6){const f=pachoSetup();f.arrive();return f;}
+  if(index===5)return brayatanSetup();
+  const s=setup(index,'gymbro');s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};
+  const a=s.spawnMiniBoss(bossFor(CAMPAIGN[index])).enemy;s.enemies=[a];s.invulnerableUntil=Infinity;
+  const model=new Enemy(s.arcade,a);s.arcade.enemies.set(a,model);
+  return {s,a,model,step:(n=1)=>{for(let i=0;i<n;i++)s.update(0,ARCADE.clock.stepMs);}};
+}
+
+test('every campaign boss escapes both scrolling arena corners after two hits, even through hitstop',()=>{
+  for(let index=0;index<7;index++)for(const side of ['left','right']){
+    const {s,a,model}=cornerBossSetup(index),dir=side==='left'?1:-1;
+    s.floor={...s.floor,left:1500,right:2460};a.x=s.floor[side];a.y=450;s.player.x=a.x+dir*55;s.player.y=450;
+    model.transition('hurt');model.bossEscapeReady=0;
+    model.hurt();model.hurt();assert.ok(model.bossEscape,`${a.key} ${side}`);
+    const hp=a.hp;s.hitEnemy(a,{damage:1,knockback:0,facing:-dir});assert.equal(a.hp,hp,'escape rejects hits');
+    s.arcade.combat.stops.set(a,Infinity);
+    for(let i=0;i<38;i++){s.combatTime+=ARCADE.clock.stepMs;model.step();}
+    assert.equal(model.bossEscape,null);assert.equal(model.state,'approach');assert.equal(a.z,0);
+    assert.ok(a.x>s.floor.left+120 && a.x<s.floor.right-120,`${a.key} lands inside arena`);
+    assert.ok((a.x-s.player.x)*dir>0,`${a.key} crosses over attacker`);
+    assert.equal(model.grabbable(),false);assert.equal(s.arcade.combat.tokens.owners.has(a),false);
+  }
+});
+
+test('every campaign boss escapes sustained corner pressure without receiving a second hit',()=>{
+  for(let index=0;index<7;index++){
+    const {s,a,model}=cornerBossSetup(index);model.transition('hurt');
+    a.x=s.floor.right;a.y=450;s.player.x=a.x-65;s.player.y=450;s.arcade.combat.stops.set(a,Infinity);
+    model.step();s.combatTime+=901;model.step();assert.ok(model.bossEscape,a.key);
+  }
+});
+
+test('corner pressure preserves boss phase transitions and Pacho arrival',()=>{
+  for(const index of [4,5,6]){
+    const {s,a,model}=cornerBossSetup(index);a.x=s.floor.left;a.y=450;s.player.x=a.x+55;s.player.y=450;
+    model.transition('hurt');model.hurt();a.hp=Math.floor(a.config.hp*.49);model.hurt();
+    assert.equal(model.bossEscape,undefined);
+    assert.equal(model.state,index===4?'phaseChange':index===5?'rage':'pachoRage');
+  }
+  const {s,a,model}=pachoSetup();a.x=s.floor.left;s.player.x=a.x+55;
+  model.bossPinnedAt=s.combatTime-2000;assert.equal(model.startBossEscape(),false);assert.equal(model.state,'pachoArrival');
+});
+
+test('corner escape cancels Brayatan attack markers and interrupts Pacho healing with its cooldown',()=>{
+  const b=brayatanSetup();b.controller.start('knives');b.controller.marker=new Visual();const marker=b.controller.marker;
+  b.a.x=b.s.floor.left;b.s.player.x=b.a.x+55;b.model.bossPinnedAt=b.s.combatTime-901;b.model.step();
+  assert.ok(b.model.bossEscape);assert.equal(marker.destroyed,true);assert.equal(b.controller.frames,null);
+  assert.equal(b.a.pending,null);assert.equal(b.s.arcade.combat.tokens.owners.has(b.a),false);
+  const p=pachoSetup();p.arrive();p.controller.phase=2;p.model.transition('hurt');p.model.transition('approach');
+  assert.equal(p.controller.start('heal'),true);p.a.x=p.s.floor.right;p.s.player.x=p.a.x-55;
+  p.model.bossPinnedAt=p.s.combatTime-901;p.model.step();assert.ok(p.model.bossEscape);
+  assert.ok(p.controller.healReady>=p.model.clock+p.controller.config.heal.interruptCooldown);
+  assert.equal(p.s.arcade.combat.tokens.owners.has(p.a),false);assert.equal(p.a.pending,null);
+});
+
+function jugglerSetup(){
+  const s=setup(2,'gymbro');s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};
+  const a=s.spawnEnemy('malabarista',0,0,2,0);s.enemies=[a];a.x=600;a.y=450;s.player.x=300;s.player.y=450;
+  const model=new Enemy(s.arcade,a);s.arcade.enemies.set(a,model);model.ready=0;
+  const shots=[];s.throwProjectile=(actor,facing,config,damage)=>shots.push({facing,config,damage});
+  const step=(n=1)=>{for(let i=0;i<n;i++){s.combatTime+=ARCADE.clock.stepMs;model.step();}};
+  return {s,a,model,shots,step};
+}
+
+test('juggler fires three damaging clubs both ways and cannot throw point blank',()=>{
+  for(const facing of [-1,1]){
+    const {s,a,model,shots,step}=jugglerSetup();s.player.x=a.x+facing*300;
+    assert.equal(model.canThrow(facing*55,0),false);assert.equal(model.canThrow(facing*300,0),true);
+    assert.ok(model.beginThrow());step(75);assert.equal(shots.length,3);
+    for(const shot of shots){assert.equal(shot.facing,facing);assert.equal(shot.config.texture,'juggling-club');assert.ok(shot.damage>a.config.damage*3);}
+    assert.equal(model.action,null);assert.ok(model.throwReady>model.clock);
+  }
+});
+
+test('juggler vaults past the player at either wall, but is vulnerable and grabbable during cooldown',()=>{
+  for(const side of ['left','right']){
+    const {s,a,model,step}=jugglerSetup(),dir=side==='left'?1:-1;
+    a.x=s.floor[side];s.player.x=a.x+dir*55;step();assert.equal(model.state,'evade');assert.equal(model.grabbable(),false);
+    step(a.config.juggler.hopFrames);assert.ok((a.x-s.player.x)*dir>0);assert.equal(a.z,0);
+    s.player.x=a.x-dir*55;s.player.y=a.y;model.hurt();assert.equal(model.grabbable(),true);
+    assert.equal(model.canThrow(dir*55,0),false);assert.ok(model.juggleHopReady>model.clock);
+    assert.ok(a.config.hp<enemies.leash.hp);assert.ok(a.config.damage<enemies.leash.damage);
+  }
+});
+
+test('juggler animation rectangles fit the PNG and campaign pools include it in outdoor levels',()=>{
+  const c=enemies.malabarista,png=readFileSync(new URL('../src/data/enemies/malabarista.png',import.meta.url));
+  for(const r of c.frameRects)assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=png.readUInt32BE(16)&&r.y+r.height<=png.readUInt32BE(20));
+  assert.deepEqual(CAMPAIGN.flatMap((l,i)=>l.enemies.includes('malabarista')?[i+1]:[]),[2,3,5,6,7]);
+  assert.equal(c.frameRects.length,20);assert.equal(new Set(Object.values(c.animations).flat()).size,20);
+});
 function pickupSetup(){
   const setup=arcadeSetup();
   for(const method of ['setTexture','setDisplaySize'])Visual.prototype[method]=function(value){this[method=== 'setTexture'?'texture':'displayWidth']=value;return this;};
@@ -85,15 +347,30 @@ test('can takes two distinct active punches, plays break poses and drops one ite
   step(30);assert.equal(s.health,65);assert.equal(s.energyPickups.items.length,0);assert.equal(s.run.score,score);
 });
 
-test('can on levels 1, 2, 5, 6, taquilla on 3, 4, 5, 6, parking on 1, 3, 5, 6; every 4th drop is the full-energy changua',async()=>{
+test('boxes join each level container pool; every 4th drop is the full-energy changua',async()=>{
   const {containersFor,PICKUPS}=await import('../src/data/pickups.js');
-  assert.deepEqual([0,1,2,3,4,5].map(containersFor),[['can','parking'],['can'],['taquilla','parking'],['taquilla'],['can','taquilla','parking'],['can','taquilla','parking']]);
-  const {s}=pickupSetup();s.levelIndex=2;s.health=10;const system=s.energyPickups;
+  assert.deepEqual([0,1,2,3,4,5,6].map(containersFor),[
+    ['can','parking','boxes'],['can','boxes'],['taquilla','parking','boxes'],['taquilla','boxes'],
+    ['can','taquilla','parking','boxes'],['can','taquilla','parking','boxes'],['can','parking','boxes']]);
+  const {s}=pickupSetup();s.levelIndex=3;s.level={...s.level,combatIndex:2};s.health=10;const system=s.energyPickups;
   const taquilla=system.spawn(s.player.x+300,s.player.y);assert.equal(taquilla.kind,'taquilla');
   const kinds=[1,2,3,4,5,6,7,8].map(()=>system.drop(0,0).kind);
   assert.deepEqual(kinds,['energy','energy','energy','full','energy','energy','energy','full']);assert.equal(PICKUPS.fullEvery,4);
   system.items=[];system.drops=3;const full=system.drop(s.player.x,s.player.y);assert.equal(full.kind,'full');system.rolled.add(0);
   system.update(9);assert.equal(full.sprite.destroyed,true);assert.equal(s.health,100,'the changua refills all energy');
+});
+
+test('boxes use all six poses, take two separate punches and drop one standard reward',()=>{
+  const {s,press,step}=pickupSetup(),system=s.energyPickups;system.rolled.add(0);s.health=40;
+  const boxes=system.spawn(s.player.x+70,s.player.y,'boxes');
+  const textures=[];boxes.sprite.setTexture=function(key){textures.push(key);this.texture=key;return this;};
+  press('H');step(40);assert.equal(boxes.hp,1);assert.equal(boxes.sprite.texture,'boxes-2');
+  assert.equal(system.items.length,0);
+  press('H');step(40);assert.equal(boxes.hp,0);assert.equal(boxes.sprite.destroyed,true);
+  for(const frame of [1,2,3,4,5])assert.ok(textures.includes(`boxes-${frame}`),`pose ${frame} was displayed`);
+  assert.equal(system.cans.length,0);assert.equal(system.items.length,1);assert.equal(system.items[0].kind,'energy');
+  s.player.x=boxes.x;step();assert.equal(s.health,65);assert.equal(system.items.length,0);
+  step(40);assert.equal(s.health,65);assert.equal(system.drops,1);
 });
 
 test('TuLlave card: +1000 points even at full energy; parking breaks through its 4 poses and drops an item',async()=>{
@@ -135,6 +412,22 @@ function arcadeSetup(character='gymbro'){
   const press=key=>{s.keys[key].justDown=true;s.keys[key].isDown=true;step();s.keys[key].isDown=false;};
   return {s,target,step,press};
 }
+
+test('bonus mode has no enemy waves, boss or rain and resumes at the following campaign level once',()=>{
+  const s=new StreetScene();s.init({level:2,character:'office',chivaBonus:true,returnLevel:3});
+  assert.equal(s.isChivaBonus,true);assert.equal(s.level.total,0);assert.deepEqual(s.level.enemies,[]);
+  assert.equal(s.level.boss,null);assert.equal(s.level.rain,null);assert.equal(s.wanted.size,1);
+  s.run.award(5000);s.game={events:new EventEmitter()};s.chivaBonus={ready:true};
+  let transitions=0;s.game.events.on('level-transition',data=>{transitions++;assert.equal(data.level,3);assert.equal(data.character,'office');});
+  s.nextLevel();s.nextLevel();assert.equal(transitions,1);assert.equal(s.run.levelStartScore,5000);
+  assert.equal(s.restartLevel(),false);
+});
+
+test('an empty bonus arena never triggers ordinary victory or the normal life-loss timer',()=>{
+  const {s,step}=arcadeSetup();s.isChivaBonus=true;s.enemies=[];s.level={...s.level,total:0,boss:null};s.defeated=0;s.waves.spawned=0;
+  s.chivaBonus={locked:false,tick(){},update(){}};s.timeLeft=0;
+  step(40);assert.equal(s.finished,false);assert.equal(s.pendingResult,null);assert.equal(s.health,100);assert.equal(s.run.lives,3);
+});
 test('fixed gameplay applies wet-ground inertia to both fighters, freezes rain on pause and clears it on victory',()=>{
   const {s,target,step,press}=arcadeSetup();s.debugPreview=false;target.x=800;s.invulnerableUntil=Infinity;
   const rain=Object.assign(Object.create(StageRain.prototype),{scene:s,cancelled:false,startedAt:0,until:20000,velocity:new WeakMap(),
@@ -424,7 +717,7 @@ test('changing character preserves the actual battlefield, current level, health
   s.playerName=new Visual();s.controlsLabel=new Visual();s.healthBar.setFillStyle=()=>{};
   s.textures={get:()=>({referenceHeight:160})};s.player.sprite.setTexture=()=>s.player.sprite;
   assert.equal(s.switchCharacter('gymbro'),true);
-  assert.equal(s.levelIndex,3);assert.equal(s.health,65);assert.equal(s.run.lives,2);assert.equal(s.run.score,700);
+  assert.equal(s.levelIndex,4);assert.equal(s.health,65);assert.equal(s.run.lives,2);assert.equal(s.run.score,700);
   assert.equal(s.enemies,enemiesOnStreet);assert.equal(s.waves,wave);assert.equal(s.combatTime,4500);
   assert.equal(s.player.config,s.character);assert.equal(s.characterKey,'gymbro');assert.equal(s.switchCharacter('missing'),false);
 });
@@ -444,7 +737,7 @@ test('third death waits for continue once; continue restores three lives and pre
   let offers=0;s.game.events.on('continue-needed',()=>offers++);
   s.update(0,16);s.update(0,16);assert.equal(offers,1);assert.equal(s.run.lives,0);assert.equal(s.waitingContinue,true);
   assert.equal(s.restartLevel(),false);assert.equal(s.continueRun(),true);assert.equal(s.continueRun(),false);
-  assert.equal(s.run.lives,3);assert.equal(s.health,100);assert.equal(s.levelIndex,5);assert.equal(s.boss,boss);assert.equal(s.run.score,1300);
+  assert.equal(s.run.lives,3);assert.equal(s.health,100);assert.equal(s.levelIndex,6);assert.equal(s.boss,boss);assert.equal(s.run.score,1300);
   s.endRun();assert.equal(s.gameOver,true);assert.equal(s.restartLevel(),false);
 });
 test('each actual updated player sheet has valid victory frames and Gymbro has a separate dash',()=>{
@@ -487,7 +780,7 @@ test('victory plays before the result modal; enemies award points once and escap
   const bikes=setup(1),bike=bikes.enemies.find(e=>e.key==='rider');bike.x=1101;bikes.updateCrossing(bike,0);assert.equal(bikes.run.score,0);
 });
 
-test('arcade counts an escaped motorcycle once and completes level two before advancing to three',()=>{
+test('arcade counts an escaped motorcycle once and completes the plaza before advancing to Candelaria',()=>{
   const s=setup(1,'gymbro');s.arcade=new ArcadeRuntime(s);s.debugPreview=true;s.invulnerableUntil=Infinity;
   const bike=s.enemies.find(e=>e.crossing);bike.x=bike.facing>0?1101:-141;
   const step=()=>s.update(0,ARCADE.clock.stepMs);
@@ -509,8 +802,8 @@ test('arcade counts an escaped motorcycle once and completes level two before ad
   assert.equal(s.arcade.player.state,'celebration');s.nextLevel();assert.equal(transitions.length,0);
   for(let i=0;i<ARCADE.flow.resultDelayFrames+5;i++)step();
   assert.equal(results.length,1);assert.equal(results[0].won,true);
-  s.nextLevel();s.nextLevel();assert.deepEqual(transitions,[{character:'gymbro',level:2}]);
-  assert.equal(s.run.level,2);assert.equal(s.run.levelStartScore,s.run.score);
+  s.nextLevel();s.nextLevel();assert.deepEqual(transitions,[{character:'gymbro',level:3}]);
+  assert.equal(s.run.level,3);assert.equal(s.run.levelStartScore,s.run.score);
 });
 test('belly and leash use the requested level pools without changing totals or crossing behavior',()=>{
   for(const [key,stages] of [['belly',[2,5,6,7]],['leash',[3,7]]]) {
@@ -538,8 +831,8 @@ test('enemy_10 chooses cruceta nearby and belly charge at distance through the r
     }
   }
 });
-test('enemy_11 moves faster than every other normal enemy and retreats to keep distance',()=>{
-  assert.ok(Object.entries(enemies).filter(([key,e])=>!['leash','yulitza'].includes(key) && !e.boss && !e.minion).every(([,e])=>e.speed<enemies.leash.speed),'bosses (and Yulitza, the fastest of all) excluded');
+test('enemy_11 moves faster than non-acrobatic normal enemies and retreats to keep distance',()=>{
+  assert.ok(Object.entries(enemies).filter(([key,e])=>!['leash','yulitza','parlanchin'].includes(key) && !e.boss && !e.minion).every(([,e])=>e.speed<enemies.leash.speed),'bosses (and Yulitza, the fastest of all) excluded');
   const s=setup(3);s.enemies=[];const e=s.spawnEnemy('leash',0,0,2,0);e.x=150;e.y=450;e.nextHit=Infinity;
   s.player.x=600;s.updateEnemies(.1);assert.ok(e.x>150);
   e.x=560;s.player.x=500;s.updateEnemies(.1);assert.ok(e.x>560);
@@ -712,7 +1005,7 @@ function finishWaves(s,avoid=false) {
 }
 
 test('campaign has exact pools and totals and steadily increases health, speed, damage and pressure',()=>{
-  assert.deepEqual(CAMPAIGN.map(l=>l.enemies),[['fan','brawler'],['walker','rider','vendor','belly'],['guitarist','vendor','sweeper','chain','guard','leash'],['brawler','fan','sweeper','guard','yulitza'],['guitarist','motorata','vendor','thrower','belly'],['motorata','walker','thrower','sweeper','belly','yulitza'],['guard','belly','motorata','leash','vendor']].map((pool,index)=>index>=2?[...pool,'homeless']:pool));
+  assert.deepEqual(CAMPAIGN.map(l=>l.enemies),[['fan','brawler'],['walker','rider','vendor','belly'],['guitarist','vendor','sweeper','chain','guard','leash'],['brawler','fan','sweeper','guard','yulitza'],['guitarist','motorata','vendor','thrower','belly'],['motorata','walker','thrower','sweeper','belly','yulitza'],['guard','belly','motorata','leash','vendor']].map((pool,index)=>[...(index>=2?[...pool,'homeless']:pool),...([1,2,4,5,6].includes(index)?['malabarista']:[]),...([1,2,4].includes(index)?['parlanchin']:[])]));
   assert.deepEqual(CAMPAIGN.map(l=>l.total),[15,20,20,20,20,30,30]);
   for(let i=1;i<CAMPAIGN.length;i++)for(const key of ['hp','speed','damage','pressure'])assert.ok(CAMPAIGN[i][key]>CAMPAIGN[i-1][key]);
   assert.equal(CAMPAIGN[1].mode,'crossing');assert.equal(CAMPAIGN[5].boss,'brayatan');
@@ -741,7 +1034,7 @@ test('Zona Rosa follows downtown and resolves all six root-level parallax assets
     assert.equal(png.readUInt32BE(16),960);assert.equal(png.readUInt32BE(20),540);
   }
   assert.equal(s.floor.top,415);assert.equal(s.floor.bottom,500);assert.equal(s.level.total,30);
-  s.updateCounter();assert.ok(s.counter.text.startsWith('NIVEL 7 ·'));
+  s.updateCounter();assert.ok(s.counter.text.startsWith('NIVEL 8 ·'));
 });
 
 test('Zona Rosa requires Don Pacho after its own waves before reporting campaign victory',()=>{
@@ -813,13 +1106,13 @@ test('next level is strictly the successor after victory and transition fires on
     const s=setup(level),events=[];s.game.events.on('level-transition',data=>events.push(data));
     s.nextLevel();assert.equal(events.length,0);s.finished=true;s.health=0;s.nextLevel();assert.equal(events.length,0);
     s.health=100;s.nextLevel();s.nextLevel();
-    assert.deepEqual(events,level===CAMPAIGN.length-1?[]:[{character:'office',level:level+1}]);
+    assert.deepEqual(events,level===CAMPAIGN.length-1?[]:[{character:'office',level:campaignIndexForCombat(level)+1}]);
   }
 });
 
 test('intro variants show their correct asset, gate input, finish once asynchronously and clean listeners',async()=>{
   for(const kind of ['game','story','level','boss','credits']) {
-    const intro=new IntroScene();intro.init({kind,level:2,character:'student'});
+    const intro=new IntroScene();intro.init({kind,level:campaignIndexForCombat(2),character:'student'});
     const images=[],loaded=[],delays=[],texts=[];intro.textures={exists:()=>false};intro.load={image:(key,url)=>loaded.push({key,url})};intro.preload();
     assert.ok(loaded.some(l=>l.url.endsWith('intro_juego.png?url')));assert.ok(loaded.some(l=>l.url.endsWith('intro_boss.png?url')));
     assert.ok(loaded.some(l=>l.url.endsWith('intro_1.png?url')));
@@ -828,7 +1121,7 @@ test('intro variants show their correct asset, gate input, finish once asynchron
     intro.input=new EventEmitter();intro.input.keyboard=new EventEmitter();intro.events=new EventEmitter();
     intro.time={delayedCall:(ms,callback)=>delays.push({ms,callback})};intro.game={events:new EventEmitter(),scene:{stop(){}}};
     const completions=[];intro.game.events.on('intro-complete',data=>completions.push(data));intro.create();
-    assert.equal(images[0],kind==='level'?'level-3':kind==='boss'?'intro-boss':['story','credits'].includes(kind)?'intro-story':'intro-game');
+    assert.equal(images[0],kind==='level'?'level-4':kind==='boss'?'intro-boss':['story','credits'].includes(kind)?'intro-story':'intro-game');
     if(kind==='credits'){
       assert.ok(texts.includes('Gracias por Jugar, juego creado por Aramgames (Andres Ramirez), cualquier apoyo será bien recompensado'));
       assert.ok(texts.includes('CRÉDITOS'));assert.equal(delays[0].ms,1500);
@@ -867,14 +1160,14 @@ test('final victory reaches the record screen only after the character ending an
 });
 
 test('Zona Rosa intro preloads and displays the six layers, with no fixed campaign total in its title',()=>{
-  const intro=new IntroScene();intro.init({kind:'level',level:6,character:'office'});
+  const intro=new IntroScene();intro.init({kind:'level',level:campaignIndexForCombat(6),character:'office'});
   const loaded=[],images=[],texts=[];intro.textures={exists:()=>false};intro.load={image:(key,url)=>loaded.push({key,url})};intro.preload();
   assert.equal(loaded.filter(l=>l.key.startsWith('level7-')).length,6);assert.ok(loaded.every(l=>l.url));
   intro.add={image:(x,y,key)=>{images.push(key);return new Visual();},rectangle:()=>new Visual(),text:(x,y,text)=>{texts.push(text);return new Visual();}};
   intro.cameras={main:{setBackgroundColor(){},setZoom(){return this;},centerOn(){return this;}}};intro.tweens={add(){}};
   intro.input=new EventEmitter();intro.input.keyboard=new EventEmitter();intro.events=new EventEmitter();
   intro.time={delayedCall(){}};intro.game={events:new EventEmitter()};intro.create();
-  assert.deepEqual(images,levels[6].layers.map(l=>l.key));assert.ok(texts.includes('NIVEL 7'));assert.ok(texts.includes('ZONA ROSA'));
+  assert.deepEqual(images,levels[6].layers.map(l=>l.key));assert.ok(texts.includes('NIVEL 8'));assert.ok(texts.includes('ZONA ROSA'));
   assert.ok(!texts.some(t=>/NIVEL \d+\s*\//.test(t)));
 });
 
@@ -966,7 +1259,7 @@ test('H/J/K map to punch, kick and one special activation; Space and L keep jump
 test('manual restart keeps level, lives and boss checkpoint without deleting earned wave points',()=>{
   const s=setup(5);s.boss={};s.run.lives=2;s.run.score=500;s.run.levelStartScore=200;
   s.keys.R.justDown=true;s.update(0,16);
-  assert.equal(s.restartedWith.level,5);assert.equal(s.restartedWith.bossCheckpoint,true);
+  assert.equal(s.restartedWith.level,6);assert.equal(s.restartedWith.bossCheckpoint,true);
   assert.equal(s.restartedWith.run,s.run);assert.equal(s.run.lives,2);assert.equal(s.run.score,500);
   assert.equal(s.restartLevel(),false);s.init(s.restartedWith);assert.equal(s.health,100);assert.equal(s.run.lives,2);
   const regular=setup(2);regular.run.score=500;regular.run.levelStartScore=200;regular.restartLevel();assert.equal(regular.run.score,200);
@@ -1031,7 +1324,7 @@ test('level 1 boss data: each knife slash strikes on its own drawing and the foo
   assert.deepEqual([0,1,2].map(active),[6,9,14],'slash, backhand, lunge');
   assert.ok(enemyAttackData(b,2).range>enemyAttackData(b,0).range,'the lunge reaches further');
   const t=enemyThrowData(b,.8);assert.equal(t.frames.find(f=>f.phase==='active').pose,18);assert.equal(t.damage,Math.round(b.throw.damage*.8));
-  assert.ok(b.speed>Math.max(...Object.entries(enemies).filter(([key,e])=>!e.boss && !e.minion && key!=='yulitza').map(([,e])=>e.speed)),'runs in faster than any normal enemy but Yulitza');
+  assert.ok(b.speed>Math.max(...Object.entries(enemies).filter(([key,e])=>!e.boss && !e.minion && !['yulitza','parlanchin'].includes(key)).map(([,e])=>e.speed)),'runs in faster than normal enemies except Yulitza and Parlanchin');
 });
 
 function bossArena(character='office'){
@@ -1273,9 +1566,13 @@ test('El Grafitero (level 3): spray-can throw, pink floor spray and the 3rd-row 
   assert.equal(enemyAttackData(g).frames.find(f=>f.phase==='active').pose,14,'pink spray at full cloud');
   assert.equal(enemyThrowData(g).frames.find(f=>f.phase==='active').pose,6);assert.equal(g.throw.texture,'spraycan');
   assert.deepEqual([...new Set(g.evade.poses)],[8,9,10,11],'jump uses the third row, mostly airborne (9)');
-  assert.equal(enemyAttackData(g).frames.filter(f=>f.phase==='recovery').every(f=>f.pose===15),true,'the cloud lingers on pose 15');assert.equal(g.paint.ms,3000);
+  assert.equal(enemyAttackData(g).frames.filter(f=>f.phase==='recovery').every(f=>f.pose===15),true,'the cloud lingers on pose 15');assert.equal(g.paint.ms,1200);
+  assert.equal(g.evade.stain.ms,1200);assert.equal(g.barrage.stain.ms,800);
+  const png=readFileSync(new URL('../src/data/UI/spray_can.png',import.meta.url));
+  assert.equal(g.throw.width/g.throw.height,png.readUInt32BE(16)/png.readUInt32BE(20),'spray can keeps its source aspect ratio');
+  assert.equal(g.throw.width,30);assert.ok(g.throw.spin>0);
 });
-test('the pink spray paints 3 stains ahead that hurt a grounded player and vanish after 3 s',()=>{
+test('the pink spray paints 3 stains ahead that hurt a grounded player and vanish after 1.2 s',()=>{
   const {s,step,boss,model}=grafiteroArena();boss.x=s.player.x+150;boss.y=s.player.y;s.invulnerableUntil=0;s.respawnProtectedUntil=0;
   model.throwReady=1e9;model.ready=0;let painted=false;
   for(let i=0;i<120 && !painted;i++){step();painted=(s.stains?.stains.length??0)>=3;}
@@ -1286,7 +1583,7 @@ test('the pink spray paints 3 stains ahead that hurt a grounded player and vanis
   let health=s.health;s.stains.update();assert.equal(s.health,health,'jumping over paint is safe');
   s.player.z=0;s.invulnerableUntil=0;s.stains.update();assert.ok(s.health<health,'walking on paint hurts');
   health=s.health;s.invulnerableUntil=0;s.stains.update();assert.equal(s.health,health,'one hit per stain per 0.7 s');
-  s.combatTime=st.until+1;s.stains.update();assert.ok(!s.stains.stains.includes(st),'gone after 3 s');assert.equal(st.sprite.destroyed,true);
+  assert.equal(st.ms,1200);s.combatTime=st.until+1;s.stains.update();assert.ok(!s.stains.stains.includes(st),'gone after 1.2 s');assert.equal(st.sprite.destroyed,true);
 });
 test('the jump sends him backwards leaving cyan stains at takeoff and landing, also right after painting',()=>{
   const {s,step,boss,model}=grafiteroArena();boss.x=s.player.x+60;boss.y=s.player.y;model.ready=1e9;
@@ -1302,7 +1599,7 @@ test('the jump sends him backwards leaving cyan stains at takeoff and landing, a
 });
 
 test('players 2, 4 and 5 grunt when hit (player_2_grunt, player_4_grunt, female_grunt); the others stay silent',()=>{
-  for(const [character,expected] of [['student',['player2Grunt']],['gymbro',['player4Grunt']],['magolita',['femaleGrunt']],['office',[]],['teleperforman',[]]]) {
+  for(const [character,expected] of [['student',['player2Grunt']],['gymbro',['player4Grunt']],['magolita',['femaleGrunt']],['office',['gruntSound']],['teleperforman',[]]]) {
     const {s}=arcadeSetup(character),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
     s.invulnerableUntil=0;s.respawnProtectedUntil=0;assert.equal(s.hitPlayer(10),true);
     assert.deepEqual(calls,expected,character);
@@ -1374,7 +1671,7 @@ test('Brayatan guards level six after the thirty enemies; defeating him unlocks 
   scene.hitEnemy(a,{damage:a.hp+1,knockback:0,facing:1});step(190);
   assert.equal(scene.finished,true);assert.equal(results.length,1);assert.equal(results[0].last,false);assert.equal(scene.run.score,4000);
   const transitions=[];scene.game.events.on('level-transition',data=>transitions.push(data));scene.nextLevel();
-  assert.deepEqual(transitions,[{character:'gymbro',level:6}]);assert.equal(scene.run.level,6);
+  assert.deepEqual(transitions,[{character:'gymbro',level:7}]);assert.equal(scene.run.level,7);
 });
 
 test('Brayatan knife volleys use the throwing pose and become five knives after the rage transition',()=>{
@@ -1558,7 +1855,7 @@ test('the third strike of a combo knocks a regular enemy down',()=>{
 
 test('Yulitza: fastest fighter, 2-slash machete combo, and she hops to the other side when the player swings close by',()=>{
   const y=enemies.yulitza;assert.equal(y.name,'YULITZA');
-  const speeds=[...Object.entries(enemies).filter(([key])=>key!=='yulitza').map(([,e])=>e.speed),...Object.values(ARCADE.player.speeds)];
+  const speeds=[...Object.entries(enemies).filter(([key])=>!['yulitza','parlanchin'].includes(key)).map(([,e])=>e.speed),...Object.values(ARCADE.player.speeds)];
   assert.ok(y.speed>Math.max(...speeds),'faster than every enemy, boss and player');
   assert.equal(y.combo.stages,2);assert.equal(enemyAttackData(y,0).finisher,false);assert.equal(enemyAttackData(y,1).finisher,true);
   assert.deepEqual([0,1].map(stage=>enemyAttackData(y,stage).frames.find(f=>f.phase==='active').pose),[10,14]);
@@ -1624,6 +1921,7 @@ test('stomp, books and the phone knock enemies down; enemy_11/12 shout on entry 
   const s=setup(3),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
   const y=s.spawnEnemy('yulitza',90,0,1,0),l=s.spawnEnemy('leash',91,0,1,0);
   assert.deepEqual(calls.slice(-2),['enemy12Attack','enemy11Attack']);
+  s.spawnEnemy('guard',92,0,1,0);assert.equal(calls.at(-1),'policeEntry');
   s.hitEnemy(y,{damage:1,knockback:0,facing:1});s.hitEnemy(l,{damage:1,knockback:0,facing:1});
   assert.deepEqual(calls.filter(n=>n==='femaleHurt').length,2);
 });
@@ -1824,8 +2122,8 @@ function motorataArena(direction=1,index=6){
   return {s,a,entry:s.motorcycles.entries[0],step};
 }
 
-test('Zona Rosa keeps its requested enemy pool plus the sack carrier and Motorata has complete combat/entrance frames',()=>{
-  assert.deepEqual(CAMPAIGN[6].enemies,['guard','belly','motorata','leash','vendor','homeless']);
+test('Zona Rosa includes the sack carrier and juggler and Motorata has complete combat/entrance frames',()=>{
+  assert.deepEqual(CAMPAIGN[6].enemies,['guard','belly','motorata','leash','vendor','homeless','malabarista']);
   assert.deepEqual(CAMPAIGN.flatMap((level,i)=>level.enemies.includes('motorata')?[i+1]:[]),[5,6,7]);
   assert.equal(CAMPAIGN[6].total,30);assert.equal(CAMPAIGN[6].boss,'pacho');
   for(const [file,c,count] of [['motorata.png',enemies.motorata,24],['motorata_entry.png',MOTORATA_ENTRY,12]]){
@@ -1905,13 +2203,13 @@ test('the sack carrier appears only from level three onward with all 36 valid fu
   assert.equal(c.animations.spin.length,8);assert.equal(c.animations.dizzy.length,4);
 });
 
-test('the sack makes exactly five full invincible rotations followed by a two-second vulnerable dizzy window',()=>{
+test('the sack makes exactly three full invincible rotations followed by a two-second vulnerable dizzy window',()=>{
   const {s,a,model,spin,step}=sackArena();step(36);assert.equal(spin.phase,'spin');assert.equal(a.sackSpinning,true);
   const hp=a.hp;assert.equal(model.grabbable(),false);s.hitEnemy(a,strike);model.hurt();assert.equal(a.hp,hp);assert.equal(spin.phase,'spin');
-  const poses=new Map();for(let i=0;i<200;i++){step();poses.set(a.sprite.frame,(poses.get(a.sprite.frame)??0)+1);
+  const poses=new Map();for(let i=0;i<120;i++){step();poses.set(a.sprite.frame,(poses.get(a.sprite.frame)??0)+1);
     assert.equal(a.sackSpinning,true);assert.equal(spin.completedTurns,Math.floor((i+1)/40));}
   assert.deepEqual([...poses.keys()].sort((a,b)=>a-b),[24,25,26,27,28,29,30,31]);
-  assert.ok([...poses.values()].every(count=>count===25),'each of the eight angles appears for five frames on each of five turns');
+  assert.ok([...poses.values()].every(count=>count===15),'each of the eight angles appears for five frames on each of three turns');
   step();assert.equal(spin.phase,'dizzy');assert.equal(a.sackSpinning,false);assert.equal(a.invulnerableUntil,0);
   assert.equal(model.grabbable(),true);assert.equal(model.runtime.combat.tokens.owners.has(a),false);
   const until=spin.dizzyUntil;assert.equal(until-s.combatTime,2000);
@@ -1922,14 +2220,14 @@ test('the sack makes exactly five full invincible rotations followed by a two-se
 test('the spinning sack hits from either side at most once per turn; distance and lanes allow time to evade, and jumping avoids it',()=>{
   for(const side of [-1,1]){
     const {s,a,step}=sackArena(),hits=[];s.player.x=a.x+side*80;s.hitPlayer=damage=>{hits.push(damage);return true;};
-    step(36);assert.equal(hits.length,0,'the warning does not damage');step(200);assert.equal(hits.length,5);
+    step(36);assert.equal(hits.length,0,'the warning does not damage');step(120);assert.equal(hits.length,3);
   }
   for(const dodge of ['range','lane','jump']){
     const {s,a,step}=sackArena(),hits=[];s.hitPlayer=()=>{hits.push(1);return true;};
     if(dodge==='range')s.player.x=a.x+200;
     else if(dodge==='lane')s.player.y=490;
     else {s.player.z=60;s.jumpHeight=60;}
-    step(dodge==='jump'?237:37);assert.equal(hits.length,0,dodge);
+    step(dodge==='jump'?157:37);assert.equal(hits.length,0,dodge);
   }
 });
 
@@ -1938,7 +2236,7 @@ test('hits and grabs interrupt the windup, but hits during dizziness keep its or
   assert.equal(interrupt.spin.phase,null);assert.equal(interrupt.a.sackSpinning,undefined);assert.equal(interrupt.model.state,'hurt');
   const grab=sackArena();grab.model.seize();assert.equal(grab.spin.phase,null);grab.step(6);assert.equal(grab.model.state,'grabbed');
   assert.ok([20,21,22,23].includes(grab.a.sprite.frame));
-  const {s,a,model,spin,step}=sackArena();step(237);const until=spin.dizzyUntil,hp=a.hp;
+  const {s,a,model,spin,step}=sackArena();step(157);const until=spin.dizzyUntil,hp=a.hp;
   s.hitEnemy(a,{damage:10,knockback:0,facing:1});assert.equal(a.hp,hp-10);assert.equal(model.state,'hurt');
   step(30);assert.equal(spin.phase,'dizzy');assert.equal(spin.dizzyUntil,until);assert.ok([32,33,34,35].includes(a.sprite.frame));
   model.seize();step(8);assert.equal(model.state,'grabbed');assert.ok([20,21,22,23].includes(a.sprite.frame));
@@ -1961,7 +2259,95 @@ test('the sack carrier tracks the player in both axes while spinning, respects b
   assert.equal(a.sprite.x,a.x);assert.equal(a.shadow.x,a.x);assert.equal(a.shadow.y,a.y);
   a.x=s.floor.right-.1;a.y=s.floor.bottom-.1;s.player.x=s.floor.right;s.player.y=s.floor.bottom;step(10);
   assert.ok(a.x<=s.floor.right&&a.x>=s.floor.left&&a.y<=s.floor.bottom&&a.y>=s.floor.top);
-  let guard=0;while(spin.phase==='spin'&&guard++<240)step();assert.equal(spin.phase,'dizzy');assert.equal(spin.completedTurns,5);
+  let guard=0;while(spin.phase==='spin'&&guard++<240)step();assert.equal(spin.phase,'dizzy');assert.equal(spin.completedTurns,3);
   const stop={x:a.x,y:a.y};s.player.x=s.floor.left;s.player.y=s.floor.top;step(20);
   assert.equal(a.x,stop.x);assert.equal(a.y,stop.y);assert.equal(a.sackSpinning,false);
+});
+
+test('a run only loads its fighter, the level pools, the boss and what they summon',()=>{
+  CAMPAIGN.forEach(level=>{
+    const wanted=actorsFor(level,'gymbro');
+    assert.ok(wanted.has('gymbro'));
+    for(const key of [...level.enemies,...(level.crossingEnemies??[]),level.boss].filter(Boolean))assert.ok(wanted.has(key),`${key} missing`);
+    assert.ok(!wanted.has('magolita'),'other fighters stay unloaded');
+    assert.ok(wanted.size<Object.keys(enemies).length,'not every enemy is loaded for one level');
+  });
+  const summoner=Object.entries(enemies).find(([,config])=>config.summon?.enemy && enemies[config.summon.enemy]);
+  assert.ok(summoner,'some boss summons minions');
+  assert.ok(actorsFor({enemies:[summoner[0]]},'office').has(summoner[1].summon.enemy));
+  assert.ok(actorsFor({enemies:['motorata']},'office').has('motorata-entry'));
+});
+function mimeArena(){
+  const s=setup(1,'gymbro');s.enemies=[];s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};s.invulnerableUntil=Infinity;
+  const graphics=[];s.add.graphics=()=>{const g=new Visual();g.draws=0;
+    for(const method of ['clear','fillStyle','fillEllipse','lineStyle','strokeEllipse','fillRect','strokeCircle','lineBetween','fillCircle'])g[method]=function(){this.draws++;return this;};
+    graphics.push(g);return g;};
+  const a=s.spawnEnemy('parlanchin',0,0,1,0);a.x=650;a.y=450;s.player.x=400;s.player.y=450;
+  a.sprite.setFrame=function(frame){this.frame=frame;return this;};
+  const m=new Enemy(s.arcade,a);s.arcade.enemies.set(a,m);m.ready=0;
+  const step=(n=1)=>{for(let i=0;i<n;i++)s.update(0,ARCADE.clock.stepMs);};
+  return {s,a,m,graphics,step};
+}
+
+test('Parlanchin only joins playable levels 3, 4 and 6, with 28 complete mime animation poses',()=>{
+  assert.deepEqual(PLAYABLE_CAMPAIGN.flatMap((level,i)=>level.enemies.includes('parlanchin')?[i+1]:[]),[3,4,6]);
+  const c=enemies.parlanchin,png=readFileSync(new URL('../src/data/enemies/parlanchin.png',import.meta.url));
+  const width=png.readUInt32BE(16),height=png.readUInt32BE(20);
+  assert.equal(c.name,'PARLANCHÍN');assert.ok(c.speed>=300);assert.equal(c.frameRects.length,28);
+  assert.equal(new Set(Object.values(c.animations).flat()).size,28);
+  for(const r of c.frameRects)assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=width && r.y+r.height<=height);
+  assert.equal(c.animations.heal.length,4);assert.equal(c.animations.struggle.length,4);
+});
+
+test('mime flying kicks leap toward a locked landing point, hit once from either side and leave recovery time',()=>{
+  for(const side of [-1,1]){
+    const {s,a,m,step}=mimeArena(),hits=[];a.x=450;s.player.x=a.x+side*200;
+    s.hitPlayer=damage=>{hits.push(damage);return true;};m.begin();assert.equal(a.tell.text,'¡PATADA!');
+    step(22);let peak=0;
+    for(let i=0;i<80 && m.state!=='recover';i++){step();peak=Math.max(peak,a.z??0);}
+    assert.ok(peak>40);assert.equal(a.z,0);assert.equal(a.x,450+side*176);assert.equal(hits.length,1);
+    step(30);assert.equal(hits.length,1);assert.equal(m.state,'circle');assert.ok(m.ready>m.clock);
+  }
+  const {s,a,m,step}=mimeArena(),hits=[];a.x=450;s.player.x=650;
+  s.hitPlayer=()=>{hits.push(1);return true;};m.begin();step(23);s.player.y=500;step(45);
+  assert.equal(a.y,450,'landing lane was committed at takeoff');assert.equal(hits.length,0);
+});
+
+test('mime frequently dodges nearby new strikes, respects cooldowns and lands inside the arena',()=>{
+  const {s,a,m,step}=mimeArena(),random=Math.random;a.x=450;s.player.x=500;s.playerAttack={};
+  try{
+    Math.random=()=>0;assert.equal(m.tryDodge(),true);assert.equal(m.state,'evade');
+    const hp=a.hp;s.hitEnemy(a,{damage:5,knockback:0,facing:1});assert.equal(a.hp,hp);
+    step(20);assert.equal(a.z,0);assert.equal(m.state,'approach');assert.ok(a.x>s.player.x);
+    assert.ok(a.x>=s.floor.left && a.x<=s.floor.right);assert.equal(m.tryDodge(),false);
+    s.playerAttack={};assert.equal(m.tryDodge(),false,'cooldown prevents consecutive dodges');
+  }finally{Math.random=random;}
+});
+
+test('miming restores exactly ten percent only on completion, updates health and has a visible aura and cooldown',()=>{
+  const {s,a,m,graphics,step}=mimeArena();a.hp=a.config.hp*.5;s.player.x=a.x-170;
+  step();assert.equal(m.state,'heal','chooses miming while damaged even inside flying-kick range');
+  assert.equal(a.tell.text,'MÍMICA +10%');assert.ok(m.healAura);assert.equal(graphics.length,1);
+  const aura=graphics[0],hp=a.hp;assert.ok(aura.draws>0);
+  step(107);assert.equal(a.hp,hp,'no gradual energy can be retained by interrupting the gesture');
+  step();assert.ok(Math.abs(a.hp-hp-a.config.hp*.1)<1e-8);assert.equal(a.healthBar.width,25.2);
+  assert.equal(m.state,'approach');assert.equal(m.healAura,null);assert.equal(aura.destroyed,true);
+  assert.equal(m.healReady-m.clock,390);assert.equal(m.canHeal(200),false);
+});
+
+test('hitting the mime interrupts its heal and cancels all recovery and visual effects, including on death',()=>{
+  for(const lethal of [false,true]){
+    const {s,a,m,graphics,step}=mimeArena();a.hp=a.config.hp*.5;m.beginHeal();step(45);
+    const hp=a.hp,aura=graphics[0];s.hitEnemy(a,{damage:lethal?hp+1:5,knockback:0,facing:1});
+    assert.equal(a.hp,lethal?0:hp-5);assert.equal(m.healAura,null);assert.equal(aura.destroyed,true);
+    assert.equal(m.healReady-m.clock,270);step(120);assert.equal(a.hp,lethal?0:hp-5);
+  }
+});
+
+test('pausing freezes the mime heal and aura, and leaving the level clears its effect',()=>{
+  const {s,a,m,graphics,step}=mimeArena();a.hp=a.config.hp*.5;m.beginHeal();step(35);
+  const hp=a.hp,age=m.age,draws=graphics[0].draws;s.paused=true;step(300);
+  assert.equal(m.age,age);assert.equal(a.hp,hp);assert.equal(graphics[0].draws,draws);
+  s.paused=false;step();assert.ok(m.age>age);assert.ok(graphics[0].draws>draws);
+  s.arcade.destroy();assert.equal(graphics[0].destroyed,true);
 });

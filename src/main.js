@@ -2,12 +2,12 @@ import Phaser from 'phaser';
 import './style.css';
 import selectionBackground from './data/players/fondo_players.png?url';
 document.documentElement.style.setProperty('--selection-art',`url(${selectionBackground})`);
-// Bundled web fonts (the page and the in-game texts asked for them, but they were never shipped).
-import '@fontsource/ibm-plex-mono/400.css';
-import '@fontsource/ibm-plex-mono/600.css';
-import '@fontsource/barlow-condensed/700.css';
-import '@fontsource/barlow-condensed/800.css';
-import '@fontsource/barlow-condensed/900.css';
+// Bundled web fonts, Latin subset only (covers Spanish): the cyrillic/vietnamese/latin-ext files were dead weight in the build.
+import '@fontsource/ibm-plex-mono/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
+import '@fontsource/barlow-condensed/latin-800.css';
+import '@fontsource/barlow-condensed/latin-900.css';
 import { installCrispText } from './ui/crispText.js';
 import { StreetScene } from './scenes/StreetScene.js';
 import { levels } from './data/levels.js';
@@ -20,16 +20,19 @@ import { SoundEffects } from './audio/SoundEffects.js';
 import { TouchControls } from './input/TouchControls.js';
 import { RunState, ContinueCountdown, saveRecord, MAX_CONTINUES, RANKING_KEY, loadRanking, addToRanking, qualifiesForRanking, cleanInitials } from './game/RunState.js';
 import {ARCADE} from './data/arcade.js';
+import {campaignIndexForCombat} from './data/campaign.js';
+import {CHIVA_BONUS,shouldStartChivaBonus} from './bonus/chivaRules.js';
 
 let selected = 'office';
 let screen = 'intro';
 let returnToStreet=false,lastResult=null,countdown=null,countdownTimer=null;
 // Development shortcuts must never overwrite a real player's record.
-const recordKey=import.meta.env.DEV && ['bossTest','enemyTest','playerPreview','campaignPreview'].some(key=>new URLSearchParams(location.search).has(key))?'street-bogota-record-qa':'street-bogota-record-v1';
+const recordKey=import.meta.env.DEV && ['bossTest','enemyTest','playerPreview','campaignPreview','bonusTest','cyclingTest','gameOverTest'].some(key=>new URLSearchParams(location.search).has(key))?'street-bogota-record-qa':'street-bogota-record-v1';
 const selection = document.querySelector('#selection');
 const resultModal=document.querySelector('#result-modal');
 
 const levelLabel = document.querySelector('#level');
+const combatControlsDescription=document.querySelector('#game').getAttribute('aria-label');
 document.querySelectorAll('[data-character], #restart').forEach((button) => { button.disabled = true; });
 
 const game = new Phaser.Game({
@@ -83,7 +86,7 @@ function pick(key) {
 // TEST LEVEL SELECTOR: lets you start any level from the character screen.
 // Set LEVEL_SELECT to false to remove it (the game then always continues from the campaign's current level).
 const LEVEL_SELECT = true;
-const levelPicker=LEVEL_SELECT?createLevelPicker():null;
+const levelPicker=import.meta.env.DEV && LEVEL_SELECT?createLevelPicker():null;
 function createLevelPicker(){
   const label=document.createElement('label');label.className='level-picker';
   label.style.cssText='display:flex;align-items:center;gap:8px;font-size:10px;letter-spacing:1px;color:#d6ed64';
@@ -122,7 +125,7 @@ function startIntro(data={kind:'game'}) {
 }
 function play() {
   if(returnToStreet) {
-    const scene=game.scene.getScene('Street');scene.switchCharacter(selected);resumeStreet();return;
+    const scene=game.scene.getScene('Street');scene.ensureCharacter(selected,()=>{scene.switchCharacter(selected);resumeStreet();});return;
   }
   if(levelPicker && !levelPicker.hidden){const level=Number(levelPicker.querySelector('select').value);if(level!==game.run.level)game.run.advance(level);}
   // Character story screen first; confirming it continues to the level intro.
@@ -184,15 +187,17 @@ function resetResultButtons() {
 }
 function openResult(mode='result') {
   resultModal.dataset.mode=mode;
+  resultModal.setAttribute('aria-describedby',mode==='gameover'?'gameover-taunt result-description result-score':'result-description');
   game.touchControls.setEnabled(false);resultModal.hidden=false;
   document.querySelector('.toolbar').inert=true;
   game.scene.getScene('Street').overlay.setVisible(false);
 }
 function showResult(result) {
+  if(result.bonus)return showBonusResult(result);
   const {won,last,score,character}=result;lastResult=result;resetResultButtons();
   const scene=game.scene.getScene('Street');scene.input.keyboard.resetKeys();
-  document.querySelector('#result-title').textContent=last?'BOGOTÁ DESPEJADA':'CUADRA DESPEJADA';
-  document.querySelector('#result-description').textContent=last?'Sobreviviste a la pelea por Bogotá.':'La siguiente cuadra te espera.';
+  document.querySelector('#result-title').textContent=result.cycling?'¡CICLOVÍA COMPLETADA!':last?'BOGOTÁ DESPEJADA':'CUADRA DESPEJADA';
+  document.querySelector('#result-description').textContent=result.cycling?'Llegaste a la meta. Sigue Plaza de Bolívar.':last?'Sobreviviste a la pelea por Bogotá.':'La siguiente cuadra te espera.';
   let text=`${character} · ${score} PUNTOS`;
   if(last){const record=saveRecord(score,character,undefined,recordKey);text+=` · RÉCORD ${record.score} — ${record.character}`;}
   document.querySelector('#result-score').textContent=text;
@@ -202,6 +207,17 @@ function showResult(result) {
   openResult();document.querySelector(last?'#new-game':'#next-level').focus();
   if(last)offerRanking(score,character,levels.length,document.querySelector('#new-game'));
 }
+
+function showBonusResult(result){
+  lastResult=result;resetResultButtons();
+  const s=game.scene.getScene('Street');s.input.keyboard.resetKeys();
+  document.querySelector('#result-title').textContent=result.won?'¡CHIVA DESTRUIDA!':'TIEMPO AGOTADO';
+  document.querySelector('#result-description').textContent=result.won?'Bonus perfecto: 5000 puntos. ¡Coste no lo puede creer!':`${result.hits} golpes × 100 puntos. La campaña continúa.`;
+  document.querySelector('#result-score').textContent=`+${result.points} BONUS · ${result.score} PUNTOS TOTALES`;
+  const next=document.querySelector('#next-level');next.hidden=false;next.disabled=false;
+  openResult();next.focus();
+}
+game.events.on('bonus-complete',showBonusResult);
 game.events.on('player-death',()=>game.touchControls.setEnabled(false));
 game.events.on('player-respawn',()=>{showScreen('game');game.touchControls.setCharacter(selected);focusGame();});
 game.events.on('level-victory',()=>{game.touchControls.reset();});
@@ -247,7 +263,14 @@ game.events.on('intro-complete',data=>{
     showScreen('game');game.scene.start('Street',{character:data.character,level:data.level,run:game.run});focusGame();
   } else openSelection();
 });
-game.events.on('level-transition',data=>startIntro({...data,kind:'level'}));
+function startChivaBonus(data){
+  game.run.chivaBonusPlayed=true;showScreen('game');game.scene.stop('Intro');game.scene.stop('Menu');
+  game.scene.start('Street',{character:data.character,level:CHIVA_BONUS.afterLevel,chivaBonus:true,returnLevel:data.level,run:game.run});focusGame();
+}
+game.events.on('level-transition',data=>{
+  if(shouldStartChivaBonus(data.level,game.run))startChivaBonus(data);
+  else startIntro({...data,kind:'level'});
+});
 game.events.on('boss-intro',()=>startIntro({kind:'boss'}));
 game.events.once('menu-ready',()=>startIntro());
 if (import.meta.env.DEV) {
@@ -259,18 +282,35 @@ if (import.meta.env.DEV) {
     start: (character='gymbro', attack='entry') => {
       if(!characters[character]) return false;
       selected=character;showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
-      game.scene.start('Street',{character,level:5,bossTest:attack});focusGame();return true;
+      game.scene.start('Street',{character,level:campaignIndexForCombat(5),bossTest:attack});focusGame();return true;
     },
   };
   const debugParams = new URLSearchParams(window.location.search);
+  if(debugParams.has('gameOverTest'))game.events.once('menu-ready',()=>{
+    selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
+    showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
+    game.events.once('level-start',()=>{game.run.score=12500;game.run.continuesUsed=MAX_CONTINUES;game.scene.getScene('Street').endRun();});
+    game.scene.start('Street',{character:selected,level:0,run:game.run});
+  });
+  if(debugParams.has('cyclingTest'))game.events.once('menu-ready',async()=>{
+    selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
+    showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
+    game.scene.start('Street',{character:selected,level:1});focusGame();
+    const {installCyclingPreview}=await import('./debug/cyclingPreview.js');installCyclingPreview(game);
+  });
+  if(debugParams.has('bonusTest'))game.events.once('menu-ready',async()=>{
+    selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
+    startChivaBonus({character:selected,level:CHIVA_BONUS.afterLevel+1});
+    const {installChivaPreview}=await import('./debug/chivaPreview.js');installChivaPreview(game);
+  });
   if(debugParams.has('enemyTest') || debugParams.has('combatPreview'))game.events.once('menu-ready',async()=>{
     const {installCombatPreview}=await import('./debug/combatPreview.js');installCombatPreview(game);
   });
   const enemyTest=debugParams.get('enemyTest');
-  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap)game.events.once('menu-ready',()=>{
+  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap || enemies[enemyTest]?.juggler || enemies[enemyTest]?.paint)game.events.once('menu-ready',()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
     showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
-    game.scene.start('Street',{character:selected,level:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2,enemyTest});focusGame();
+    game.scene.start('Street',{character:selected,level:campaignIndexForCombat(enemies[enemyTest].mime?1:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2),enemyTest});focusGame();
   });
   if(debugParams.has('campaignPreview'))game.events.once('menu-ready',async()=>{
     const {installCampaignPreview}=await import('./debug/campaignPreview.js');installCampaignPreview(game);
@@ -322,12 +362,16 @@ document.addEventListener('keydown', event => {
   }
 });
 game.events.on('level-start', (index) => {
+  const cycling=levels[index].mode==='cycling';
+  document.querySelector('#game').setAttribute('aria-label',cycling?'Juego: pedaleo automático en bicicleta. Flechas arriba y abajo o W y S para esquivar. Shift activa dash durante 3 segundos, con 5 segundos de recarga. P pausa y R reiniciar.':combatControlsDescription);
   game.touchControls.setCharacter(game.scene.getScene('Street').characterKey);
   game.touchControls.setEnabled(true);
   resultModal.hidden=true;document.querySelector('.toolbar').inert=false;
   document.querySelector('#choose').disabled = false;
   document.querySelectorAll('[data-character], #restart').forEach((button) => { button.disabled = false; });
-  levelLabel.textContent=`${String(index+1).padStart(2,'0')} / ${levels[index].name.toUpperCase()}`;
+  const bonus=game.scene.getScene('Street').isChivaBonus;
+  levelLabel.textContent=bonus?'BONUS / LA CHIVA':`${String(index+1).padStart(2,'0')} / ${levels[index].name.toUpperCase()}`;
+  document.querySelector('#restart').disabled=bonus;
   document.querySelector('#next-level').disabled = true;
 });
 game.events.on('level-clear', (index) => {

@@ -52,7 +52,7 @@ export class IntroScene extends Phaser.Scene {
           this.add.text(480,342+i*36,line,{...style,fontSize:'20px',color:i===3?'#d6ed64':'#e8edce'}).setOrigin(.5);
         });
     } else this.add.rectangle(480,490,960,100,0x05080a,.8);
-    const caption=isLevel?(level.mode==='crossing'?'DERROTA A LOS PEATONES · ESQUIVA LAS MOTOS':`${level.total} ENEMIGOS · OLEADAS DE DOS Y TRES`)
+    const caption=isLevel?(level.mode==='cycling'?'PEDALEO AUTOMÁTICO · ↑ ↓ ESQUIVAR · LLEGA A LA META':level.mode==='crossing'?'DERROTA A LOS PEATONES · ESQUIVA LAS MOTOS':`${level.total} ENEMIGOS · OLEADAS DE DOS Y TRES`)
       :this.kind==='boss'?'DORMILÓN · EL ÚLTIMO TRÁMITE DE LA NOCHE':'A LOS TRAQUES POR BOGOTÁ.';
     if(this.kind!=='story' && !isCredits)this.add.text(480,467,caption,{...style,fontSize:'16px'}).setOrigin(.5);
     const prompt=this.add.text(480,510,'',{...style,fontSize:'12px',color:'#d6ed64'}).setOrigin(.5);

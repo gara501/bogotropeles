@@ -6,7 +6,10 @@ export class AttackTokens {
   clear(){this.owners.clear();}
 }
 export class CombatSystem {
-  constructor(scene){this.scene=scene;this.frame=0;this.stops=new Map();this.flashes=new Map();this.impacts=[];this.tokens=new AttackTokens();}
+  constructor(scene){this.scene=scene;this.frame=0;this.stops=new Map();this.flashes=new Map();this.impacts=[];this.tokens=new AttackTokens();this.pool=[];}
+  /** Impact effects reuse a few Graphics objects instead of creating and destroying one per hit. */
+  acquire(){const pooled=this.pool.pop();if(pooled){pooled.setVisible?.(true);return pooled;}return this.scene.add?.graphics?.();}
+  release(graphic){if(this.pool.length<12){graphic.clear?.();graphic.setVisible?.(false);this.pool.push(graphic);}else graphic.destroy();}
   hurtbox(actor){return {x:actor.x,y:actor.y,halfWidth:actor.config?.hurtbox?.halfWidth??ARCADE.body.halfWidth,halfDepth:actor.config?.hurtbox?.halfDepth??ARCADE.body.halfDepth};}
   hitbox(actor,attack){return {x:actor.x+attack.facing*attack.range/2,y:actor.y,halfWidth:attack.range/2,halfDepth:(attack.lane??ARCADE.body.lane)/2};}
   touches(attacker,target,attack){
@@ -23,7 +26,7 @@ export class CombatSystem {
     victim?.sprite?.setTintFill?.(0xffffff);this.flashes.set(victim,this.frame+ARCADE.feedback.flash);
     const f=ARCADE.feedback,s=this.scene,byPlayer=attacker && attacker===s.player;
     if(byPlayer && attack.finisher)s.cameras?.main.shake(f.finisherShake.ms,f.finisherShake.strength);else s.cameras?.main.shake(f.shakeMs,f.shakeStrength);
-    const graphic=s.add?.graphics?.();
+    const graphic=this.acquire();
     if(!graphic)return;
     if(!byPlayer){this.impacts.push({graphic,x:((attacker?.x??victim.x)+victim.x)/2,y:victim.y-(victim.config?.height??0)/2,until:this.frame+f.impact});return;}
     // The player's hits: sparks by strike type at the contact point (kicks land lower), plus a rebound on finishers.
@@ -56,7 +59,7 @@ export class CombatSystem {
     for(const [actor,until] of this.flashes)if(frame>until){actor?.sprite?.clearTint?.();this.flashes.delete(actor);}
     for(const [actor,until] of this.stops)if(frame>until){actor.sprite?.anims?.resume();this.stops.delete(actor);}
     this.impacts=this.impacts.filter(p=>{
-      if(frame>p.until){p.graphic.destroy();return false;}
+      if(frame>p.until){this.release(p.graphic);return false;}
       if(p.splash){this.drawSplash(p,frame);return true;}
       if(p.wave){this.drawWave(p,frame);return true;}
       if(p.quake){this.drawQuake(p,frame);return true;}
@@ -68,7 +71,7 @@ export class CombatSystem {
   push(actor,attack){actor.x=Math.max(this.scene.floor.left,Math.min(this.scene.floor.right,actor.x+attack.facing*(attack.finisher?ARCADE.attack.finisherKnockback:ARCADE.attack.knockback)));}
   /** Mop special: a soapy wave that rolls along the floor ahead, with droplets and foam bubbles. */
   splash(actor,facing,range){
-    const graphic=this.scene.add?.graphics?.();if(!graphic)return;
+    const graphic=this.acquire();if(!graphic)return;
     this.impacts.push({graphic,splash:true,x:actor.x,y:actor.y,facing,range,born:this.frame,until:this.frame+36,life:36,seed:Math.round(actor.x)%97});
   }
   drawSplash(p,frame){
@@ -93,7 +96,7 @@ export class CombatSystem {
   }
   /** Headset special: concentric purple energy arcs that roll forward from the player. */
   energyWave(actor,facing,range){
-    const graphic=this.scene.add?.graphics?.();if(!graphic)return;
+    const graphic=this.acquire();if(!graphic)return;
     this.impacts.push({graphic,wave:true,x:actor.x+facing*20,y:actor.y-(actor.config?.height??110)*.55,floor:actor.y,facing,range,born:this.frame,until:this.frame+30,life:30});
     this.scene.cameras?.main?.shake?.(80,.003);
   }
@@ -111,7 +114,7 @@ export class CombatSystem {
   }
   /** Gymbro stomp: floor shockwave rings, cracks radiating from the foot, dust clouds and flying debris. */
   quake(actor,range){
-    const graphic=this.scene.add?.graphics?.();if(!graphic)return;
+    const graphic=this.acquire();if(!graphic)return;
     this.impacts.push({graphic,quake:true,x:actor.x,y:actor.y,range,born:this.frame,until:this.frame+42,life:42,seed:Math.round(actor.x)%89});
     this.scene.cameras?.main?.shake?.(160,.008);
   }
@@ -142,6 +145,6 @@ export class CombatSystem {
       g.fillStyle(i%3?0x5a4c40:0x9a8a78,alpha).fillRect(p.x+dx,p.y-10+dy,6+a*5,5+a*4);
     }
   }
-  groundImpact(actor){const graphic=this.scene.add?.graphics?.();if(graphic)this.impacts.push({graphic,x:actor.x,y:actor.y,until:this.frame+ARCADE.feedback.impact});}
-  clear(){for(const actor of this.flashes.keys())actor?.sprite?.clearTint?.();this.stops.clear();this.flashes.clear();this.tokens.clear();for(const p of this.impacts)p.graphic.destroy();this.impacts=[];}
+  groundImpact(actor){const graphic=this.acquire();if(graphic)this.impacts.push({graphic,x:actor.x,y:actor.y,until:this.frame+ARCADE.feedback.impact});}
+  clear(){for(const actor of this.flashes.keys())actor?.sprite?.clearTint?.();this.stops.clear();this.flashes.clear();this.tokens.clear();for(const p of this.impacts)this.release(p.graphic);this.impacts=[];}
 }

@@ -53,6 +53,7 @@ export class TouchControls {
     for(const button of this.buttons)button.classList.remove('active');
   }
   setEnabled(enabled){this.enabled=enabled;this.paused=false;this.sync();}
+  setCycling(value){this.cycling=value;this.stick.setAttribute('aria-label',value?'Joystick: arriba o abajo para esquivar':'Joystick: arrastra para moverte en cualquier dirección');this.sync();}
   setPaused(paused){this.paused=paused;this.reset();this.syncButtons();}
   setCharacter(character) {
     document.querySelector('[data-touch-action="L"]').hidden=character!=='student';
@@ -60,7 +61,13 @@ export class TouchControls {
     this.sync();
   }
   syncButtons() {
-    for(const button of this.buttons)button.disabled=!this.enabled || (this.paused && button.dataset.touchAction!=='P');
+    for(const button of this.buttons){
+      const action=button.dataset.touchAction;
+      const cyclingAction=action==='P' || action==='SHIFT';
+      button.hidden=this.cycling?!cyclingAction:action==='L' && this.game.scene.getScene('Street')?.characterKey!=='student';
+      button.disabled=!this.enabled || (this.paused && action!=='P') || (this.cycling && !cyclingAction);
+      if(action==='SHIFT')button.setAttribute('aria-label',this.cycling?'Dash en bicicleta: 3 segundos, recarga de 5 segundos':'Dash');
+    }
     const pause=document.querySelector('[data-touch-action="P"]');
     pause.setAttribute('aria-label',this.paused?'Continuar partida':'Pausar partida');
     pause.querySelector('span').textContent=this.paused?'▶':'Ⅱ';

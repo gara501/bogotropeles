@@ -11,15 +11,17 @@ import magolita from '../data/players/player_5_profile.png?url';
 // Illustrated portraits for the character selection (player_N_profile.png). Characters without one fall back to their idle sprite.
 const PROFILES = { office, student, teleperforman, gymbro, magolita };
 
-// Load once, before combat starts. The same textures are shared with Street.
+// Loads the shared textures (levels, pickups, props, effects) before combat starts; fighter and enemy sheets are loaded per level by Street.
 export class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
   preload() { StreetScene.prototype.preload.call(this); }
   create() {
     for (const [key, config] of Object.entries(characters)) {
-      registerAnimations(this, key, config);
       const img = document.querySelector(`[data-portrait="${key}"]`);
       if (PROFILES[key]) { img.src = PROFILES[key]; img.classList.add('profile'); continue; }
+      // No illustrated profile: build the sprite portrait from its sheet (only possible if that sheet was loaded).
+      if (!this.textures.exists(`${key}-source`)) continue;
+      registerAnimations(this, key, config);
       const texture = this.textures.get(key), frame = texture.get(config.idle);
       const portrait = document.createElement('canvas');
       portrait.width = frame.cutWidth; portrait.height = frame.cutHeight;

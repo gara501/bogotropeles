@@ -17,7 +17,8 @@ export class SprayBarrage {
       const y=i===0?Math.max(top,Math.min(bottom,s.player.y)):rand(top,bottom);
       const startX=owner.x+owner.facing*55,startY=owner.y-(owner.config.throw.lift??92);
       const marker=s.add.ellipse(x,y,config.radius*2,config.depth*2,0xff43c6,.3).setDepth(y-2);
-      const sprite=s.add.image(startX,startY,owner.config.throw.texture).setDisplaySize(42,22).setDepth(owner.y+2).setVisible(false);
+      const sprite=s.add.image(startX,startY,owner.config.throw.texture)
+        .setDisplaySize(owner.config.throw.width??30,owner.config.throw.height??30).setDepth(owner.y+2).setVisible(false);
       this.cans.push({x,y,startX,startY,sprite,marker,owner,damage,config,
         at:s.combatTime+i*config.stagger,duration:rand(config.flight[0],config.flight[1]),direction:Math.sign(x-startX)||1});
     }

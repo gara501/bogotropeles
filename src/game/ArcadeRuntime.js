@@ -37,11 +37,19 @@ export class ArcadeRuntime {
     }
     if(s.finished)return;
     s.combatTime+=ARCADE.clock.stepMs;this.combat.step(frame);
+    if(s.chivaBonus){
+      s.chivaBonus.tick();
+      if(s.chivaBonus.locked){
+        this.clearInput();s.stage?.update(frame);s.chivaBonus.update(frame);
+        s.placeFighter(s.player,s.player.z??0);s.vuvuzela?.render();return;
+      }
+    }
     const previous={x:s.player.x,y:s.player.y},walking=this.player.state==='walk' && !this.combat.frozen(s.player);
     this.player.step({...this.input,...this.edges});this.edges={jump:false,dash:false};
     s.stage?.rain?.slip(s.player,previous,walking && this.player.state==='walk');
     s.stage?.update(frame); // moves the camera and the floor span before enemies use it
     s.energyPickups?.update(frame);
+    if(!s.chivaBonus)s.vuvuzela?.update(frame);
     s.motorcycles?.update();
     for(const actor of s.enemies){
       if(actor.hp<=0){this.combat.tokens.release(actor);continue;}
@@ -70,6 +78,7 @@ export class ArcadeRuntime {
     const blinking=s.combatTime<s.respawnProtectedUntil || s.combatTime<s.invulnerableUntil;
     s.player.sprite.setFlipX(s.facing<0).setAlpha(blinking && frame%ARCADE.flow.blinkPeriod<ARCADE.flow.blinkVisible?ARCADE.flow.blinkAlpha:1);
     s.placeFighter(s.player,s.player.z??0);
+    s.vuvuzela?.render();
     if(this.debugBoxes){
       this.boxGraphics??=s.add.graphics().setDepth(1100);this.boxGraphics.clear();
       for(const actor of [s.player,...s.enemies.filter(e=>e.hp>0)]){const b=this.combat.hurtbox(actor);this.boxGraphics.lineStyle(1/ARCADE.screen.zoom,0x66ff88,1).strokeRect(b.x-b.halfWidth,b.y-b.halfDepth,b.halfWidth*2,b.halfDepth*2);}
@@ -77,7 +86,7 @@ export class ArcadeRuntime {
     }else this.boxGraphics?.clear();
     s.dashStatus.setText(frame>=this.player.dashReady?'SHIFT / DASH LISTO':'SHIFT / RECARGANDO…');
     if(s.health<=0){s.handleDeath();return;}
-    if(s.waves.cleared && (!s.level.boss || s.boss?.done || s.miniBoss?.done))this.win();
+    if(!s.chivaBonus && s.waves.cleared && (!s.level.boss || s.boss?.done || s.miniBoss?.done))this.win();
   }
   enemyHit(actor,attack){
     if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
@@ -88,10 +97,11 @@ export class ArcadeRuntime {
     this.enemies.get(actor).checkShieldPhase();
   }
   playerHit(combo,source){this.player.hurt(Boolean(combo?.finisher));if(!combo)this.combat.impact(source??null,this.scene.player,{finisher:false});}
-  resetPlayer(revive=false){this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
+  resetPlayer(revive=false){this.scene.vuvuzela?.clearHeld();this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
   clearInput(){this.player.buffer.clear();this.edges={jump:false,dash:false};this.input={dx:0,dy:0};}
   win(){
     const s=this.scene;s.finished=true;this.player.transition('celebration');this.clearInput();this.combat.tokens.clear();
+    s.vuvuzela?.clearHeld();
     s.stage?.rain?.clear();
     s.stage?.pigeons?.clear();
     s.motorcycles?.clear();
@@ -102,5 +112,5 @@ export class ArcadeRuntime {
     s.play(s.player,'victory',ARCADE.flow.victoryFrames*ARCADE.clock.stepMs);s.game.events.emit('level-clear',s.levelIndex);s.game.events.emit('level-victory');
     s.pendingResult={won:true,last,bossCheckpoint:Boolean(s.boss||s.miniBoss),score:s.run.score,character:s.character.name};s.victoryRemaining=ARCADE.flow.resultDelayFrames*ARCADE.clock.stepMs;
   }
-  destroy(){if(this.destroyed)return;this.destroyed=true;this.clock.clear();for(const enemy of this.enemies.values()){enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
+  destroy(){if(this.destroyed)return;this.destroyed=true;this.clock.clear();for(const enemy of this.enemies.values()){enemy.healAura?.destroy();enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
 }

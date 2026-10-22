@@ -1,6 +1,7 @@
 import walkerUrl from './enemies/enemy_1.png?url';
 import {MOTORATA} from './motorata.js';
 import {HOMELESS} from './homeless.js';
+import {MIME} from './mime.js';
 import {ARCADE,toFrames} from './arcade.js';
 import riderUrl from './enemies/enemy_2.png?url';
 import throwerUrl from './enemies/enemy_3.png?url';
@@ -45,15 +46,18 @@ import {BRAYATAN_SPRITE} from './brayatan.js';
 import {PACHO_SPRITE} from './pacho.js';
 import {RAT_SPRITE} from './rat.js';
 import {GUITARIST} from './guitarist.js';
+import {JUGGLER,JUGGLING_CLUB_URL} from './juggler.js';
 
 const animations = { walk: sequence(0, 5), attack: sequence(6, 11), hurt: sequence(12, 17), defeat: sequence(18, 23) };
 export const enemies = {
   motorata:MOTORATA,
   homeless:HOMELESS,
+  parlanchin:MIME,
   brayatan:BRAYATAN_SPRITE,
   pacho:PACHO_SPRITE,
   rat:RAT_SPRITE,
   guitarist:GUITARIST,
+  malabarista:JUGGLER,
   // enemy_12.png (4×6): guard · run · machete slash · leaping slash · crouch/hop · lunges. The fastest fighter in the game:
   // a 2-slash machete combo and, when the player swings at her up close, a lightning hop to the other side of the player.
   // No hurt/defeat rows in the sheet: the crouch poses stand in for them.
@@ -104,17 +108,17 @@ export const enemies = {
       16:132,17:491,18:787,19:1133,20:151,21:484,22:814,23:1136},
     // The pink cloud stays on screen: 14 hurting frames on pose 14, then pose 15 while it dissipates.
     attackFrames:{startup:30,active:14,recovery:28,cooldown:90},followThrough:true,
-    // Pink spray: the cloud hurts up close and leaves 3 pink stains ahead that hurt to walk on and fade in 3 s.
-    paint:{stains:3,spacing:70,start:80,width:72,height:22,color:0xff2fb4,ms:3000,damage:6},
-    throw:{minRange:240,maxRange:680,windup:520,active:3,recovery:420,cooldown:2200,speed:400,damage:9,texture:'spraycan',width:64,height:33,lift:92,offset:110,hitFrame:2},
+    // The short-lived paint opens a safe path again after 1.2 s.
+    paint:{stains:3,spacing:70,start:80,width:72,height:22,color:0xff2fb4,ms:1200,damage:6},
+    throw:{minRange:240,maxRange:680,windup:520,active:3,recovery:420,cooldown:2200,speed:400,damage:9,texture:'spraycan',width:30,height:30,spin:8,lift:92,offset:110,hitFrame:2},
     // Phase two: faster movement and random volleys across the visible arena, with marked landing spots.
     barrage:{below:.5,speedMultiplier:1.2,first:350,cooldown:[4500,6500],count:[8,11],windup:700,recovery:500,
       damage:6,stagger:55,flight:[800,1250],arc:150,radius:24,depth:16,
-      stain:{width:48,height:18,color:0xff43c6,ms:1800,damage:3}},
+      stain:{width:48,height:18,color:0xff43c6,ms:800,damage:3}},
     // The jump (3rd row): after 3 quick hits, or right after painting if the player is still close,
     // he hops backwards spraying, leaving cyan stains where he takes off and where he lands.
     evade:{hits:3,window:1500,distance:220,height:60,duration:560,poses:[8,9,9,9,10,11],rushSpeed:1.2,afterAttack:150,
-      stain:{width:84,height:24,color:0x2fd6ff,ms:3000,damage:6}},
+      stain:{width:84,height:24,color:0x2fd6ff,ms:1200,damage:6}},
     animations:{walk:sequence(0,3),attack:sequence(12,15),throw:sequence(4,7),jump:sequence(8,11),hurt:[17,18],defeat:sequence(20,23)}},
   // Level 2 boss (enemy_boss_3.png, 4×7 poses). Detached pigeons are separate blobs, so poses use explicit
   // rects (pigeon included) and isolate the body except where a loose pigeon belongs to the drawing.
@@ -267,4 +271,4 @@ export const STRUGGLE_SHEET = { rows: [6], trimFrames: true,
   frameRects: Array.from({ length: 6 }, (_, i) => ({ x: i * 256, y: 0, width: 256, height: 256, anchor: i * 256 + 128 })) };
 export const knife = { url: knifeUrl, speed: 280, width: 34 };
 // Textures thrown by enemies (throw.texture → url).
-export const projectileTextures = { balon: ballUrl, paloma: pigeonUrl, spraycan: sprayCanUrl };
+export const projectileTextures = { balon: ballUrl, paloma: pigeonUrl, spraycan: sprayCanUrl, 'juggling-club-source':JUGGLING_CLUB_URL };

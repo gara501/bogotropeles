@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {GroundPigeons,GROUND_PIGEON} from '../src/stage/GroundPigeons.js';
-import {CAMPAIGN} from '../src/data/campaign.js';
+import {COMBAT_CAMPAIGN as CAMPAIGN} from '../src/data/campaign.js';
 import {stageLayout} from '../src/stage/scroll.js';
 
 class Visual {

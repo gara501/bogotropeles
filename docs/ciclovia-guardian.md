@@ -1,0 +1,16 @@
+# Guardiana de Ciclovía
+
+Enemigo exclusivo del modo Ciclovía; no forma parte de los enemigos de combate ni de las oleadas de otros niveles. Sprite generado con ImageGen integrado a partir de `ejemplos/GUARDIANES.jpg`, guardado en `src/data/cycling/guardian.png`. Ocho poses con alfa: cuatro de carrera/cruce y cuatro de bloqueo/pito.
+
+- Aparece a partir de 120 metros y luego aproximadamente cada 140 metros, coordinándose con el siguiente grupo de tráfico.
+- El contador usa 52 píxeles por metro: 12,5 m/s a velocidad normal y 27,5 m/s en dash. La ruta completa mide 1125 metros; las apariciones usan distancia real, también durante el impulso.
+- Cada intervención sustituye un grupo habitual y reserva 3,4 segundos antes de generar el siguiente.
+- Detecta el carril más cercano al jugador al aparecer. Espera 500 ms, cruza durante 900 ms y bloquea ese carril; no persigue correcciones posteriores del jugador. Se acerca en unos 2,1 segundos a velocidad normal; el dash reduce ese margen de reacción.
+- Avisa con texto y el sonido de pito existente; el pito también está dibujado en la boca en todas las poses.
+- Chocar quita 22 de energía una vez por guardiana y respeta la protección entre impactos. Se puede esquivar con arriba/abajo y da los 25 puntos habituales al superarla.
+- La pausa congela la intervención y reaparecer despeja la cercana, conservando la siguiente distancia programada. No aparece en la recta final.
+- QA: botón «Guardián» en `?cyclingTest=1&character=office`.
+
+## Prompt final
+
+Use case: stylized-concept. Asset type: production animated enemy sprite sheet for a Bogotá side-scrolling arcade cycling dodge game. Reference image is uniform/design inspiration only. Create ONE adult female Ciclovía guardian, Colombian/Latina woman, red and black bicycle helmet, bright yellow high-visibility torso vest with red long sleeves, red knee-length shorts, black fingerless gloves, black athletic shoes, small red backpack and radio clipped near shoulder. A small silver WHISTLE is clearly held IN HER MOUTH on a dark lanyard in EVERY pose. She is ON FOOT, no bicycle, stern determined expression, trying to stop a passing cyclist with an open palm. Crisp chunky detailed 1990s beat-em-up pixel art, dark outline, matching Final Fight style. TRUE ALPHA TRANSPARENT background, no solid backdrop or gradients. Exactly EIGHT isolated full-body poses in FOUR columns and TWO rows with generous transparent gutters. Every helmet, hand and foot contained, consistent scale and adult anatomy, same foot baseline within each row. Slight three-quarter view facing LEFT toward the player. Row1: four distinct RUNNING/SIDESTEPPING phases crossing into the road, alternating legs and arm swing, whistle visibly in mouth. Row2: four STOP/BLOCK/SIGNAL poses: palm forward at shoulder height, feet planted wide; both arms stretched across road; one palm forward and free arm gesturing to pull over; leaning forward blowing whistle cheeks slightly puffed and palm out. First running frame should be an upright natural stride with no hands raised above helmet. Each pose must be a SINGLE CONNECTED FIGURE for alpha-component extraction; no detached symbols, sound lines, props or particles. No writing, logos, labels, grid, ground or ground shadows, scenery or other people.

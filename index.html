@@ -45,8 +45,10 @@
           </section>
           <section id="result-modal" class="result-modal" role="dialog" aria-modal="true" aria-labelledby="result-title" aria-describedby="result-description" hidden>
             <div class="result-panel">
+              <div class="gameover-portrait gameover-only" aria-hidden="true"></div>
               <p class="eyebrow">BOGOTROPELES</p>
               <h2 id="result-title"></h2>
+              <p id="gameover-taunt" class="gameover-only">jijiji juep... le quedó grande?</p>
               <p id="result-description"></p>
               <p id="result-score" class="result-score"></p>
               <div id="continue-count" class="continue-count" hidden><strong id="continue-seconds" aria-live="off">10</strong><span>SEGUNDOS PARA CONTINUAR</span></div>
@@ -62,6 +64,7 @@
                 <button id="retry" class="primary">REINICIAR · R ↗</button>
                 <button id="result-choose">CAMBIAR PERSONAJE</button>
               </div>
+              <p class="gameover-only gameover-keyhint">ENTER / R · NUEVA PARTIDA</p>
             </div>
           </section>
         </div>

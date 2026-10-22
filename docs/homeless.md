@@ -4,14 +4,14 @@
 Se conservan los totales de enemigos y los jefes. Persigue al jugador y, a 140 px, prepara
 el costal durante 600 ms. La preparación se puede interrumpir con golpes o un agarre.
 
-`SackSpin` reproduce ocho orientaciones durante cinco vueltas completas: 40 pasos por
+`SackSpin` reproduce ocho orientaciones durante tres vueltas completas: 40 pasos por
 vuelta a 60 Hz. Mientras gira persigue la posición actual del jugador en horizontal y
 profundidad a 1,25 veces su velocidad de caminata, respetando los límites del piso.
 Solo durante el giro es invencible y no puede ser agarrado. El costal
 golpea a ambos lados en un radio de 125 px y una franja de 32 px de profundidad, como
 máximo una vez por vuelta; alejarse, cambiar de franja o saltar permite esquivarlo.
 
-Tras la quinta vuelta, pierde la invencibilidad, suelta el turno de ataque y muestra
+Tras la tercera vuelta, pierde la invencibilidad, suelta el turno de ataque y muestra
 `MAREADO` durante 2000 ms del reloj de combate. Recibir golpes no reinicia el plazo ni
 cancela la oportunidad de atacarlo. Puede ser agarrado, lanzado y derribado normalmente.
 La pausa congela el ataque y el reloj; cerrar el escenario limpia sus banderas y turnos.
