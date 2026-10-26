@@ -16,7 +16,11 @@ export class Player {
   get actor(){return this.scene.player;}
   reset(){this.dropGrab();this.state='walk';this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.dashReady=0;this.buffer.clear();if(this.actor)this.actor.z=0;}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid player transition: ${this.state} → ${state}`);if(this.state==='grab' && state!=='grab')this.dropGrab();this.state=state;this.age=0;if(!['attack','special'].includes(state)){this.action=null;this.scene.playerAttack=null;}}
-  request(type){this.buffer.push(type,this.runtime.frame);}
+  request(type){
+    if(this.runtime.diablitos?.holdsPlayer)return;
+    if(type==='punch' && this.runtime.diablitos?.tryPlayerUse())return;
+    this.buffer.push(type,this.runtime.frame);
+  }
   begin(type,stage=0){
     const s=this.scene,airborne=this.jumpAge<ARCADE.jump.frames;this.lastCombo=null;
     if(airborne && type!=='kick')return false;
@@ -55,9 +59,11 @@ export class Player {
     this.actor.x=clamp(this.actor.x+dx/n*speed/ARCADE.clock.fps,s.floor.left,s.floor.right);
     this.actor.y=clamp(this.actor.y+dy/n*speed*ARCADE.movement.depthRatio/ARCADE.clock.fps,s.floor.top,s.floor.bottom);
     s.chivaBonus?.resolveMovement?.(previous);
+    for(const model of (this.runtime.enemies?.values()??[]))model.reversa?.resolveMovement(previous);
   }
   step(input){
     const s=this.scene,combat=this.runtime.combat;this.buffer.expire(this.runtime.frame);
+    if(this.runtime.diablitos?.holdsPlayer){this.buffer.clear();s.jumpHeight=this.actor.z??0;return;}
     if(combat.frozen(this.actor))return;
     const previous={x:this.actor.x,y:this.actor.y};
     if(input.dash && this.state!=='walk' && this.state!=='jump')this.dash(input.dx,input.dy);
@@ -197,6 +203,7 @@ export class Player {
       action.committed=true;attack.hit=true;
     }
     if(attack.projectile || attack.summon)return;
+    this.runtime.poultry?.contact(this.actor,attack,action.targets);
     s.energyPickups?.contact(this.actor,attack,action.targets);
     for(const target of s.enemies)if(target.hp>0 && s.combatTime>=(target.invulnerableUntil??0) && !action.targets.has(target) && this.runtime.combat.touches(this.actor,target,attack)){
       action.targets.add(target);s.hitEnemy(target,attack);

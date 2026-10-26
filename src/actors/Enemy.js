@@ -1,4 +1,9 @@
 import {ARCADE,toFrames} from '../data/arcade.js';
+import {chooseFruitThrow} from '../projectiles/fruitLob.js';
+import {PolleroController} from '../game/Poultry.js';
+import {RingFighter} from './RingFighter.js';
+import {ReversaController} from './ReversaController.js';
+import {PaperoController} from '../game/Potatoes.js';
 import {LeapingBite} from './LeapingBite.js';
 import {SackSpin} from './SackSpin.js';
 import {HealingAura} from './HealingAura.js';
@@ -23,11 +28,21 @@ transitions.approach.push(...BRAYATAN_STATES);transitions.circle.push(...BRAYATA
 ENEMY_STATES.push(...PACHO_STATES);
 for(const state of PACHO_STATES)transitions[state]=['hurt','recover','approach',...PACHO_STATES.filter(next=>next!==state)];
 transitions.approach.push(...PACHO_STATES);transitions.circle.push(...PACHO_STATES);
+ENEMY_STATES.push('ringFight');
+for(const next of Object.values(transitions))next.push('ringFight');
+transitions.ringFight=['hurt','recover','approach'];
+ENEMY_STATES.push('reversa');
+for(const next of Object.values(transitions))next.push('reversa');
+transitions.reversa=['hurt','recover','approach'];
 export class Enemy {
   constructor(runtime,actor){this.runtime=runtime;this.scene=runtime.scene;this.actor=actor;this.state='approach';this.age=0;this.clock=0;this.ready=Math.round((ARCADE.ai.initialCooldown+(actor.slot??(actor.index??0)%ARCADE.ai.spawnSlots)*ARCADE.ai.spawnStagger)/this.scene.level.pressure);this.action=null;this.stage=0;}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid enemy transition: ${this.state} → ${state}`);if(this.state==='grabbed' && state!=='grabbed')this.endStruggle();if(this.state==='heal' && state!=='heal'){this.healAura?.destroy();this.healAura=null;this.actor.sprite.clearTint?.();}this.state=state;this.age=0;if(['circle','approach','recover','hurt'].includes(state))this.runtime.combat.tokens.release(this.actor);}
-  pose(name,pose){const a=this.actor,art=a.config.animations[name];if(pose===undefined)pose=art?.[Math.floor(this.age/ARCADE.animation.walkFramesPerPose)%art.length]??a.config.idle;a.sprite.stop().setFrame(pose+(a.config.frameOffset??0));return pose;} // frameOffset: sheet row of a minion variant
+  pose(name,pose){const a=this.actor;if(a.config.papero && this.papero?.hasSack===false){if(name==='walk')name='emptyWalk';if(name==='idle'){name='emptyIdle';if(pose===a.config.idle)pose=a.config.animations.emptyIdle[0];}}const art=a.config.animations[name];if(pose===undefined)pose=art?.[Math.floor(this.age/ARCADE.animation.walkFramesPerPose)%art.length]??a.config.idle;a.sprite.stop().setFrame(pose+(a.config.frameOffset??0));return pose;} // frameOffset: sheet row of a minion variant
   hurt(attack=null){
+    if(this.actor.config.ringFighter){(this.ringFighter??=new RingFighter(this)).hurt();return;}
+    if(this.actor.config.reversa){(this.reversa??=new ReversaController(this)).hurt(attack??{});return;}
+    this.papero?.interrupt();
+    this.pollero?.interrupt();
     if(this.actor.arriving || this.actor.sackSpinning)return;
     this.sackSpin?.interrupt();
     this.action?.leap?.cancel();
@@ -94,6 +109,7 @@ export class Enemy {
       ['approach','circle','windup','recover','hurt'].includes(this.state) && !this.action?.charge;
   }
   seize(){
+    this.papero?.cancel();
     this.sackSpin?.interrupt();
     const a=this.actor;this.action=null;a.pending=null;a.tell.setVisible(false);this.rush=false;
     this.transition('grabbed');this.runtime.combat.tokens.release(a);
@@ -104,6 +120,7 @@ export class Enemy {
     if(poses?.length){this.pose('struggle',poses[Math.floor(this.age/ARCADE.grab.struggleFramesPerPose)%poses.length]);return true;}
     const a=this.actor,key=`${a.key}-struggle`,textures=this.scene.textures;
     if(!a.config.struggle || !textures?.exists?.(key) || !a.sprite?.setTexture)return false;
+    this.struggleActive=true;
     if(a.sprite.texture?.key!==key){
       const base=a.config.height/textures.get(a.key).referenceHeight;
       a.sprite.stop().setTexture(key,0).setScale(base*(a.config.struggle.scale??1));
@@ -113,7 +130,8 @@ export class Enemy {
   /** Back to the main sheet (and its scale) when the hold ends. */
   endStruggle(){
     const a=this.actor,textures=this.scene.textures;
-    if(a.sprite?.texture?.key!==`${a.key}-struggle` || !textures?.exists?.(a.key))return;
+    if((!this.struggleActive && a.sprite?.texture?.key!==`${a.key}-struggle`) || !textures?.exists?.(a.key))return;
+    this.struggleActive=false;
     a.sprite.setTexture(a.key,a.config.idle??0).setScale(a.config.height/textures.get(a.key).referenceHeight);
   }
   /** Held too long: it shakes the player off. */
@@ -233,6 +251,8 @@ export class Enemy {
   }
   step(){
     const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){combat.tokens.release(a);this.sackSpin?.clear();this.endStruggle();return;}
+    if(a.config.ringFighter){(this.ringFighter??=new RingFighter(this)).step();return;}
+    if(a.config.reversa){(this.reversa??=new ReversaController(this)).step();return;}
     if(a.arriving)return;
     if(a.config.boss && this.bossCornerStep())return;
     this.checkShieldPhase();
@@ -364,7 +384,7 @@ export class Enemy {
               const pin=s.projectiles?.at(-1);
               if(pin?.owner===a){pin.y=clamp(p.aimY+[-26,0,26][tick/3],s.floor.top,s.floor.bottom);pin.sprite.setPosition(pin.x,pin.y-a.config.throw.lift).setDepth(pin.y+1);}
             }
-          }else if(!p.hit){p.hit=true;if(p.barrage)s.launchSprayBarrage?.(a,a.config.barrage,p.data.damage);else s.throwProjectile(a,a.facing,a.config.throw,p.data.damage);}
+          }else if(!p.hit){p.hit=true;if(p.barrage)s.launchSprayBarrage?.(a,a.config.barrage,p.data.damage);else s.throwProjectile(a,a.facing,p.throwConfig??a.config.throw,p.data.damage);}
         }
         else if(a.config.ranged){if(!p.hit){p.hit=true;s.throwKnife(a,a.facing);}}else if(biteActive)this.hitPlayer(p.data);
         if(a.config.paint && !p.throw && !p.summon && !p.painted){p.painted=true;s.paintFloor?.(a,a.facing,a.config.paint);}
@@ -384,6 +404,8 @@ export class Enemy {
     if(this.tryDodge())return;
     // Still outside the floor span (walking in from off-screen): step inside before anything else.
     if(a.x<s.floor.left || a.x>s.floor.right){this.move(a.x<s.floor.left?1:-1,0);this.pose('walk');return;}
+    if(a.config.papero && (this.papero??=new PaperoController(this)).step())return;
+    if(a.config.pollero && (this.pollero??=new PolleroController(this)).step())return;
     this.face(dx);
     // Shielded bosses only strike forward: a player behind them is safe until they turn around.
     const inRange=Math.abs(dx)<=range && Math.abs(dy)<ARCADE.body.lane && this.facesPlayer(dx);
@@ -401,7 +423,7 @@ export class Enemy {
       // keepAway throwers always back off to throwing distance between attacks.
       const t=a.config.throw,keep=t && (t.keepAway || this.clock>=(this.throwReady??0)-ARCADE.ai.initialCooldown)?t.minRange+40:a.config.keepDistance??a.config.range+ARCADE.ai.circleX;
       // Bosses that keep their distance stay on their current side, switching only when it has no room.
-      if((a.config.boss || a.config.juggler) && (a.config.keepDistance || t?.keepAway)){side=Math.sign(a.x-s.player.x)||1;const want=s.player.x+side*keep;if(want<s.floor.left||want>s.floor.right)side=-side;}
+      if((a.config.boss || a.config.juggler || t?.fruit) && (a.config.keepDistance || t?.keepAway)){side=Math.sign(a.x-s.player.x)||1;const want=s.player.x+side*keep;if(want<s.floor.left||want>s.floor.right)side=-side;}
       const tx=clamp(s.player.x+side*keep,s.floor.left,s.floor.right);
       const ty=clamp(s.player.y+slot*ARCADE.ai.circleY,s.floor.top,s.floor.bottom);
       const mx=Math.abs(tx-a.x)>ARCADE.ai.alignY?Math.sign(tx-a.x):0,my=Math.abs(ty-a.y)>ARCADE.ai.alignY?Math.sign(ty-a.y):0;
@@ -506,12 +528,14 @@ export class Enemy {
     const t=this.actor.config.throw;
     return Boolean(t) && this.clock>=this.ready && this.clock>=(this.throwReady??0) && Math.abs(dx)>=t.minRange && Math.abs(dx)<=t.maxRange && Math.abs(dy)<ARCADE.body.lane;
   }
-  beginThrow(){
+  beginThrow(random=Math.random){
     const a=this.actor,s=this.scene;if(!this.runtime.combat.tokens.acquire(a))return false;
     a.facing=Math.sign(s.player.x-a.x)||1;a.sprite.setFlipX(a.facing<0);a.pending={enemy:a,connected:false,finisher:false};this.stage=0;
-    this.action={data:enemyThrowData(a.config,s.level.damage??1),index:0,hit:false,throw:true,aimY:s.player.y};
+    const t=chooseFruitThrow(a.config.throw,random);
+    const throwActor={...a.config,throw:t,animations:{...a.config.animations,throw:t.poses??a.config.animations.throw}};
+    this.action={data:enemyThrowData(throwActor,s.level.damage??1),index:0,hit:false,throw:true,throwConfig:t,aimY:s.player.y};
     this.throwReady=this.clock+Math.round(toFrames(a.config.throw.cooldown)/s.level.pressure);
-    a.tell.setText('!').setVisible(true);this.transition('windup');return true;
+    a.tell.setText(t.label??'!').setVisible(true);this.transition('windup');return true;
   }
   finish(cooldown){this.action=null;this.actor.pending=null;this.ready=this.clock+cooldown;this.transition('circle');}
   checkShieldPhase(){

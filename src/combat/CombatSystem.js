@@ -17,7 +17,9 @@ export class CombatSystem {
     if(Math.abs(attacker.y-target.y)>=lane || (target.z??0)>=ARCADE.body.airborneAvoidHeight)return false;
     if(attack.area)return Math.abs(attacker.x-target.x)<=attack.range+b.halfWidth;
     const forward=(target.x-attacker.x)*attack.facing;
-    return forward>=-ARCADE.body.backReach && Math.abs(a.x-b.x)<=a.halfWidth+b.halfWidth && Math.abs(a.y-b.y)<=a.halfDepth+b.halfDepth;
+    // A truck spans both sides of its centre: contact comes from the strike rectangle,
+    // so hitting its rear does not require facing its distant centre point.
+    return (forward>=-ARCADE.body.backReach || target.config?.reversa && target.config.hurtbox) && Math.abs(a.x-b.x)<=a.halfWidth+b.halfWidth && Math.abs(a.y-b.y)<=a.halfDepth+b.halfDepth;
   }
   frozen(actor){return this.frame<=(this.stops.get(actor)??-1);}
   impact(attacker,victim,attack){

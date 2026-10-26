@@ -91,7 +91,7 @@ Las versiones del juego están en `src/scenes/level1/game/` (960×540, PNG con a
 | buildings.png | layer_3 | 0.45 | subido 30 px + franja de asfalto (y 338–376) donde pasa el bus |
 | floor.png | layer_4 | 1 | andén desde y=375 (el nivel camina desde 400) |
 | front.png | layer_5 | 1.3, front | postes y bolardo por delante de los personajes |
-| bus.png | transmilenio | tráfico | 717×140, ruedas apoyadas en y=379 |
+| bus.png | transmilleno | tráfico | 717×140, ruedas apoyadas en y=379 |
 
 Proceso: magenta → transparente (con limpieza del tinte en los bordes), reducción por
 promedio de área y borde de alfa duro. Para los demás niveles basta con dejar los
@@ -126,7 +126,7 @@ Script de procesado reutilizable: magenta → alfa, limpieza del tinte, reducci�
 | floor.png | layer_4 | 1 | adoquín recortado a 944 px, donde el patrón empalma |
 | front.png | layer_5 | 1.3, front | faroles y bolardo |
 
-## Nivel 4: dentro del TransMilenio (`LEVEL4_ART`)
+## Nivel 4: dentro del Transmilleno (`LEVEL4_ART`)
 
 | Archivo | Origen | factor | Ajuste |
 | --- | --- | --- | --- |

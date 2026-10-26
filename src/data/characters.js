@@ -6,6 +6,7 @@ import magolitaUrl from './players/player_5.png?url';
 import teleperformanComboUrl from './players/player_3_combo.png?url';
 import gymbroGrabUrl from './players/player_4_agarre.png?url';
 import officeGrabUrl from './players/player_1_agarre.png?url';
+import officeWalkUrl from './players/player_1_walk.png?url';
 import studentGrabUrl from './players/player_2_agarre.png?url';
 import teleperformanGrabUrl from './players/player_3_agarre.png?url';
 import magolitaGrabUrl from './players/player_5_agarre.png?url';
@@ -17,23 +18,26 @@ import {ARCADE} from './arcade.js';
 
 export const characters = {
   office: {
-    name: 'GOMELO', texture: 'office', url: officeUrl, rows:[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
+    name: 'GOMELO', texture: 'office', url: officeUrl, rows:[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3],
     // Slightly smaller than the 116 px it had (the new sheet read too big next to the others).
     height: 106, speed: ARCADE.player.speeds.office, color: 0xd9dfcd, idle: 4, jump: 9,
     special:'iphone', specialLabel:'IPHONE', walkRate:8, trimFrames:true, isolateFrames:true,
     // The updated art has touching rows and a detached phone. Explicit cuts
-    // preserve all 32 poses without treating the phone as another fighter.
+    // preserve the combat poses without treating the phone as another fighter.
     frameRects:PLAYER_ATLASES.office,
     // player agarre sheet stacked under the main sheet: frames 44-47 grab, 48-51 knee, 52-55 throw.
-    appendUrls: [officeGrabUrl],
+    // Corrected walk follows the grab sheet: frames 56-61, one complete stride.
+    appendUrls: [officeGrabUrl, officeWalkUrl],
     grab:{start:[44,45],hold:[46,47],knee:[48,49,50,51],kneeContact:50,throw:[52,53,54,55],throwContact:54},
-    frameScales:{...Object.fromEntries(Array.from({length:12},(_,i)=>[44+i,157/295]))},
+    frameScales:{...Object.fromEntries(Array.from({length:12},(_,i)=>[44+i,157/295])),
+      ...Object.fromEntries([396,398,399,382,386,379].map((height,i)=>[56+i,153/height]))},
     // Hip (or chest, for kicks) x of every pose, measured on the updated 11-row sheet.
     frameAnchors: {0:139,1:359,2:598,3:816,4:120,5:358,6:576,7:823,8:130,9:359,10:599,11:833,12:120,13:379,14:622,15:818,16:112,17:351,18:565,19:805,20:116,21:346,22:582,23:823,24:125,25:327,26:549,27:805,28:117,29:358,30:581,31:826,32:125,33:353,34:586,35:821,36:118,37:361,38:588,39:813,40:122,41:354,42:592,43:821,
-      44:216,45:610,46:1016,47:1421,48:221,49:642,50:1041,51:1418,52:201,53:610,54:992,55:1421},
+      44:216,45:610,46:1016,47:1421,48:221,49:642,50:1041,51:1418,52:201,53:610,54:992,55:1421,
+      56:240,57:694,58:1115,59:229,60:686,61:1110},
     // K, K, K: three-kick combo (rows 9-11); the third kick pushes the opponent back.
     combo:{inputs:['kick','kick','kick'],animations:['combo1','combo2','combo3'],knockback:40},
-    animations: { walk: [0,1,3,1], punch: sequence(4, 7), kick: sequence(8, 11), dash: sequence(12, 15), iphone:[16,17,18,19,4], hurt: sequence(20, 23), defeat: sequence(24, 27), victory:sequence(28,31),
+    animations: { walk: sequence(56,61), punch: sequence(4, 7), kick: sequence(8, 11), dash: sequence(12, 15), iphone:[16,17,18,19,4], hurt: sequence(20, 23), defeat: sequence(24, 27), victory:sequence(28,31),
       combo1:sequence(32,35), combo2:sequence(36,39), combo3:sequence(40,43) },
     attacks: {
       punch: { damage: 30, range: 88, duration: 260, hitAt: 110, knockback: 12 },

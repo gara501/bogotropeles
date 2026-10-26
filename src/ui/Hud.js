@@ -78,7 +78,11 @@ export class Hud {
   /** Last enemy hit (2.5 s) or, failing that, the boss currently fighting. */
   target() {
     const s=this.scene,now=s.combatTime,hit=s.lastHit;
-    if(hit && now-hit.at<=2500 && (hit.enemy.hp>0 || now-hit.at<=900))return hit.enemy;
+    if(hit){
+      const age=now-hit.at;
+      if(hit.enemy.hp>0 && age>=0 && age<=2500 && s.enemies.includes(hit.enemy))return hit.enemy;
+      s.lastHit=null;
+    }
     if(s.miniBoss?.enemy?.hp>0)return s.miniBoss.enemy;
     if(s.boss && !s.boss.dead)return s.boss.actor;
     return null;
@@ -86,7 +90,10 @@ export class Hud {
   showEnemy(enemy) {
     const s=this.scene,visible=Boolean(enemy);
     for(const item of [this.enemyBox,this.enemyName])item.setVisible(visible);this.enemyBar.setVisible(visible);
-    if(!visible){this.enemyFace?.setVisible(false);return;}
+    if(!visible){
+      this.enemyFace?.destroy();this.enemyFace=null;this.enemyKey=null;
+      this.enemyName.setText('');this.enemyBar.set(0,s.combatTime,true);return;
+    }
     const key=`${enemy.key}:${enemy.config.frameOffset??0}`;
     if(key!==this.enemyKey){
       this.enemyKey=key;this.enemyFace?.destroy();

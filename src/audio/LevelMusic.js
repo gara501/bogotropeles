@@ -8,12 +8,13 @@ export class LevelMusic {
     this.paused = false;
     this.stopped = false;
     this.onUnlock = () => this.sync();
+    this.manager.on('audio-ready',this.onUnlock);
     if (this.manager.locked) this.manager.once('unlocked', this.onUnlock);
     this.sync();
   }
 
   sync() {
-    if (!this.track || this.stopped || this.manager.locked) return;
+    if (!this.track || this.stopped || this.manager.locked || (this.manager.context && this.manager.context.state!=='running')) return;
     if (this.paused) {
       if (this.track.isPlaying) this.track.pause();
     } else if (this.track.isPaused) this.track.resume();
@@ -25,6 +26,7 @@ export class LevelMusic {
   stop() {
     this.stopped = true;
     this.manager.off('unlocked', this.onUnlock);
+    this.manager.off('audio-ready', this.onUnlock);
     this.track?.stop();
   }
 

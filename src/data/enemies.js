@@ -47,6 +47,12 @@ import {PACHO_SPRITE} from './pacho.js';
 import {RAT_SPRITE} from './rat.js';
 import {GUITARIST} from './guitarist.js';
 import {JUGGLER,JUGGLING_CLUB_URL} from './juggler.js';
+import {FRUTATIANA,FRUIT_URL} from './frutatiana.js';
+import {DON_DIABLO,DIABLITO_URL} from './donDiablo.js';
+import {DON_PICO} from './donPico.js';
+import {RING_FIGHTERS,RING_PROP_URL} from './ring.js';
+import {DON_REVERSA,REVERSA_TRUCK_URL,REVERSA_EGG_URL} from './reversa.js';
+import {PAPERO,POTATO_URL} from './papero.js';
 
 const animations = { walk: sequence(0, 5), attack: sequence(6, 11), hurt: sequence(12, 17), defeat: sequence(18, 23) };
 export const enemies = {
@@ -58,6 +64,13 @@ export const enemies = {
   rat:RAT_SPRITE,
   guitarist:GUITARIST,
   malabarista:JUGGLER,
+  frutatiana:FRUTATIANA,
+  don_diablo:DON_DIABLO,
+  don_pico:DON_PICO,
+  ...RING_FIGHTERS,
+  papero:PAPERO,
+  reversa:DON_REVERSA,
+  estibador:{...PAPERO,name:'ESTIBADOR',papero:false,minion:true,height:115,hp:90,speed:160,range:70,damage:7,idle:20,animations:{idle:[20],walk:[16,17,18,19],attack:[20,21,22,23],hurt:[28,29],defeat:[30,31]}},
   // enemy_12.png (4×6): guard · run · machete slash · leaping slash · crouch/hop · lunges. The fastest fighter in the game:
   // a 2-slash machete combo and, when the player swings at her up close, a lightning hop to the other side of the player.
   // No hurt/defeat rows in the sheet: the crouch poses stand in for them.
@@ -219,7 +232,19 @@ export const enemies = {
   // Toughness in hits of the strongest normal strike (kick 45), at their original introduction multipliers:
   // walker/brawler/fan 7, belly (enemy_10) 6, leash (enemy_11) 8, thrower (enemy_3) 9.
   walker: {name:'VERCETI', url: walkerUrl, taunt:{text:'¡DESPÉGUELO PAPU!',ms:2500}, rows: [6, 6, 6, 6], height: 116, speed: 70, hp: 365, range: 60, damage: 6, animations },
-  rider: {name:'COROMOTO', url: riderUrl, rows: [6, 6, 6, 6], height: 108, speed: 200, walkRate: 12, hp: 120, range: 80, damage: 8, animations },
+  rider: {name:'COROMOTO', url: riderUrl, rows: [6, 6, 6, 6], height: 108, speed: 200, walkRate: 12, hp: 120, range: 80, damage: 8, animations,
+    // Explicit cuts keep the airborne rider and fallen bike in one death pose.
+    // They are separate alpha components in the relabelled Ratti sheet.
+    trimFrames:true,
+    frameRects:[
+      [42,25,264,212],[337,26,259,211],[622,22,263,215],[913,22,264,215],[1207,26,260,211],[1509,22,252,215],
+      [39,279,267,193],[319,257,282,214],[600,255,289,216],[882,242,293,226],[1202,258,275,206],[1508,266,258,205],
+      [39,478,267,201],[340,481,266,197],[640,487,259,192],[927,486,263,196],[1212,482,265,197],[1510,477,258,201],
+      [61,684,251,196],[344,684,247,187],[611,684,286,190],[878,730,338,127],[1216,752,241,99],[1466,746,294,112]
+    ].map(([x,y,width,height])=>({x,y,width,height})),
+    struggle:{scale:256/362,sheet:{rows:[6],trimFrames:true,isolateFrames:true,
+      frameRects:Array.from({length:6},(_,i)=>({x:i*362,y:0,width:362,height:724,anchor:i*362+181}))}},
+  },
   // Fast knife thrower: after 3 quick hits he hops back (crouch, recoil, land) and keeps throwing from range.
   thrower: {name:'VRALLAN', url: throwerUrl, rows: [6, 6, 6, 6], height: 116, speed: 160, hp: 430, range: 380, damage: 9, ranged: true, animations,
     evade:{hits:3,window:1500,distance:180,height:42,duration:440,poses:[14,12,12,14]} },
@@ -271,4 +296,4 @@ export const STRUGGLE_SHEET = { rows: [6], trimFrames: true,
   frameRects: Array.from({ length: 6 }, (_, i) => ({ x: i * 256, y: 0, width: 256, height: 256, anchor: i * 256 + 128 })) };
 export const knife = { url: knifeUrl, speed: 280, width: 34 };
 // Textures thrown by enemies (throw.texture → url).
-export const projectileTextures = { balon: ballUrl, paloma: pigeonUrl, spraycan: sprayCanUrl, 'juggling-club-source':JUGGLING_CLUB_URL };
+export const projectileTextures = { balon: ballUrl, paloma: pigeonUrl, spraycan: sprayCanUrl, 'juggling-club-source':JUGGLING_CLUB_URL, 'frutatiana-fruit-source':FRUIT_URL, 'diablito-source':DIABLITO_URL, 'ring-projectile-source':RING_PROP_URL,'reversa-truck-source':REVERSA_TRUCK_URL,'reversa-eggs-source':REVERSA_EGG_URL,'papero-potato-source':POTATO_URL };

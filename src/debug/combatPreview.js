@@ -13,6 +13,80 @@ export function installCombatPreview(game) {
   add('Carga del enemigo',s=>{const e=s.enemies.find(e=>e.hp>0 && e.config.charge);if(e&&!e.pending&&!s.finished){if(s.arcade)s.arcade.enemies.get(e)?.begin();else beginEnemyCharge(s,e,s.player.x<e.x?-1:1);}});
   add('Cruceta',s=>{const e=s.enemies.find(e=>e.hp>0 && e.config.melee);if(e&&!e.pending&&!s.finished){if(s.arcade)s.arcade.enemies.get(e)?.begin(true);else beginEnemyAttack(s,e,s.player.x<e.x?-1:1);}});
   add('Contraatacar',s=>{const e=s.enemies.find(e=>e.hp>0);if(e)s.hitEnemy(e,{damage:1,knockback:0,facing:1});});
+  const previewKind=new URLSearchParams(location.search).get('enemyTest');
+  if(previewKind==='reversa'){
+    const boss=s=>s.arcade?.enemies.get(s.enemies.find(e=>e.key==='reversa'))?.reversa;
+    add('Subir a la cabina',s=>{const c=boss(s);if(c){c.actor.hp=c.actor.config.hp*.49;c.actor.invulnerableUntil=0;c.phaseCheck();}});
+    for(const [label,offset] of [['Golpear motor',-250],['Golpear costado',-65]])add(label,s=>{const c=boss(s);if(c?.phase===2 && c.mode!=='board'){s.arcade.player.reset();s.invulnerableUntil=Infinity;s.health=100;s.timeLeft=99000;s.player.x=c.truckX+offset;s.player.y=c.truckY+32;s.facing=1;s.arcade.player.request('punch');}});
+    for(const [label,kind] of [['Costal','slam'],['Hombrazo','charge'],['Llamar estibadores','whistle'],['Tomar tinto','coffee'],['Reversa','reverse'],['Pito frontal','horn'],['Plataforma','platform'],['Exosto','exhaust'],['Caja de huevos','eggs']])add(label,s=>{const c=boss(s);if(c && !['entry','exit','board','dead'].includes(c.mode) && (c.phase===2?['reverse','horn','platform','exhaust','eggs']:['slam','charge','whistle','coffee']).includes(kind))c.start(kind);});
+    add('Derrotar a Don Reversa',s=>{const c=boss(s);if(c){c.actor.invulnerableUntil=0;s.hitEnemy(c.actor,{damage:1e6,knockback:0,facing:1});}});
+    const status=document.createElement('output');status.style.cssText='width:100%;font:11px monospace;color:#e8edce';panel.append(status);
+    game.events.on('poststep',()=>{const s=game.scene.getScene('Street'),c=boss(s);if(c)status.textContent=`DON REVERSA · fase ${c.phase} · ${c.mode} · ${Math.round(c.actor.hp)} HP · ${c.windowOpen || c.doorOpen?'VERDE':'BLINDADO'}`;});
+  }
+  if(previewKind==='papero'){
+    for(const [label,kind] of [['Alzar costal','slam'],['Lanzar bulto','throw']])add(label,s=>{const m=s.arcade.enemies.get(s.enemies.find(e=>e.key==='papero'));if(m){m.papero.hasSack=true;m.transition('approach');m.papero.start(kind);}});
+    add('Caja para recargar',s=>{const e=s.enemies.find(e=>e.key==='papero');if(e)s.energyPickups.spawn(e.x+50,e.y,'boxes');});
+    add('Destruir cajas',s=>{for(const c of s.energyPickups.cans)c.hp=0;});
+  }
+  if(new URLSearchParams(location.search).get('enemyTest')==='don_pico'){
+    add('Soltar gallina',s=>{
+      const e=s.enemies.find(e=>e.key==='don_pico' && e.hp>0),m=s.arcade?.enemies.get(e);
+      if(m && ['approach','circle','windup','attack','recover','hurt'].includes(m.state)){
+        s.arcade.poultry.clear();m.hurt();m.transition('approach');m.pollero?.beginRelease();
+      }
+    });
+    add('Preparar devolución',s=>{
+      const e=s.enemies.find(e=>e.key==='don_pico' && e.hp>0);if(!e)return;
+      s.arcade.poultry.clear();e.x=720;e.y=450;s.player.x=400;s.player.y=450;s.facing=1;e.facing=-1;
+      const hen=s.arcade.poultry.release(e);hen.x=455;hen.y=450;
+      const other=s.enemies.find(a=>a.key==='frutatiana' && a.hp>0)??s.spawnEnemy('frutatiana',1,0,1,0);
+      other.x=620;other.y=450;
+    });
+    add('Puño sobre gallina · H',s=>s.arcade.player.request('punch'));
+    add('Devolver gallina · J',s=>s.arcade.player.request('kick'));
+    add('Devolver gallina · L',s=>s.arcade.player.request('lowKick'));
+    const status=document.createElement('output');status.style.cssText='width:100%;font:11px monospace;color:#e8edce';panel.append(status);
+    game.events.on('poststep',()=>{
+      const s=game.scene.getScene('Street');if(!s.arcade)return;
+      status.textContent=`GALLINAS · ${s.arcade.poultry.hens.map(h=>h.phase).join(', ')||'ninguna'} · J: cualquier personaje · L: Universitaria`;
+    });
+  }
+  if(new URLSearchParams(location.search).get('enemyTest')==='don_diablo'){
+    add('Probar captura',s=>{
+      const e=s.enemies.find(e=>e.key==='don_diablo'),c=s.arcade.diablitos.carts[0];if(!c || !e || e.hp<=0)return;
+      s.arcade.diablitos.recovering.delete(e);c.owner=e;c.phase='windup';c.age=30;c.dir=-1;c.remaining=390;
+      e.x=660;e.y=450;s.player.x=480;s.player.y=450;s.invulnerableUntil=0;s.respawnProtectedUntil=0;
+    });
+    add('Dejar carrito clavado',s=>{const c=s.arcade.diablitos.carts[0];if(c){s.arcade.diablitos.park(c);c.age=35;}});
+    add('Usar carrito · H',s=>{
+      const c=s.arcade.diablitos.carts[0];if(!c || c.owner)return;
+      s.player.x=c.x-60;s.player.y=c.y;s.facing=1;s.arcade.player.request('punch');
+    });
+    add('Otro enemigo toma carrito',s=>{
+      const c=s.arcade.diablitos.carts[0];if(!c)return;s.arcade.diablitos.park(c);c.age=35;
+      const e=s.spawnEnemy('frutatiana',1,0,1,0);e.x=c.x+45;e.y=c.y;
+    });
+    const status=document.createElement('output');status.style.cssText='width:100%;font:11px monospace;color:#e8edce';panel.append(status);
+    game.events.on('poststep',()=>{
+      const s=game.scene.getScene('Street'),c=s.arcade?.diablitos.carts[0];
+      if(c)status.textContent=`DIABLITO · ${c.phase} · dueño: ${c.owner===s.player?'PLAYER':c.owner?.config.name??'LIBRE'} · captura: ${Boolean(s.arcade.diablitos.captured)}`;
+    });
+  }
+  if(new URLSearchParams(location.search).get('enemyTest')==='frutatiana'){
+    for(const [label,chance] of [['Probar naranja',.9],['Probar patilla',0]])add(label,s=>{
+      const e=s.enemies.find(e=>e.key==='frutatiana' && e.hp>0),m=s.arcade?.enemies.get(e);
+      if(m && ['approach','circle','windup','attack','recover','hurt'].includes(m.state)){
+        m.hurt();m.transition('approach');m.beginThrow(()=>chance);
+      }
+    });
+    add('Acercarse a Frutatiana',s=>{const e=s.enemies.find(e=>e.key==='frutatiana');if(e){s.player.x=e.x-45;s.player.y=e.y;}});
+    const status=document.createElement('output');status.style.cssText='width:100%;font:11px monospace;color:#e8edce';panel.append(status);
+    game.events.on('poststep',()=>{
+      const s=game.scene.getScene('Street'),e=s.enemies?.find(e=>e.key==='frutatiana'),m=s.arcade?.enemies.get(e);
+      if(!e)return;
+      status.textContent=`FRUTATIANA · ${m?.state??'—'} · ${m?.action?.throwConfig?.fruit??'—'} · frutas en vuelo: ${s.projectiles.filter(p=>p.fruit).length}`;
+    });
+  }
   if(new URLSearchParams(location.search).get('enemyTest')==='malabarista'){
     add('Lanzar pinos',s=>{const e=s.enemies.find(e=>e.config.juggler),m=s.arcade?.enemies.get(e);if(m && ['approach','circle'].includes(m.state))m.beginThrow();});
     add('Acercarse al malabarista',s=>{const e=s.enemies.find(e=>e.config.juggler);if(e){s.player.x=e.x-55;s.player.y=e.y;}});
@@ -26,9 +100,10 @@ export function installCombatPreview(game) {
     add('Agarrar guitarrista',s=>{const e=s.enemies.find(e=>e.hp>0 && e.key==='guitarist'),m=s.arcade?.enemies.get(e),p=s.arcade?.player;
       if(m && p.state==='walk'){m.hurt();if(m.state!=='approach')m.transition('approach');m.ready=m.clock+600;e.x=s.player.x+50;e.y=s.player.y;
         for(let i=0;i<ARCADE.grab.touchFrames;i++)p.tryGrab({dx:1});}});
+    add('Rodillazo guitarrista',s=>{if(s.arcade?.player.state==='grab')s.arcade.player.request('punch');});
     add('Soltar guitarrista',s=>{if(s.arcade?.player.state==='grab')s.arcade.player.transition('walk');});
     const status=document.createElement('output');status.style.cssText='width:100%;font:11px monospace;color:#e8edce';panel.append(status);
-    const update=()=>{const s=game.scene.getScene('Street'),e=s.enemies?.find(e=>e.key==='guitarist'),m=s.arcade?.enemies.get(e);if(e && m)status.textContent=`GUITARRISTA · ${m.state} · golpe ${(m.stage??0)+1}/2 · sprite ${e.sprite.texture.key} · pose ${e.sprite.frame.name}`;};
+    const update=()=>{const s=game.scene.getScene('Street'),e=s.enemies?.find(e=>e.key==='guitarist'),m=s.arcade?.enemies.get(e);if(e && m)status.textContent=`GUITARRISTA · ${m.state} · golpe ${(m.stage??0)+1}/2 · sprite ${e.sprite.texture.key} · pose ${e.sprite.frame.name} · HP ${e.hp} · escala ${e.sprite.scaleY.toFixed(3)}`;};
     game.events.on('poststep',update);game.events.once('destroy',()=>game.events.off('poststep',update));
   }
   if(new URLSearchParams(location.search).get('enemyTest')==='parlanchin'){

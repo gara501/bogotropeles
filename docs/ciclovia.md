@@ -18,11 +18,11 @@ Tramo de evasión lateral de 1125 metros, de unos 76,7 segundos sin dash. Comien
 - Meta animada sobre el pavimento, debajo de bicicletas y sombras; pose de llegada, pantalla de resultado y avance a Plaza de Bolívar. Cambiar personaje conserva recorrido y energía.
 
 ## Nuevo orden
-1. TransMilenio · Exterior
+1. Transmilleno · Exterior
 2. Ciclovía
 3. Plaza de Bolívar
 4. La Candelaria
-5. TransMilenio · Estación
+5. Transmilleno · Estación
 6. Chorro de Quevedo
 7. Calles del centro
 8. Zona Rosa

@@ -100,7 +100,7 @@ export class Vuvuzela {
     const s=this.scene,p=s.player,model=s.arcade.player,action=model.action;
     const swing=action?.data.weapon==='vuvuzela' && !action.weaponBroken;
     const key=`${s.characterKey}-vuvuzela`;
-    const armed=s.health>0 && !s.finished && (this.remaining>0 || swing)
+    const armed=s.health>0 && !s.finished && !s.arcade.diablitos?.holdsPlayer && (this.remaining>0 || swing)
       && (model.state==='walk' || swing) && s.textures.exists(key);
     p.sprite.setVisible(!armed);this.held.setVisible(Boolean(armed));
     if(!armed)return;

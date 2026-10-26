@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {ARCADE} from '../src/data/arcade.js';
 import {COMBAT_CAMPAIGN as CAMPAIGN} from '../src/data/campaign.js';
 import {waveSizes,stageLayout,arenaScroll,nextScroll,floorSpan,viewLeft} from '../src/stage/scroll.js';
@@ -82,6 +83,21 @@ test('the background bus waits, crosses the screen once in layer space and sched
   const start=sprite.x;bus.update(200);assert.equal(sprite.x,start-10-100,'camera scroll moves it at half speed');
   let frames=0;while(sprite.visible && frames++<600)bus.update(200);
   assert.ok(frames<600);assert.equal(bus.wait,3000,'next pass uses the configured interval');
+});
+
+test('the relabelled bus ignores padding, retains its road size and never mirrors its lettering',()=>{
+  const {scene,sprite}=trafficScene(),config={key:'level1-bus',...CAMPAIGN[0].art.traffic},frames=new Map();let imageArgs;
+  scene.textures={get:()=>({has:name=>frames.has(name),add:(name,...rect)=>frames.set(name,rect)})};
+  scene.add.image=(...args)=>{imageArgs=args;return sprite;};
+  sprite.setDisplaySize=(width,height)=>{sprite.displayWidth=width;sprite.displayHeight=height;return sprite;};
+  const bus=new AmbientTraffic(scene,config,null,()=>0);
+  assert.deepEqual(frames.get('traffic-body'),[0,0,151,2170,427]);
+  assert.deepEqual(imageArgs,[0,379,'level1-bus','traffic-body']);
+  assert.equal(sprite.displayWidth,717);assert.equal(sprite.displayHeight,140);assert.equal(bus.halfWidth,358.5);
+  bus.update(0,config.first);assert.equal(bus.direction,1);assert.equal(sprite.flip,false);
+  const previous=bus.x;bus.update(0,100);assert.equal(bus.x-previous,26,'same road speed after resizing');
+  const png=readFileSync(new URL('../src/scenes/level1/game/bus.png',import.meta.url));
+  const [x,y,w,h]=config.frameRect;assert.ok(x+w<=png.readUInt32BE(16)&&y+h<=png.readUInt32BE(20));
 });
 
 import {stepScroll} from '../src/stage/scroll.js';

@@ -4,7 +4,9 @@ import {EventEmitter} from 'node:events';
 import {readFileSync,readdirSync,existsSync} from 'node:fs';
 import {TouchInput} from '../src/input/TouchInput.js';
 import {registerHooks} from 'node:module';
-import {COMBAT_CAMPAIGN as CAMPAIGN,CAMPAIGN as PLAYABLE_CAMPAIGN,campaignIndexForCombat,scaledEnemy,crossingHits} from '../src/data/campaign.js';
+import {COMBAT_CAMPAIGN as ALL_COMBAT_STAGES,CAMPAIGN as PLAYABLE_CAMPAIGN,campaignIndexForCombat,scaledEnemy,crossingHits} from '../src/data/campaign.js';
+import {RingBonus} from '../src/bonus/RingBonus.js';
+import {RING_ORDER} from '../src/bonus/ringRules.js';
 import {WaveDirector} from '../src/combat/WaveDirector.js';
 import {beginEnemyCharge,updateEnemyCharge} from '../src/combat/enemyCharge.js';
 import {beginEnemyAttack,updateEnemyAttack} from '../src/combat/enemyAttacks.js';
@@ -22,7 +24,7 @@ const hooks=registerHooks({load(url,context,nextLoad){
     const root=new URL('../src/scenes/',import.meta.url),backgrounds={},art={};
     for(const entry of readdirSync(root,{withFileTypes:true})){
       if(entry.isFile() && /^level_.*\.png$/.test(entry.name))backgrounds[`../scenes/${entry.name}`]=new URL(entry.name,root).href+'?url';
-      if(!entry.isDirectory() || !entry.name.startsWith('level'))continue;
+      if(!entry.isDirectory() || !(entry.name.startsWith('level') || entry.name==='palomojao'))continue;
       for(const sub of ['', 'game/']){
         const folder=new URL(`${entry.name}/${sub}`,root);if(!existsSync(folder))continue;
         for(const file of readdirSync(folder))if(file.endsWith('.png'))art[`../scenes/${entry.name}/${sub}${file}`]=new URL(file,folder).href+'?url';
@@ -39,9 +41,11 @@ const hooks=registerHooks({load(url,context,nextLoad){
 }});
 const {StreetScene}=await import('../src/scenes/StreetScene.js');
 const {IntroScene}=await import('../src/scenes/IntroScene.js');
+const {BOSS_INTROS}=await import('../src/data/bossIntros.js');
 const {EnergyPickups}=await import('../src/game/EnergyPickups.js');
 const {levels:playableLevels,levelTextures}=await import('../src/data/levels.js');
-const levels=playableLevels.filter(level=>level.mode!=='cycling');
+const CAMPAIGN=ALL_COMBAT_STAGES.filter(level=>level.boss && level.combatIndex<7);
+const levels=playableLevels.filter(level=>level.boss && level.combatIndex<7);
 const {enemies}=await import('../src/data/enemies.js');
 const {MOTORATA_ENTRY}=await import('../src/data/motorata.js');
 const {actorsFor}=await import('../src/data/actorSet.js');hooks.deregister();
@@ -49,15 +53,34 @@ const {CyclingStage}=await import('../src/cycling/CyclingStage.js');
 const {CYCLING}=await import('../src/cycling/CyclingRun.js');
 const {CYCLING_PLAYERS,CYCLING_ASSETS}=await import('../src/data/cycling.js');
 
-test('Ciclovía is the new second stage; every combat stage retains its boss, art and relative order',()=>{
-  assert.equal(PLAYABLE_CAMPAIGN.length,8);assert.equal(playableLevels.length,8);
-  assert.deepEqual(PLAYABLE_CAMPAIGN.map(l=>l.name),['TransMilenio · Exterior','Ciclovía','Plaza de Bolívar','La Candelaria','TransMilenio · Estación','Chorro de Quevedo','Calles del centro','Zona Rosa']);
-  assert.deepEqual(PLAYABLE_CAMPAIGN.filter(l=>l.mode!=='cycling'),CAMPAIGN);
+test('Ciclovía stays second and Palomojao follows Chorro while original bosses retain their relative order',()=>{
+  assert.equal(PLAYABLE_CAMPAIGN.length,9);assert.equal(playableLevels.length,9);
+  assert.deepEqual(PLAYABLE_CAMPAIGN.map(l=>l.name),['Transmilleno · Exterior','Ciclovía','Plaza de Bolívar','La Candelaria','Transmilleno · Estación','Chorro de Quevedo','Plaza de Palomojao','Calles del centro','Zona Rosa']);
+  assert.deepEqual(PLAYABLE_CAMPAIGN.filter(l=>l.boss && l.combatIndex<7),CAMPAIGN);
   assert.equal(playableLevels[1].boss,null);assert.deepEqual(playableLevels[1].enemies,[]);
   assert.ok(playableLevels[1].url.includes('ciclovia/background.png'));
   for(const c of Object.keys(CYCLING_PLAYERS))assert.ok(CYCLING_PLAYERS[c]);
   assert.ok(CYCLING_ASSETS['cycling-guardian'].includes('cycling/guardian.png'));
   assert.ok(CAMPAIGN.every(level=>!level.enemies.includes('guardian')),'guardians are exclusive to cycling');
+});
+
+test('Palomojao has its own market art, enemy pool and forward transitions from Chorro to Centro',()=>{
+  const market=playableLevels[6];
+  assert.equal(campaignIndexForCombat(7),6);assert.equal(campaignIndexForCombat(5),7);assert.equal(campaignIndexForCombat(6),8);
+  assert.equal(market.name,'Plaza de Palomojao');assert.deepEqual(market.enemies,['frutatiana','don_diablo','don_pico','papero']);
+  assert.ok(actorsFor(market,'student').has('pico-hen'),'the market preloads the separate hen sheet');
+  assert.equal(market.boss,'reversa');assert.ok(actorsFor(market,'office').has('estibador'));assert.equal(market.rain,null);assert.equal(market.total,20);
+  assert.ok(market.url.includes('palomojao/background.png'));
+  assert.equal(levelTextures(market).length,5);
+  for(const asset of levelTextures(market))assert.ok(existsSync(new URL(asset.url.replace('?url',''))),asset.url);
+  assert.equal(market.layers[0].factor,market.layers[1].factor);
+  const fromChorro=setup(4),events=[];fromChorro.game.events.on('level-transition',data=>events.push(data));
+  fromChorro.finished=true;fromChorro.nextLevel();assert.deepEqual(events,[{character:'office',level:6}]);
+  const s=setup(0);s.init({level:6,character:'office'});s.enemies=[];s.waves=new WaveDirector(s);s.waves.update();
+  assert.deepEqual(s.enemies.map(e=>e.key),['frutatiana','don_diablo']);
+  finishWaves(s);assert.equal(s.waves.cleared,true);assert.equal(s.beginBossIntro(),true);assert.equal(s.cinematic,true);s.cinematic=false;
+  const next=[];s.game.events.on('level-transition',data=>next.push(data));s.finished=true;s.nextLevel();s.nextLevel();
+  assert.deepEqual(next,[{character:'office',level:7}]);
 });
 
 
@@ -238,6 +261,13 @@ function setup(index,character='office') {
   s.input={keyboard:{resetKeys(){}}};s.waves=new WaveDirector(s);s.waves.update();return s;
 }
 const strike={damage:10000,knockback:0,facing:1};
+test('reusing StreetScene for the next level or a restart clears the last enemy hit',()=>{
+  const s=setup(1),enemy=s.enemies[0];
+  for(const level of [3,3]){
+    s.lastHit={enemy,at:90000};s.init({level,character:'office',run:s.run});
+    assert.equal(s.lastHit,null);assert.equal(s.combatTime,0);
+  }
+});
 function cornerBossSetup(index){
   if(index===6){const f=pachoSetup();f.arrive();return f;}
   if(index===5)return brayatanSetup();
@@ -412,6 +442,27 @@ function arcadeSetup(character='gymbro'){
   const press=key=>{s.keys[key].justDown=true;s.keys[key].isDown=true;step();s.keys[key].isDown=false;};
   return {s,target,step,press};
 }
+
+test('actual Universitaria inputs H and L leave the hen under the punch then return it into an enemy',()=>{
+  const {s,target,step,press}=arcadeSetup('student');target.x=600;s.invulnerableUntil=Infinity;
+  s.add.sprite=(x,y)=>Object.assign(new Visual(x,y),{alpha:1});s.textures={get:()=>({referenceHeight:229})};
+  const h=s.arcade.poultry.release(target);h.x=s.player.x+55;h.y=s.player.y;
+  press('H');step(25);assert.equal(h.phase,'wild');assert.equal(target.hp,1000);
+  press('L');step(12);assert.equal(h.phase,'flung');step(55);
+  assert.equal(target.hp,966);assert.equal(s.arcade.poultry.hens.length,0);assert.equal(s.defeated,0);
+});
+
+test('all five players return hens with J, on the ground and during a jump',()=>{
+  for(const character of ['office','student','teleperforman','gymbro','magolita'])for(const airborne of [false,true]){
+    const {s,target,step,press}=arcadeSetup(character);target.x=600;s.invulnerableUntil=Infinity;
+    s.add.sprite=(x,y)=>Object.assign(new Visual(x,y),{alpha:1});s.textures={get:()=>({referenceHeight:229})};
+    const hen=s.arcade.poultry.release(target);hen.x=s.player.x+55;hen.y=s.player.y;
+    if(airborne)press('SPACE');press('J');step(12);
+    assert.equal(hen.phase,'flung',`${character}, jump=${airborne}`);step(60);
+    assert.equal(target.hp,966,`${character} deals the reflected hen damage once`);
+    assert.equal(s.arcade.poultry.hens.length,0);
+  }
+});
 
 test('bonus mode has no enemy waves, boss or rain and resumes at the following campaign level once',()=>{
   const s=new StreetScene();s.init({level:2,character:'office',chivaBonus:true,returnLevel:3});
@@ -737,7 +788,7 @@ test('third death waits for continue once; continue restores three lives and pre
   let offers=0;s.game.events.on('continue-needed',()=>offers++);
   s.update(0,16);s.update(0,16);assert.equal(offers,1);assert.equal(s.run.lives,0);assert.equal(s.waitingContinue,true);
   assert.equal(s.restartLevel(),false);assert.equal(s.continueRun(),true);assert.equal(s.continueRun(),false);
-  assert.equal(s.run.lives,3);assert.equal(s.health,100);assert.equal(s.levelIndex,6);assert.equal(s.boss,boss);assert.equal(s.run.score,1300);
+  assert.equal(s.run.lives,3);assert.equal(s.health,100);assert.equal(s.levelIndex,campaignIndexForCombat(5));assert.equal(s.boss,boss);assert.equal(s.run.score,1300);
   s.endRun();assert.equal(s.gameOver,true);assert.equal(s.restartLevel(),false);
 });
 test('each actual updated player sheet has valid victory frames and Gymbro has a separate dash',()=>{
@@ -796,7 +847,7 @@ test('arcade counts an escaped motorcycle once and completes the plaza before ad
       if(enemy.crossing)enemy.x=enemy.facing>0?1101:-141;
       else s.hitEnemy(enemy,strike);
     }
-    step();
+    step();if(s.cinematic)s.resumeBoss();
   }
   assert.equal(s.defeated,s.level.total);assert.equal(s.finished,true);
   assert.equal(s.arcade.player.state,'celebration');s.nextLevel();assert.equal(transitions.length,0);
@@ -1034,12 +1085,13 @@ test('Zona Rosa follows downtown and resolves all six root-level parallax assets
     assert.equal(png.readUInt32BE(16),960);assert.equal(png.readUInt32BE(20),540);
   }
   assert.equal(s.floor.top,415);assert.equal(s.floor.bottom,500);assert.equal(s.level.total,30);
-  s.updateCounter();assert.ok(s.counter.text.startsWith('NIVEL 8 ·'));
+  s.updateCounter();assert.ok(s.counter.text.startsWith('NIVEL 9 ·'));
 });
 
 test('Zona Rosa requires Don Pacho after its own waves before reporting campaign victory',()=>{
   const s=setup(6);s.arcade=new ArcadeRuntime(s);s.debugPreview=true;
   finishWaves(s);assert.equal(s.finished,false);s.update(0,ARCADE.clock.stepMs);
+  assert.equal(s.cinematic,true);s.resumeBoss();
   assert.equal(s.finished,false);assert.equal(s.miniBoss.enemy.key,'pacho');
   const transitions=[];s.game.events.on('level-transition',r=>transitions.push(r));s.nextLevel();assert.deepEqual(transitions,[]);
 });
@@ -1064,7 +1116,7 @@ test('only enemy_2 crosses level 2; enemy_1 pursues and must be defeated while b
   assert.ok(walker.x<walkerX);assert.ok(walker.y>walkerY,'walker changes lane toward the player');
   finishWaves(s,true);assert.equal(s.health,100);assert.equal(s.defeated,20);
   assert.ok(s.enemies.every(e=>e.crossing===(e.key==='rider')));
-  s.update(0,16);assert.equal(s.finished,false);assert.equal(s.miniBoss?.enemy.key,'palomera','level 2 now ends with its boss');
+  s.update(0,16);assert.equal(s.cinematic,true);s.resumeBoss();assert.equal(s.finished,false);assert.equal(s.miniBoss?.enemy.key,'palomera','level 2 now ends with its boss');
 });
 
 test('evading enemy_2 cannot advance the wave while enemy_1 remains alive; level-six Motorata dismounts instead',()=>{
@@ -1101,6 +1153,43 @@ test('parked Dormilon controller retains its intro and cleanup when explicitly e
   assert.equal(bosses,1);assert.equal(s.cinematic,false);assert.equal(s.music.paused,false);
 });
 
+test('all seven bosses wait behind their own intro; no clock, input or boss entry before continuing',()=>{
+  assert.equal(Object.keys(BOSS_INTROS).length,8);
+  const seen=new Set();
+  for(let index=0;index<CAMPAIGN.length;index++){
+    const s=setup(index),events=[],card=BOSS_INTROS[s.level.boss];
+    assert.ok(card,s.level.name);seen.add(card.key);
+    assert.equal(card.url.endsWith(`/boss-intros/${s.level.boss}.png?url`),true);
+    const png=readFileSync(new URL(String(card.url).replace('?url','')));
+    const ratio=png.readUInt32BE(16)/png.readUInt32BE(20);assert.ok(ratio>1.7&&ratio<1.85);
+    s.game.events.on('boss-intro',data=>events.push(data));finishWaves(s);
+    assert.equal(s.beginBossIntro(),true);assert.equal(s.beginBossIntro(),false);
+    assert.equal(s.boss,null);assert.equal(s.miniBoss,null);assert.equal(s.cinematic,true);assert.equal(s.music.paused,true);
+    assert.deepEqual(events,[{boss:s.level.boss,level:campaignIndexForCombat(index),character:'office'}]);
+    const clock=s.combatTime,hp=s.health;s.update(0,1000);assert.equal(s.combatTime,clock);assert.equal(s.health,hp);
+    let entries=0;s.spawnBoss=()=>entries++;s.resumeBoss();s.resumeBoss();
+    assert.equal(entries,1);assert.equal(s.cinematic,false);assert.equal(s.music.paused,false);
+  }
+  assert.equal(seen.size,7);assert.equal(BOSS_INTROS[PLAYABLE_CAMPAIGN[1].boss],undefined);
+});
+
+test('boss intro owns one impact sound, flashes once and destroys the sound and unlock hooks on shutdown',()=>{
+  const intro=new IntroScene();intro.init({kind:'boss',boss:'pacho',level:7});
+  const manager=new EventEmitter(),sounds=[],flashes=[];
+  manager.add=(key)=>{
+    const sound=new EventEmitter();sound.key=key;sound.play=()=>{sound.isPlaying=true;return true;};
+    sound.stop=()=>{sound.isPlaying=false;};sound.destroy=()=>{sound.destroyed=true;};sounds.push(sound);return sound;
+  };
+  intro.sound=manager;intro.cache={audio:{exists:key=>key==='sfx-bossIntro'}};
+  intro.add={image:()=>new Visual(),rectangle:()=>new Visual(),text:()=>new Visual()};
+  intro.cameras={main:{setZoom(){return this;},centerOn(){return this;},setBackgroundColor(){},flash:()=>flashes.push(1),shake(){}}};
+  intro.tweens={add(){}};intro.input=new EventEmitter();intro.input.keyboard=new EventEmitter();intro.events=new EventEmitter();
+  intro.time={delayedCall(){}};intro.game={events:new EventEmitter(),scene:{stop(){}}};intro.create();
+  assert.equal(intro.bossCard,BOSS_INTROS.pacho);assert.deepEqual(sounds.map(s=>s.key),['sfx-bossIntro']);assert.equal(flashes.length,1);
+  manager.emit('audio-ready');assert.equal(sounds.length,1,'recovery does not replay an already-started intro');
+  intro.events.emit('shutdown');assert.ok(sounds[0].destroyed);assert.equal(manager.listenerCount('unlocked'),0);assert.equal(manager.listenerCount('audio-ready'),0);
+});
+
 test('next level is strictly the successor after victory and transition fires once',()=>{
   for(let level=0;level<CAMPAIGN.length;level++) {
     const s=setup(level),events=[];s.game.events.on('level-transition',data=>events.push(data));
@@ -1113,7 +1202,7 @@ test('next level is strictly the successor after victory and transition fires on
 test('intro variants show their correct asset, gate input, finish once asynchronously and clean listeners',async()=>{
   for(const kind of ['game','story','level','boss','credits']) {
     const intro=new IntroScene();intro.init({kind,level:campaignIndexForCombat(2),character:'student'});
-    const images=[],loaded=[],delays=[],texts=[];intro.textures={exists:()=>false};intro.load={image:(key,url)=>loaded.push({key,url})};intro.preload();
+    const images=[],loaded=[],delays=[],texts=[];intro.textures={exists:()=>false};intro.load={image:(key,url)=>loaded.push({key,url}),audio:(key,url)=>loaded.push({key,url})};intro.preload();
     assert.ok(loaded.some(l=>l.url.endsWith('intro_juego.png?url')));assert.ok(loaded.some(l=>l.url.endsWith('intro_boss.png?url')));
     assert.ok(loaded.some(l=>l.url.endsWith('intro_1.png?url')));
     intro.add={image:(x,y,key)=>{images.push(key);return new Visual();},rectangle:()=>new Visual(),text:(x,y,text)=>{texts.push(text);return new Visual();}};
@@ -1121,7 +1210,8 @@ test('intro variants show their correct asset, gate input, finish once asynchron
     intro.input=new EventEmitter();intro.input.keyboard=new EventEmitter();intro.events=new EventEmitter();
     intro.time={delayedCall:(ms,callback)=>delays.push({ms,callback})};intro.game={events:new EventEmitter(),scene:{stop(){}}};
     const completions=[];intro.game.events.on('intro-complete',data=>completions.push(data));intro.create();
-    assert.equal(images[0],kind==='level'?'level-4':kind==='boss'?'intro-boss':['story','credits'].includes(kind)?'intro-story':'intro-game');
+    assert.equal(images[0],kind==='level'?'level-4':kind==='boss'?'intro-boss-grafitero':['story','credits'].includes(kind)?'intro-story':'intro-game');
+    if(kind==='boss')assert.ok(loaded.some(l=>l.key==='sfx-bossIntro'&&l.url.endsWith('/assets/sounds/boss_intro.wav')));
     if(kind==='credits'){
       assert.ok(texts.includes('Gracias por Jugar, juego creado por Aramgames (Andres Ramirez), cualquier apoyo será bien recompensado'));
       assert.ok(texts.includes('CRÉDITOS'));assert.equal(delays[0].ms,1500);
@@ -1167,7 +1257,7 @@ test('Zona Rosa intro preloads and displays the six layers, with no fixed campai
   intro.cameras={main:{setBackgroundColor(){},setZoom(){return this;},centerOn(){return this;}}};intro.tweens={add(){}};
   intro.input=new EventEmitter();intro.input.keyboard=new EventEmitter();intro.events=new EventEmitter();
   intro.time={delayedCall(){}};intro.game={events:new EventEmitter()};intro.create();
-  assert.deepEqual(images,levels[6].layers.map(l=>l.key));assert.ok(texts.includes('NIVEL 8'));assert.ok(texts.includes('ZONA ROSA'));
+  assert.deepEqual(images,levels[6].layers.map(l=>l.key));assert.ok(texts.includes('NIVEL 9'));assert.ok(texts.includes('ZONA ROSA'));
   assert.ok(!texts.some(t=>/NIVEL \d+\s*\//.test(t)));
 });
 
@@ -1259,7 +1349,7 @@ test('H/J/K map to punch, kick and one special activation; Space and L keep jump
 test('manual restart keeps level, lives and boss checkpoint without deleting earned wave points',()=>{
   const s=setup(5);s.boss={};s.run.lives=2;s.run.score=500;s.run.levelStartScore=200;
   s.keys.R.justDown=true;s.update(0,16);
-  assert.equal(s.restartedWith.level,6);assert.equal(s.restartedWith.bossCheckpoint,true);
+  assert.equal(s.restartedWith.level,campaignIndexForCombat(5));assert.equal(s.restartedWith.bossCheckpoint,true);
   assert.equal(s.restartedWith.run,s.run);assert.equal(s.run.lives,2);assert.equal(s.run.score,500);
   assert.equal(s.restartLevel(),false);s.init(s.restartedWith);assert.equal(s.health,100);assert.equal(s.run.lives,2);
   const regular=setup(2);regular.run.score=500;regular.run.levelStartScore=200;regular.restartLevel();assert.equal(regular.run.score,200);
@@ -1331,7 +1421,9 @@ function bossArena(character='office'){
   const setupResult=arcadeSetup(character),s=setupResult.s,calls=[];
   s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};s.add.image=(x,y)=>Object.assign(new Visual(x,y),{rotation:0,setDisplaySize(){return this;}});
   s.debugPreview=false;s.enemies=[];s.waves.spawned=s.level.total;s.defeated=s.level.total;s.waves.update=()=>{};
-  return {...setupResult,calls};
+  // Combat-only fixtures acknowledge the new intro before exercising boss AI.
+  const step=(n=1)=>{setupResult.step(n);if(s.cinematic)s.resumeBoss();};
+  return {...setupResult,calls,step};
 }
 
 function barristaArena(){
@@ -1664,14 +1756,15 @@ function brayatanSetup(){
 
 test('Brayatan guards level six after the thirty enemies; defeating him unlocks Zona Rosa',()=>{
   const s=setup(5);assert.equal(s.beginBossIntro(),false);finishWaves(s);
-  assert.equal(s.beginBossIntro(),true);assert.equal(s.miniBoss.enemy.key,'brayatan');assert.equal(s.boss,null);
+  assert.equal(s.beginBossIntro(),true);assert.equal(s.cinematic,true);assert.equal(s.miniBoss,null);
+  s.resumeBoss();assert.equal(s.miniBoss.enemy.key,'brayatan');assert.equal(s.boss,null);
   assert.equal(s.beginBossIntro(),false);assert.equal(bossFor({boss:'dormilon'}).kind,'controller');
   const {s:scene,a,step}=brayatanSetup();scene.waves.spawned=scene.level.total;scene.defeated=scene.level.total;
   const results=[];scene.game.events.on('level-result',r=>results.push(r));
   scene.hitEnemy(a,{damage:a.hp+1,knockback:0,facing:1});step(190);
   assert.equal(scene.finished,true);assert.equal(results.length,1);assert.equal(results[0].last,false);assert.equal(scene.run.score,4000);
   const transitions=[];scene.game.events.on('level-transition',data=>transitions.push(data));scene.nextLevel();
-  assert.deepEqual(transitions,[{character:'gymbro',level:7}]);assert.equal(scene.run.level,7);
+  assert.deepEqual(transitions,[{character:'gymbro',level:campaignIndexForCombat(6)}]);assert.equal(scene.run.level,campaignIndexForCombat(6));
 });
 
 test('Brayatan knife volleys use the throwing pose and become five knives after the rage transition',()=>{
@@ -1826,14 +1919,27 @@ test('a hit while knocked down or celebrating never throws an invalid transition
   p.transition('knockdown');assert.doesNotThrow(()=>p.hurt(false));assert.equal(p.state,'knockdown');
   p.transition('walk');p.transition('celebration');assert.doesNotThrow(()=>p.hurt(false));assert.equal(p.state,'celebration');
 });
-test('every grabbable enemy has a 6-pose struggle sheet (enemies/enemy_N_grab_struggle.png, 1536×256)',()=>{
+test('every grabbable enemy has six valid struggle poses, including custom-resolution sheets',()=>{
   const order=['walker','rider','thrower','guard','chain','brawler','fan','sweeper','vendor','belly','leash','yulitza'];
   order.forEach((key,i)=>{
     assert.ok(enemies[key].struggle?.url,key);
     const png=readFileSync(new URL(`../src/data/enemies/enemy_${i+1}_grab_struggle.png`,import.meta.url));
-    assert.equal(png.readUInt32BE(16),1536,key);assert.equal(png.readUInt32BE(20),256,key);
+    const width=png.readUInt32BE(16),height=png.readUInt32BE(20),custom=enemies[key].struggle.sheet;
+    if(custom){
+      assert.equal(custom.rows.reduce((a,b)=>a+b),6,key);assert.equal(custom.frameRects.length,6,key);
+      for(const r of custom.frameRects)assert.ok(r.x>=0&&r.y>=0&&r.width>0&&r.height>0&&r.x+r.width<=width&&r.y+r.height<=height,key);
+      assert.ok(enemies[key].struggle.scale>0&&enemies[key].struggle.scale<1,key);
+    } else {assert.equal(width,1536,key);assert.equal(height,256,key);}
   });
   for(const [key,c] of Object.entries(enemies))if(c.boss||c.minion)assert.equal(c.struggle,undefined,key);
+});
+test('Ratti death keeps the airborne rider and fallen motorcycle inside one animation frame',()=>{
+  const c=enemies.rider,png=readFileSync(new URL('../src/data/enemies/enemy_2.png',import.meta.url));
+  assert.equal(c.frameRects.length,24);
+  for(const r of c.frameRects)assert.ok(r.x>=0&&r.y>=0&&r.x+r.width<=png.readUInt32BE(16)&&r.y+r.height<=png.readUInt32BE(20));
+  const r=c.frameRects[c.animations.defeat[2]];
+  for(const [x,y] of [[750,700],[700,850]])assert.ok(x>=r.x&&x<r.x+r.width&&y>=r.y&&y<r.y+r.height);
+  assert.ok(!c.isolateFrames,'detached rider must not be discarded as a separate object');
 });
 test('bosses cannot be grabbed and a grab ends if the player is hit; held too long, the enemy breaks free',()=>{
   const {s,target,step,model,walkIn}=grabSetup();
@@ -2350,4 +2456,73 @@ test('pausing freezes the mime heal and aura, and leaving the level clears its e
   assert.equal(m.age,age);assert.equal(a.hp,hp);assert.equal(graphics[0].draws,draws);
   s.paused=false;step();assert.ok(m.age>age);assert.ok(graphics[0].draws>draws);
   s.arcade.destroy();assert.equal(graphics[0].destroyed,true);
+});
+
+test('market boss uses real scene damage, changes phase at half health and gates victory until defeated',()=>{
+  Visual.prototype.setScrollFactor=function(){return this;};
+  const s=setup(0);s.init({level:6,character:'office'});s.enemies=[];s.projectiles=[];
+  for(const kind of ['image','sprite','ellipse'])s.add[kind]=(x,y)=>new Visual(x,y);
+  s.add.graphics=()=>{const v=new Visual();for(const key of ['clear','lineStyle','strokeRect','fillStyle','fillRect','fillTriangle','strokeEllipse'])v[key]=()=>v;return v;};
+  s.textures={get:()=>({referenceHeight:180})};s.waves=new WaveDirector(s);s.waves.update();finishWaves(s);
+  assert.equal(s.beginBossIntro(),true);s.resumeBoss();assert.equal(s.miniBoss.enemy.key,'reversa');
+  const a=s.miniBoss.enemy;s.arcade=new ArcadeRuntime(s);const m=new Enemy(s.arcade,a);s.arcade.enemies.set(a,m);m.step();const c=m.reversa;
+  for(let i=0;i<246;i++)c.step();a.invulnerableUntil=0;s.player.x=a.x-60;s.player.y=a.y;
+  s.hitEnemy(a,{damage:a.config.hp*.51,knockback:20,facing:1});assert.equal(c.phase,2);assert.equal(c.mode,'board');
+  for(let i=0;i<91;i++)c.step();s.player.x=c.front-10;const hp=a.hp;
+  s.hitEnemy(a,{damage:100,knockback:20,facing:1});assert.equal(a.hp,hp-8);assert.equal(c.mode,'cabIdle');
+  c.start('eggs');for(let i=0;i<31;i++)c.step();s.player.x=c.truckX;
+  s.hitEnemy(a,{damage:100,knockback:0,facing:1});assert.equal(a.hp,hp-108);assert.equal(c.mode,'open');
+  assert.equal(s.miniBoss.done,false);a.invulnerableUntil=0;s.hitEnemy(a,{damage:1e6,knockback:0,facing:1});s.miniBoss.update();
+  assert.equal(c.mode,'dead');assert.equal(s.lastHit,null);assert.equal(s.miniBoss.done,false);s.combatTime+=4000;assert.equal(s.miniBoss.done,true);
+});
+
+test('ring preloads only its fighters, resolves real four-enemy damage with no extra kill points, then returns to Palomojao',()=>{
+  const s=setup(0);s.init({level:5,character:'office',ringBonus:true,returnLevel:6});s.enemies=[];s.projectiles=[];
+  assert.equal(s.level.mode,'ring');assert.equal(s.level.boss,null);assert.equal(s.level.rain,null);assert.equal(s.isCycling,false);
+  assert.deepEqual([...s.wanted].sort(),['office','cristiano_violencia','piernas_locas','brincolas_rataquieta','minilaja'].sort());
+  for(const key of ['image','sprite','ellipse'])s.add[key]=(x,y)=>new Visual(x,y);
+  s.add.graphics=()=>{const v=new Visual();for(const n of ['clear','fillStyle','lineStyle','fillTriangle','strokeEllipse'])v[n]=()=>v;return v;};
+  s.textures={get:()=>({referenceHeight:240})};s.arcade=new ArcadeRuntime(s);s.arcade.combat.impact=()=>{};s.waves=new WaveDirector(s);
+  const b=s.ringBonus=new RingBonus(s);b.round.step(3000);b.tick();
+  for(const key of RING_ORDER){assert.equal(b.current.key,key);s.hitEnemy(b.current,{damage:10000,knockback:0,facing:1});for(let i=0;i<56;i++)b.tick();}
+  assert.equal(s.run.score,10000);assert.equal(s.defeated,0);assert.equal(s.lastHit,null);
+  for(let i=0;i<140;i++)b.tick();assert.equal(s.finished,true);assert.equal(s.restartLevel(),false);
+  const next=[];s.game.events.on('level-transition',e=>next.push(e));s.nextLevel();s.nextLevel();assert.deepEqual(next,[{character:'office',level:6}]);
+});
+
+test('ring knockout uses no life and ring timer is not overwritten by the normal 99-second clock',()=>{
+  const s=setup(0);s.init({level:5,character:'office',ringBonus:true,returnLevel:6});s.enemies=[];s.projectiles=[];
+  for(const key of ['image','sprite','ellipse'])s.add[key]=(x,y)=>new Visual(x,y);
+  s.add.graphics=()=>{const v=new Visual();for(const n of ['clear','fillStyle','fillTriangle'])v[n]=()=>v;return v;};
+  s.arcade=new ArcadeRuntime(s);s.arcade.combat.impact=()=>{};const b=s.ringBonus=new RingBonus(s);b.round.step(3000);b.tick();const time=s.timeLeft;s.tickClock();assert.equal(s.timeLeft,time);
+  const lives=s.run.lives;s.combatTime=5000;s.invulnerableUntil=0;s.respawnProtectedUntil=0;s.hitPlayer(1000);assert.equal(b.round.state,'knockout');assert.equal(s.run.lives,lives);assert.equal(s.health,1);
+});
+
+test('four ring atlases have 24 valid poses and never enter campaign enemy pools',()=>{
+ for(const key of RING_ORDER){const c=enemies[key],png=readFileSync(new URL(String(c.url).replace('?url','')));assert.equal(c.frameRects.length,24);assert.equal(c.grabbable,false);
+  for(const r of c.frameRects)assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=png.readUInt32BE(16) && r.y+r.height<=png.readUInt32BE(20));
+  assert.ok(PLAYABLE_CAMPAIGN.every(l=>!l.enemies.includes(key)));
+ }
+});
+
+test('guitarist knees preserve the held sheet and final knockdown restores normal scale before playing hurt art',()=>{
+ const {s,a,model}=guitaristSetup();a.hp=1000;a.config={...a.config,hp:1000};
+ a.sprite.texture={key:a.key};a.sprite.setTexture=function(key,frame){this.texture={key};this.frame=frame;return this;};
+ a.sprite.setScale=function(n){this.scaleX=this.scaleY=n;return this;};
+ // Phaser changes the texture when an animation uses frames from another atlas.
+ a.sprite.play=function(){this.texture={key:a.key};return this;};
+ s.textures={exists:()=>true,get:()=>({referenceHeight:250})};s.arcade.combat.impact=()=>{};
+ model.seize();model.struggle();const base=a.config.height/250,held=base*a.config.struggle.scale;
+ assert.equal(a.sprite.scaleY,held);
+ s.hitEnemy(a,{damage:1,knockback:0,facing:1,grab:true});
+ assert.equal(model.state,'grabbed');assert.equal(a.sprite.texture.key,'guitarist-struggle');assert.equal(a.sprite.scaleY,held);
+ s.hitEnemy(a,{damage:1,knockback:30,facing:1,grab:false,knockdown:true,finisher:true});
+ assert.equal(model.state,'down');assert.equal(a.sprite.texture.key,'guitarist');assert.equal(a.sprite.scaleY,base);
+});
+
+test('ending a guitarist hold restores scale even if an animation already changed its texture',()=>{
+ const {s,a,model}=guitaristSetup();a.sprite.texture={key:a.key};
+ a.sprite.setTexture=function(key){this.texture={key};return this;};a.sprite.setScale=function(n){this.scaleY=n;return this;};
+ s.textures={exists:()=>true,get:()=>({referenceHeight:250})};model.seize();model.struggle();
+ a.sprite.texture={key:'guitarist'};model.breakFree();assert.equal(a.sprite.scaleY,a.config.height/250);
 });

@@ -4,9 +4,12 @@ import {FixedClock} from './FixedClock.js';
 import {Player} from '../actors/Player.js';
 import {Enemy} from '../actors/Enemy.js';
 import {CombatSystem} from '../combat/CombatSystem.js';
+import {Diablitos} from './Diablitos.js';
+import {Poultry} from './Poultry.js';
+import {Potatoes} from './Potatoes.js';
 
 export class ArcadeRuntime {
-  constructor(scene){this.scene=scene;this.clock=new FixedClock();this.frame=0;this.combat=new CombatSystem(scene);this.player=new Player(this);this.enemies=new Map();this.input={dx:0,dy:0};this.edges={jump:false,dash:false};}
+  constructor(scene){this.scene=scene;this.clock=new FixedClock();this.frame=0;this.combat=new CombatSystem(scene);this.player=new Player(this);this.enemies=new Map();this.diablitos=new Diablitos(this);this.poultry=new Poultry(this);this.potatoes=new Potatoes(this);this.input={dx:0,dy:0};this.edges={jump:false,dash:false};}
   capture(input){
     if(this.destroyed)return;
     const s=this.scene;
@@ -37,6 +40,10 @@ export class ArcadeRuntime {
     }
     if(s.finished)return;
     s.combatTime+=ARCADE.clock.stepMs;this.combat.step(frame);
+    if(s.ringBonus){
+      s.ringBonus.tick();
+      if(s.ringBonus.locked){this.clearInput();s.stage?.update(frame);s.ringBonus.update();s.placeFighter(s.player,s.player.z??0);return;}
+    }
     if(s.chivaBonus){
       s.chivaBonus.tick();
       if(s.chivaBonus.locked){
@@ -45,6 +52,7 @@ export class ArcadeRuntime {
       }
     }
     const previous={x:s.player.x,y:s.player.y},walking=this.player.state==='walk' && !this.combat.frozen(s.player);
+    this.diablitos.update();
     this.player.step({...this.input,...this.edges});this.edges={jump:false,dash:false};
     s.stage?.rain?.slip(s.player,previous,walking && this.player.state==='walk');
     s.stage?.update(frame); // moves the camera and the floor span before enemies use it
@@ -57,7 +65,7 @@ export class ArcadeRuntime {
       if(actor.crossing)s.updateCrossing(actor,1/ARCADE.clock.fps);
       else {
         if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
-        if(!s.debugPreview)this.enemies.get(actor).step();
+        if(!s.debugPreview && !this.diablitos.controls(actor))this.enemies.get(actor).step();
       }
       const model=this.enemies.get(actor);
       s.stage?.rain?.slip(actor,previous,!actor.crossing && !s.debugPreview && !this.combat.frozen(actor) && ['approach','circle'].includes(model?.state));
@@ -67,6 +75,10 @@ export class ArcadeRuntime {
       actor.healthBar.setPosition(actor.x-21,actor.y-actor.config.height-10).setDepth(actor.y+1);
     }
     s.updateProjectiles(1/ARCADE.clock.fps);s.flock?.update();s.iphone?.update(1/ARCADE.clock.fps);s.books?.update(1/ARCADE.clock.fps);s.waves.update();
+    s.ringBonus?.update();
+    this.poultry.update();
+    this.potatoes.update();
+    for(const model of this.enemies.values())model.reversa?.resolveMovement(previous);
     if(s.health>0 && s.level.boss && s.waves.cleared && !s.boss && !s.miniBoss)s.beginBossIntro();
     s.miniBoss?.update();s.stains?.update();s.gas?.update();s.tickClock?.();
     if(s.boss){
@@ -86,7 +98,7 @@ export class ArcadeRuntime {
     }else this.boxGraphics?.clear();
     s.dashStatus.setText(frame>=this.player.dashReady?'SHIFT / DASH LISTO':'SHIFT / RECARGANDO…');
     if(s.health<=0){s.handleDeath();return;}
-    if(!s.chivaBonus && s.waves.cleared && (!s.level.boss || s.boss?.done || s.miniBoss?.done))this.win();
+    if(!s.chivaBonus && !s.ringBonus && s.waves.cleared && (!s.level.boss || s.boss?.done || s.miniBoss?.done))this.win();
   }
   enemyHit(actor,attack){
     if(!this.enemies.has(actor))this.enemies.set(actor,new Enemy(this,actor));
@@ -97,10 +109,10 @@ export class ArcadeRuntime {
     this.enemies.get(actor).checkShieldPhase();
   }
   playerHit(combo,source){this.player.hurt(Boolean(combo?.finisher));if(!combo)this.combat.impact(source??null,this.scene.player,{finisher:false});}
-  resetPlayer(revive=false){this.scene.vuvuzela?.clearHeld();this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
+  resetPlayer(revive=false){this.diablitos.cancelPlayer();this.poultry.clear();this.potatoes.clear();this.scene.vuvuzela?.clearHeld();this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
   clearInput(){this.player.buffer.clear();this.edges={jump:false,dash:false};this.input={dx:0,dy:0};}
   win(){
-    const s=this.scene;s.finished=true;this.player.transition('celebration');this.clearInput();this.combat.tokens.clear();
+    const s=this.scene;this.diablitos.clear();this.poultry.clear();this.potatoes.clear();s.finished=true;this.player.transition('celebration');this.clearInput();this.combat.tokens.clear();
     s.vuvuzela?.clearHeld();
     s.stage?.rain?.clear();
     s.stage?.pigeons?.clear();
@@ -112,5 +124,5 @@ export class ArcadeRuntime {
     s.play(s.player,'victory',ARCADE.flow.victoryFrames*ARCADE.clock.stepMs);s.game.events.emit('level-clear',s.levelIndex);s.game.events.emit('level-victory');
     s.pendingResult={won:true,last,bossCheckpoint:Boolean(s.boss||s.miniBoss),score:s.run.score,character:s.character.name};s.victoryRemaining=ARCADE.flow.resultDelayFrames*ARCADE.clock.stepMs;
   }
-  destroy(){if(this.destroyed)return;this.destroyed=true;this.clock.clear();for(const enemy of this.enemies.values()){enemy.healAura?.destroy();enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
+  destroy(){if(this.destroyed)return;this.destroyed=true;this.diablitos.clear();this.poultry.clear();this.potatoes.clear();this.clock.clear();for(const enemy of this.enemies.values()){enemy.healAura?.destroy();enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();enemy.reversa?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
 }

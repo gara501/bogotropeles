@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gomelo · Caminata corregida</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#17242a;color:#f1f0db;font-family:system-ui,sans-serif;padding:32px;max-width:1100px;margin:auto}h1{font-size:30px;margin:0 0 6px;color:#dfed6d}p{color:#b7c5c4;margin:0 0 22px}.live{display:flex;gap:24px;justify-content:center;background:#26383c;border:1px solid #526367;padding:14px;margin-bottom:28px;border-radius:8px}.poses{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}figure{margin:0;text-align:center}canvas{width:100%;image-rendering:pixelated;border-bottom:2px solid #71827a}.live canvas{width:220px}figcaption{font-size:12px;color:#cbd9d3;margin-top:7px}
+</style>
+<h1>Gomelo · Caminata corregida</h1>
+<p>Un ciclo completo: contacto, apoyo y paso de cada pierna. La pierna cercana es más clara.</p>
+<section class="live"><figure><canvas id="left" width="180" height="172"></canvas><figcaption>Hacia la izquierda</figcaption></figure><figure><canvas id="right" width="180" height="172"></canvas><figcaption>Hacia la derecha</figcaption></figure></section>
+<section class="poses" id="poses"></section>
+<script>
+const cuts=[[82,52,335,396,240],[561,52,247,398,694],[966,52,276,399,1115],[70,470,337,382,229],[559,465,231,386,686],[952,469,293,379,1110]];
+const labels=['1 · Contacto cercano','2 · Apoyo cercano','3 · Paso lejano','4 · Contacto lejano','5 · Apoyo lejano','6 · Paso cercano'];
+const sprite=new Image();
+function draw(canvas,index,flip=false){
+ const ctx=canvas.getContext('2d');ctx.clearRect(0,0,180,172);ctx.imageSmoothingEnabled=false;
+ const [x,y,w,h,anchor]=cuts[index],scale=153/h;
+ ctx.save();if(flip){ctx.translate(180,0);ctx.scale(-1,1);}
+ ctx.drawImage(sprite,x,y,w,h,Math.round(90-(anchor-x)*scale),12,Math.round(w*scale),153);ctx.restore();
+}
+sprite.onload=()=>{
+ cuts.forEach((_,i)=>{const f=document.createElement('figure'),c=document.createElement('canvas'),label=document.createElement('figcaption');c.width=180;c.height=172;label.textContent=labels[i];f.append(c,label);document.querySelector('#poses').append(f);draw(c,i);});
+ const animate=time=>{const i=Math.floor(time/100)%6;draw(document.querySelector('#left'),i,true);draw(document.querySelector('#right'),i);requestAnimationFrame(animate);};requestAnimationFrame(animate);
+};
+sprite.src='../src/data/players/player_1_walk.png';
+</script></html>

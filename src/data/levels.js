@@ -3,14 +3,14 @@ import cyclingBackground from '../scenes/ciclovia/background.png?url';
 const backgrounds = import.meta.glob('../scenes/level_*.png', {
   eager: true, query: '?url', import: 'default',
 });
-const artFiles = import.meta.glob(['../scenes/level*/game/*.png','../scenes/level*/*.png'], {
+const artFiles = import.meta.glob(['../scenes/level*/game/*.png','../scenes/level*/*.png','../scenes/palomojao/game/*.png','../scenes/palomojao/*.png'], {
   eager: true, query: '?url', import: 'default',
 });
 const asset = (art, file) => ({ key: `${art.folder}-${file}`,
   url: artFiles[`../scenes/${art.folder}/game/${file}.png`] ?? artFiles[`../scenes/${art.folder}/${file}.png`] });
 
 export const levels = CAMPAIGN.map((level, index) => {
-  const base = { ...level, key: `level-${index + 1}`, url: level.mode==='cycling'?cyclingBackground:backgrounds[`../scenes/level_${(level.combatIndex??index) + 1}.png`] };
+  const base = { ...level, key: `level-${index + 1}`, url: level.mode==='cycling'?cyclingBackground:level.art?.background?asset(level.art,level.art.background).url:backgrounds[`../scenes/level_${(level.combatIndex??index) + 1}.png`] };
   if (!level.art) return base;
   return {
     ...base,

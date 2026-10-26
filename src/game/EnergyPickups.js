@@ -33,6 +33,10 @@ export class EnergyPickups {
     const arena=s.waves?.arena??0;
     if(!this.rolled.has(arena) && (!s.stage || s.stage.reached(arena))){
       this.rolled.add(arena);
+      if(s.level.potatoSupplies){
+        const left=s.stage?.arenaScroll(arena)??0;
+        this.spawn(left+ARCADE.screen.width*.7,s.floor.top+28,'boxes').potatoSacks=2;
+      }
       if(this.random()<C.chance){
         const left=s.stage?.arenaScroll(arena)??0,kinds=containersFor(s.level.combatIndex??s.levelIndex??0);
         const x=left+ARCADE.screen.width*(C.spawnLeft+this.random()*(C.spawnRight-C.spawnLeft));

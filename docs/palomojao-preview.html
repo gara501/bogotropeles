@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Palomojao · Escenario</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#14231c;color:#f4f0d4;font:15px system-ui,sans-serif}main{max-width:1000px;margin:auto;padding:22px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}h1{font-size:30px;margin:0;color:#f7df71}p{margin:5px 0;color:#c8d2bd}.tag{color:#d6ed64;font:12px monospace;white-space:nowrap}#preview{width:100%;aspect-ratio:16/9;border:1px solid #68805d;background:#1b251f}canvas{display:block;image-rendering:pixelated}nav{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:14px 0}button{background:#263d2e;border:1px solid #8c9a70;border-radius:3px;color:#f4f0d4;padding:10px 14px;font:inherit;cursor:pointer}button:hover{background:#3b573d}label{display:flex;align-items:center;gap:10px}input{accent-color:#d6ed64}#offset{width:210px}output{color:#d6ed64;font:12px monospace;line-height:1.7}.props{padding-top:20px;border-top:1px solid #506548}h2{font-size:20px;margin:0 0 8px}.props img{width:100%;max-width:900px;display:block;margin:14px auto 0;background:#203628;border:1px solid #506548;image-rendering:pixelated}@media(max-width:650px){main{padding:12px}h1{font-size:24px}.tag{display:none}}
+</style>
+</head>
+<body><main>
+<header><div><h1>Plaza de Palomojao</h1><p>Mercado cubierto · techo verde, puestos de frutas y pasillo de combate</p></div><span class="tag">4 CAPAS · 12 UTILERÍAS</span></header>
+<div id="preview" role="img" aria-label="Vista del mercado de Palomojao con desplazamiento lateral"></div>
+<nav><button id="motion">Iniciar recorrido</button><button id="mode">Mostrar fondo completo</button><button id="lane">Mostrar área de combate</button><label>Recorrido <input id="offset" type="range" min="0" max="2880" step="1" value="0"></label></nav>
+<output id="status">Cargando las capas del escenario…</output>
+<section class="props"><h2>Utilerías del mercado</h2><p>Canastas, costales, plátanos, carretilla, báscula, mesa de verduras, flores, canasto y carro.</p><img src="../src/scenes/palomojao/props/market.png" alt="Doce utilerías del mercado, separadas en un atlas transparente"></section>
+</main>
+<script type="module">
+import Phaser from 'phaser';
+import {PALOMOJAO_ART,preloadPalomojao,preparePalomojao} from '../src/data/palomojao.js';
+import {ParallaxBackground} from '../src/stage/ParallaxBackground.js';
+let moving=false,complete=false,laneVisible=false,scroll=0;
+const motion=document.querySelector('#motion'),mode=document.querySelector('#mode'),lane=document.querySelector('#lane'),offset=document.querySelector('#offset'),status=document.querySelector('#status');
+class MarketPreview extends Phaser.Scene {
+ preload(){preloadPalomojao(this);}
+ create(){
+  preparePalomojao(this);
+  this.background=new ParallaxBackground(this,PALOMOJAO_ART.layers);
+  this.full=this.add.image(480,270,PALOMOJAO_ART.background.key).setDisplaySize(960,540).setDepth(-110).setVisible(false);
+  this.area=this.add.graphics().setDepth(950).setVisible(false);
+  const f=PALOMOJAO_ART.floor;this.area.fillStyle(0xd6ed64,.12).fillRect(0,f.top,960,f.bottom-f.top).lineStyle(2,0xd6ed64,.9).strokeRect(1,f.top,958,f.bottom-f.top);
+  motion.onclick=()=>{moving=!moving;motion.textContent=moving?'Pausar recorrido':'Iniciar recorrido';};
+  mode.onclick=()=>{complete=!complete;this.full.setVisible(complete);for(const l of this.background.layers)l.sprite.setVisible(!complete);mode.textContent=complete?'Mostrar capas con parallax':'Mostrar fondo completo';};
+  lane.onclick=()=>{laneVisible=!laneVisible;this.area.setVisible(laneVisible);lane.textContent=laneVisible?'Ocultar área de combate':'Mostrar área de combate';};
+  offset.oninput=()=>{scroll=Number(offset.value);};
+  status.textContent='Escenario listo · techo y puestos alineados · piso y primer plano independientes';
+ }
+ update(time,delta){
+  if(!this.background)return;
+  if(moving){scroll=(scroll+delta*.045)%2880;offset.value=String(Math.round(scroll));}
+  this.background.update(scroll,time);
+  status.textContent=(complete?'Fondo completo':'Capas con parallax')+' · recorrido '+Math.round(scroll)+' px · zona de combate: y 390–500';
+ }
+}
+new Phaser.Game({type:Phaser.CANVAS,parent:'preview',width:960,height:540,backgroundColor:'#1b251f',
+ render:{pixelArt:true,roundPixels:true},scale:{mode:Phaser.Scale.FIT,autoCenter:Phaser.Scale.CENTER_BOTH},
+ scene:MarketPreview,banner:false,audio:{noAudio:true}});
+</script></body></html>

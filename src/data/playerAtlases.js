@@ -84,7 +84,15 @@ export const PLAYER_ATLASES={
     [118,2355,255,265],
     [522,2353,258,267],
     [838,2357,377,263],
-    [1278,2354,346,266]
+    [1278,2354,346,266],
+    // player_1_walk.png, below main (1705) + grab (941). The redundant
+    // contact poses in columns 4 are omitted so both half-strides flow evenly.
+    [82,2698,335,396],
+    [561,2698,247,398],
+    [966,2698,276,399],
+    [70,3116,337,382],
+    [559,3111,231,386],
+    [952,3115,293,379]
   ],
   "student": [
     [17,11,212,178],

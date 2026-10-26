@@ -4,8 +4,13 @@ import {EventEmitter} from 'node:events';
 import {existsSync} from 'node:fs';
 import {SoundEffects,EFFECT_FILES,preloadEffects,enemyDeathSound,PLAYER_DEATH_SOUNDS,PLAYER_HURT_SOUNDS,PLAYER_POWER_SOUNDS,playPowerSound,ENEMY_HURT_SOUNDS,ENEMY_SPAWN_SOUNDS,BOSS_SOUNDS,DEATH_SOUNDS} from '../src/audio/SoundEffects.js';
 
+test('Frutatiana uses her dedicated hurt and death recordings',()=>{
+  assert.equal(EFFECT_FILES[ENEMY_HURT_SOUNDS.frutatiana],'frutatiana_hurt.mp3');
+  assert.equal(EFFECT_FILES[DEATH_SOUNDS.frutatiana],'frutatiana_die.mp3');
+});
+
 test('sack carrier, Motorata, guitarist, leash and belly use their requested hurt/death recordings',()=>{
-  for(const [key,hurt,death] of [['homeless','male_grunt4.mp3','homeless_die.mp3'],['motorata','male_grunt4.mp3','motorata_die.mp3'],['guitarist','hurt_01.mp3','guitarista_die.mp3'],['malabarista','hurt_03.mp3','malabarista_die.mp3']]){
+  for(const [key,hurt,death] of [['don_pico','hurt2.mp3','enemy_10_die.mp3'],['homeless','male_grunt4.mp3','homeless_die.mp3'],['motorata','male_grunt4.mp3','motorata_die.mp3'],['guitarist','hurt_01.mp3','guitarista_die.mp3'],['malabarista','hurt_03.mp3','malabarista_die.mp3']]){
     assert.equal(EFFECT_FILES[ENEMY_HURT_SOUNDS[key]],hurt);assert.equal(EFFECT_FILES[DEATH_SOUNDS[key]],death);
   }
   assert.equal(EFFECT_FILES[DEATH_SOUNDS.leash],'enemy_11_die.mp3');
@@ -20,7 +25,7 @@ test('sack carrier, Motorata, guitarist, leash and belly use their requested hur
 test('each player has its own death sound and player_2 grunts when hit',()=>{
   assert.deepEqual(Object.fromEntries(Object.entries(PLAYER_DEATH_SOUNDS).map(([k,v])=>[k,EFFECT_FILES[v]])),
     {office:'player_1_die.mp3',student:'player_2_die.mp3',teleperforman:'player_3_die.mp3',gymbro:'player_4_die.mp3',magolita:'player_die_5.mp3'});
-  assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.student],'player_2_grunt.mp3');assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.magolita],'female_grunt.mp3');assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.gymbro],'player_4_grunt.mp3');
+  assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.student],'player_2_grunt.wav');assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.magolita],'female_grunt.mp3');assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.gymbro],'player_4_grunt.mp3');
   assert.equal(EFFECT_FILES[PLAYER_HURT_SOUNDS.office],'gruntsound.mp3');
 });
 
@@ -44,9 +49,7 @@ function setup(locked=false) {
 test('all effects reference existing assets, including the WAV death sounds and the whoosh',()=>{
   const loaded=[];preloadEffects({cache:{audio:{exists:()=>false}},load:{audio:(key,url)=>loaded.push([key,url])}});
   assert.equal(loaded.length,Object.keys(EFFECT_FILES).length);
-  // Wired before the files were added: they play as soon as they exist (a missing file just stays silent).
-  const pending=new Set(['female_hurt.mp3','male_hurt.mp3','enemy_10_die.mp3']);
-  for(const file of Object.values(EFFECT_FILES))if(!pending.has(file))assert.ok(existsSync(new URL(`../public/assets/sounds/${file}`,import.meta.url)),file);
+  for(const file of Object.values(EFFECT_FILES))assert.ok(existsSync(new URL(`../public/assets/sounds/${file}`,import.meta.url)),file);
   assert.deepEqual(loaded.find(([key])=>key==='sfx-hurt'),['sfx-hurt','/assets/sounds/hurt.mp3']);
   assert.deepEqual(loaded.find(([key])=>key==='sfx-whistle'),['sfx-whistle','/assets/sounds/whistle.mp3']);
 });

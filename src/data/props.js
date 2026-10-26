@@ -7,11 +7,13 @@ import samberUrl from './NPC/npc_samber.png?url';
 import gomelosUrl from './NPC/npc_gomelos.png?url';
 import politicosUrl from './NPC/npc_politicos.png?url';
 import {prepareCutout,needsSource} from './spriteSheets.js';
+import {PALOMOJAO_PROPS,PALOMOJAO_PROP_SOURCE} from './palomojao.js';
 
 // Background props that make the levels livelier. They stand at the back edge of the walkable floor,
 // behind every fighter, and scroll with the street.
-// item_bg_1 lechonería cart · item_bg_2 Merengón Bogotano Renault 4 · item_bg_3 12 TransMilenio passengers (3×4).
+// item_bg_1 lechonería cart · item_bg_2 Merengón Bogotano Renault 4 · item_bg_3 12 Transmilleno passengers (3×4).
 const SOURCES={'prop-lechona-source':lechonaUrl,'prop-merengon-source':merengonUrl,'prop-passengers-source':passengersUrl,'prop-station-source':stationUrl,'prop-chorro-source':chorroUrl,'prop-samber-source':samberUrl,'prop-gomelos-source':gomelosUrl,'prop-politicos-source':politicosUrl};
+SOURCES[PALOMOJAO_PROP_SOURCE.key]=PALOMOJAO_PROP_SOURCE.url;
 // Eight people, two poses each. Tight alpha bounds keep neighbouring hands and shoes out of the cutouts.
 const GOMELOS=[[83,7,182,337],[358,75,199,269],[632,26,188,318],[901,87,199,257],
   [81,361,195,322],[376,402,160,281],[642,361,175,321],[914,358,165,325],
@@ -42,6 +44,7 @@ export const PROPS={
     scale:100/305,tint:0xc9cdd2,shadow:.5}])), // static: the drawings have no walk cycle
 };
 export const PASSENGERS=PASSENGER_RECTS.map((_,i)=>`passenger${i}`);
+Object.assign(PROPS,Object.fromEntries(PALOMOJAO_PROPS.map(prop=>[`palomojao-${prop.id}`,{...prop,noFlip:true}])));
 // One scale for all of them (standing figures ≈ 340 px → 104 on screen), so the sitting ones stay proportionally low.
 Object.assign(PROPS,Object.fromEntries(CHORRO.map((rect,i)=>[`chorro${i}`,{texture:`prop-chorro-${i}`,source:'prop-chorro-source',rect,
   scale:104/340,tint:0xd8d8d8,shadow:.5}])));

@@ -17,17 +17,19 @@ import { CharacterIntroScene } from './scenes/CharacterIntroScene.js';
 import { characters } from './data/characters.js';
 import { enemies } from './data/enemies.js';
 import { SoundEffects } from './audio/SoundEffects.js';
+import { AudioActivation } from './audio/AudioActivation.js';
 import { TouchControls } from './input/TouchControls.js';
 import { RunState, ContinueCountdown, saveRecord, MAX_CONTINUES, RANKING_KEY, loadRanking, addToRanking, qualifiesForRanking, cleanInitials } from './game/RunState.js';
 import {ARCADE} from './data/arcade.js';
 import {campaignIndexForCombat} from './data/campaign.js';
+import {RING_BONUS,shouldStartRingBonus} from './bonus/ringRules.js';
 import {CHIVA_BONUS,shouldStartChivaBonus} from './bonus/chivaRules.js';
 
 let selected = 'office';
 let screen = 'intro';
 let returnToStreet=false,lastResult=null,countdown=null,countdownTimer=null;
 // Development shortcuts must never overwrite a real player's record.
-const recordKey=import.meta.env.DEV && ['bossTest','enemyTest','playerPreview','campaignPreview','bonusTest','cyclingTest','gameOverTest'].some(key=>new URLSearchParams(location.search).has(key))?'street-bogota-record-qa':'street-bogota-record-v1';
+const recordKey=import.meta.env.DEV && ['bossTest','bossIntroTest','enemyTest','playerPreview','campaignPreview','bonusTest','cyclingTest','gameOverTest'].some(key=>new URLSearchParams(location.search).has(key))?'street-bogota-record-qa':'street-bogota-record-v1';
 const selection = document.querySelector('#selection');
 const resultModal=document.querySelector('#result-modal');
 
@@ -49,6 +51,8 @@ const game = new Phaser.Game({
 });
 
 const focusGame = () => document.querySelector('#game').focus({ preventScroll: true });
+const audioActivation=new AudioActivation(game,{button:document.querySelector('#audio-toggle')});
+game.events.once('destroy',()=>audioActivation.destroy());
 game.run=new RunState();
 game.touchControls=new TouchControls(game);
 installCrispText(game);
@@ -85,7 +89,7 @@ function pick(key) {
 }
 // TEST LEVEL SELECTOR: lets you start any level from the character screen.
 // Set LEVEL_SELECT to false to remove it (the game then always continues from the campaign's current level).
-const LEVEL_SELECT = true;
+const LEVEL_SELECT = false;
 const levelPicker=import.meta.env.DEV && LEVEL_SELECT?createLevelPicker():null;
 function createLevelPicker(){
   const label=document.createElement('label');label.className='level-picker';
@@ -93,6 +97,7 @@ function createLevelPicker(){
   const select=document.createElement('select');select.setAttribute('aria-label','Nivel de prueba');
   select.style.cssText='background:#213138;color:#e7e8df;border:1px solid #d6ed64;padding:6px 8px;font:inherit;font-size:11px';
   levels.forEach((level,index)=>select.append(new Option(`${String(index+1).padStart(2,'0')} · ${level.name.toUpperCase()}${level.boss?' · JEFE':''}`,index)));
+  select.append(new Option('BONUS · DESTRUYE LA CHIVA','bonus:chiva'),new Option('BONUS · EL RING DE LOS TRAQUES','bonus:ring'));
   label.append('NIVEL (PRUEBAS)',select);
   const heading=document.querySelector('.selection-heading');
   heading?.insertBefore(label,document.querySelector('#back'));
@@ -127,7 +132,16 @@ function play() {
   if(returnToStreet) {
     const scene=game.scene.getScene('Street');scene.ensureCharacter(selected,()=>{scene.switchCharacter(selected);resumeStreet();});return;
   }
-  if(levelPicker && !levelPicker.hidden){const level=Number(levelPicker.querySelector('select').value);if(level!==game.run.level)game.run.advance(level);}
+  if(levelPicker && !levelPicker.hidden){
+    const choice=levelPicker.querySelector('select').value;
+    if(choice==='bonus:chiva' || choice==='bonus:ring'){
+      const ring=choice==='bonus:ring',bonus=ring?RING_BONUS:CHIVA_BONUS;
+      game.run.advance(bonus.afterLevel);
+      (ring?startRingBonus:startChivaBonus)({character:selected,level:bonus.afterLevel+1});
+      return;
+    }
+    const level=Number(choice);if(level!==game.run.level)game.run.advance(level);
+  }
   // Character story screen first; confirming it continues to the level intro.
   startIntro({kind:'character',character:selected,level:game.run.level});
 }
@@ -211,8 +225,8 @@ function showResult(result) {
 function showBonusResult(result){
   lastResult=result;resetResultButtons();
   const s=game.scene.getScene('Street');s.input.keyboard.resetKeys();
-  document.querySelector('#result-title').textContent=result.won?'¡CHIVA DESTRUIDA!':'TIEMPO AGOTADO';
-  document.querySelector('#result-description').textContent=result.won?'Bonus perfecto: 5000 puntos. ¡Coste no lo puede creer!':`${result.hits} golpes × 100 puntos. La campaña continúa.`;
+  document.querySelector('#result-title').textContent=result.kind==='ring'?(result.won?'¡LOS CUATRO A LA LONA!':result.reason==='timeout'?'TIEMPO AGOTADO':'PLAYER A LA LONA'):(result.won?'¡CHIVA DESTRUIDA!':'TIEMPO AGOTADO');
+  document.querySelector('#result-description').textContent=result.kind==='ring'?(result.won?'¡Ganaste el ring! +10.000 puntos.':`${result.defeated}/4 rivales vencidos. La campaña continúa.`):result.won?'Bonus perfecto: 5000 puntos. ¡Coste no lo puede creer!':`${result.hits} golpes × 100 puntos. La campaña continúa.`;
   document.querySelector('#result-score').textContent=`+${result.points} BONUS · ${result.score} PUNTOS TOTALES`;
   const next=document.querySelector('#next-level');next.hidden=false;next.disabled=false;
   openResult();next.focus();
@@ -267,11 +281,16 @@ function startChivaBonus(data){
   game.run.chivaBonusPlayed=true;showScreen('game');game.scene.stop('Intro');game.scene.stop('Menu');
   game.scene.start('Street',{character:data.character,level:CHIVA_BONUS.afterLevel,chivaBonus:true,returnLevel:data.level,run:game.run});focusGame();
 }
+function startRingBonus(data){
+  game.run.ringBonusPlayed=true;showScreen('game');game.scene.stop('Intro');game.scene.stop('Menu');
+  game.scene.start('Street',{character:data.character,level:RING_BONUS.afterLevel,ringBonus:true,returnLevel:data.level,run:game.run});focusGame();
+}
 game.events.on('level-transition',data=>{
   if(shouldStartChivaBonus(data.level,game.run))startChivaBonus(data);
+  else if(shouldStartRingBonus(data.level,game.run))startRingBonus(data);
   else startIntro({...data,kind:'level'});
 });
-game.events.on('boss-intro',()=>startIntro({kind:'boss'}));
+game.events.on('boss-intro',data=>startIntro({...data,kind:'boss'}));
 game.events.once('menu-ready',()=>startIntro());
 if (import.meta.env.DEV) {
   // Console helpers and direct test URLs are stripped from production builds.
@@ -286,6 +305,16 @@ if (import.meta.env.DEV) {
     },
   };
   const debugParams = new URLSearchParams(window.location.search);
+  if(debugParams.has('bossIntroTest'))game.events.once('menu-ready',()=>{
+    const found=levels.findIndex(level=>level.boss===debugParams.get('bossIntroTest')),level=found<0?0:found;
+    selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
+    showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
+    game.events.once('level-start',()=>{
+      const s=game.scene.getScene('Street');s.waves.skipToEnd();s.stage.jumpToArena(s.waves.arena);
+      s.defeated=s.level.total;for(const enemy of s.enemies)enemy.hp=0;s.beginBossIntro();
+    });
+    game.scene.start('Street',{character:selected,level});focusGame();
+  });
   if(debugParams.has('gameOverTest'))game.events.once('menu-ready',()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
     showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
@@ -300,6 +329,7 @@ if (import.meta.env.DEV) {
   });
   if(debugParams.has('bonusTest'))game.events.once('menu-ready',async()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
+    if(debugParams.get('bonusTest')==='ring'){startRingBonus({character:selected,level:RING_BONUS.afterLevel+1});const {installRingPreview}=await import('./debug/ringPreview.js');installRingPreview(game);return;}
     startChivaBonus({character:selected,level:CHIVA_BONUS.afterLevel+1});
     const {installChivaPreview}=await import('./debug/chivaPreview.js');installChivaPreview(game);
   });
@@ -307,13 +337,20 @@ if (import.meta.env.DEV) {
     const {installCombatPreview}=await import('./debug/combatPreview.js');installCombatPreview(game);
   });
   const enemyTest=debugParams.get('enemyTest');
-  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap || enemies[enemyTest]?.juggler || enemies[enemyTest]?.paint)game.events.once('menu-ready',()=>{
+  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap || enemies[enemyTest]?.juggler || enemies[enemyTest]?.paint || enemies[enemyTest]?.throw?.fruit || enemies[enemyTest]?.diablito || enemies[enemyTest]?.pollero || enemies[enemyTest]?.papero || enemies[enemyTest]?.reversa)game.events.once('menu-ready',async()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
     showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
-    game.scene.start('Street',{character:selected,level:campaignIndexForCombat(enemies[enemyTest].mime?1:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2),enemyTest});focusGame();
+    const testArt=['frutatiana','don_diablo','don_pico','papero','reversa'].includes(enemyTest)?(await import('./data/palomojao.js')).PALOMOJAO_ART:null;
+    game.scene.start('Street',{character:selected,level:campaignIndexForCombat(testArt?7:enemies[enemyTest].mime?1:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2),enemyTest,testArt});focusGame();
   });
   if(debugParams.has('campaignPreview'))game.events.once('menu-ready',async()=>{
     const {installCampaignPreview}=await import('./debug/campaignPreview.js');installCampaignPreview(game);
+    if(debugParams.get('campaignPreview')==='palomojao'){
+      selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
+      showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
+      game.events.once('level-start',()=>{game.scene.getScene('Street').invulnerableUntil=Infinity;});
+      game.scene.start('Street',{character:selected,level:campaignIndexForCombat(7)});focusGame();
+    }
   });
   if(debugParams.has('playerPreview')) game.events.once('menu-ready',async()=>{
     const previewCharacter=characters[debugParams.get('playerPreview')]?debugParams.get('playerPreview'):'office';
@@ -369,8 +406,8 @@ game.events.on('level-start', (index) => {
   resultModal.hidden=true;document.querySelector('.toolbar').inert=false;
   document.querySelector('#choose').disabled = false;
   document.querySelectorAll('[data-character], #restart').forEach((button) => { button.disabled = false; });
-  const bonus=game.scene.getScene('Street').isChivaBonus;
-  levelLabel.textContent=bonus?'BONUS / LA CHIVA':`${String(index+1).padStart(2,'0')} / ${levels[index].name.toUpperCase()}`;
+  const street=game.scene.getScene('Street'),bonus=street.isChivaBonus || street.isRingBonus;
+  levelLabel.textContent=bonus?(street.isRingBonus?'BONUS / EL RING':'BONUS / LA CHIVA'):`${String(index+1).padStart(2,'0')} / ${game.scene.getScene('Street').level.name.toUpperCase()}`;
   document.querySelector('#restart').disabled=bonus;
   document.querySelector('#next-level').disabled = true;
 });

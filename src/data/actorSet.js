@@ -20,5 +20,6 @@ export function actorsFor(level, characterKey, extra = []) {
   }
   if (wanted.has('motorata')) wanted.add('motorata-entry');
   if (wanted.has('dormilon')) wanted.add('boss-effects');
+  if (wanted.has('don_pico')) wanted.add('pico-hen');
   return wanted;
 }
