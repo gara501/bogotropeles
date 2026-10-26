@@ -16,3 +16,9 @@ Guia oficial: https://itch.io/docs/creators/html5
 - Integridad comprobada del ZIP y de sus 198 imágenes. Sin selector, herramientas de pruebas ni `streetDebug` en el JavaScript de producción.
 - Revisión visual en navegador: intro general, historia, selección sin selector e inicio del primer nivel en el build final servido en localhost:4173. Ciclovía (incluida meta), bonus de la chiva, ring y fases de Don Reversa revisados mediante accesos de desarrollo. Sin errores de consola en las cinco sesiones revisadas. Esta revisión es una comprobación de las pantallas indicadas, no una partida completa con cada personaje ni una prueba física en iPhone.
 - Captura de selección del paquete final: `docs/itch-release-selection.png`.
+
+### Actualización de rendimiento
+
+Nueva entrega con el recorrido de píxeles de `spriteSheets.js` sin arrays temporales por vecino ni vistas `subarray` por píxel, imágenes opacas recomprimidas y pistas MP3 optimizadas. Se incluye `scripts/optimize-opaque-pngs.py` para reproducir la optimización de imágenes.
+
+Validación: 416 pruebas aprobadas; compilación y empaquetado correctos; 198 imágenes válidas; 312 archivos en un ZIP íntegro. Selector apagado y herramientas de desarrollo ausentes en producción. ZIP: 114.223.923 bytes (108,9 MiB), frente a 137.603.812 bytes anteriores (reducción del 17 %). SHA-256: `0d0b3a4941624a9b097af164f0eaf69e973524f69e577ed25f9457d808c71b51`. No se midió el cambio de FPS ni de tiempo de carga en un dispositivo físico.

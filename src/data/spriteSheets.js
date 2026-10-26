@@ -28,14 +28,15 @@ export function prepareSheet(scene, key, config) {
     queue[0] = seed; labels[seed] = label;
     let left = width, top = height, right = 0, bottom = 0;
     while (head < tail) {
-      const index = queue[head++], x = index % width, y = Math.floor(index / width);
-      left = Math.min(left, x); top = Math.min(top, y);
-      right = Math.max(right, x); bottom = Math.max(bottom, y);
-      for (const next of [x > 0 ? index - 1 : -1, x < width - 1 ? index + 1 : -1,
-        y > 0 ? index - width : -1, y < height - 1 ? index + width : -1]) {
-        if (next < 0 || labels[next] || data[next * 4 + 3] <= 32) continue;
-        labels[next] = label; queue[tail++] = next;
-      }
+      const index = queue[head++], y = (index / width) | 0, x = index - y * width;
+      if (x < left) left = x; if (y < top) top = y;
+      if (x > right) right = x; if (y > bottom) bottom = y;
+      // Neighbours inlined: allocating a 4-element array per visited pixel dominated load time on large sheets.
+      let next;
+      if (x > 0) { next = index - 1; if (!labels[next] && data[next * 4 + 3] > 32) { labels[next] = label; queue[tail++] = next; } }
+      if (x < width - 1) { next = index + 1; if (!labels[next] && data[next * 4 + 3] > 32) { labels[next] = label; queue[tail++] = next; } }
+      if (y > 0) { next = index - width; if (!labels[next] && data[next * 4 + 3] > 32) { labels[next] = label; queue[tail++] = next; } }
+      if (y < height - 1) { next = index + width; if (!labels[next] && data[next * 4 + 3] > 32) { labels[next] = label; queue[tail++] = next; } }
     }
     // Ignores detached knife art and nearly transparent background remnants.
     if (tail > 1000) components.push({ label, left, top, right, bottom });
@@ -89,8 +90,8 @@ export function prepareSheet(scene, key, config) {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const src = (pose.top + y) * width + pose.left + x;
       if (!includesPixel(pose,index,pose.left+x,pose.top+y)) continue;
-      const dst = (y * w + x) * 4;
-      output.data.set(data.subarray(src * 4, src * 4 + 4), dst);
+      const dst = (y * w + x) * 4, s4 = src * 4, out = output.data;
+      out[dst] = data[s4]; out[dst + 1] = data[s4 + 1]; out[dst + 2] = data[s4 + 2]; out[dst + 3] = data[s4 + 3];
     }
     const scale=scales[index],drawWidth=Math.round(w*scale),drawHeight=Math.round(h*scale);
     const drawX=cellX+Math.round(frameWidth/2-(anchors[index]-pose.left)*scale);
