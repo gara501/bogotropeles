@@ -4,6 +4,7 @@ import teleperformanUrl from './players/player_3.png?url';
 import gymbroUrl from './players/player_4.png?url';
 import magolitaUrl from './players/player_5.png?url';
 import teleperformanComboUrl from './players/player_3_combo.png?url';
+import teleperformanWalkUrl from './players/player_3_walking.png?url';
 import gymbroGrabUrl from './players/player_4_agarre.png?url';
 import officeGrabUrl from './players/player_1_agarre.png?url';
 import officeWalkUrl from './players/player_1_walk.png?url';
@@ -18,26 +19,26 @@ import {ARCADE} from './arcade.js';
 
 export const characters = {
   office: {
-    name: 'GOMELO', texture: 'office', url: officeUrl, rows:[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3],
+    name: 'GOMELO', texture: 'office', url: officeUrl, rows:[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 3],
     // Slightly smaller than the 116 px it had (the new sheet read too big next to the others).
     height: 106, speed: ARCADE.player.speeds.office, color: 0xd9dfcd, idle: 4, jump: 9,
-    special:'iphone', specialLabel:'IPHONE', walkRate:8, trimFrames:true, isolateFrames:true,
+    special:'iphone', specialLabel:'IPHONE', walkRate:24, trimFrames:true, isolateFrames:true,
     // The updated art has touching rows and a detached phone. Explicit cuts
     // preserve the combat poses without treating the phone as another fighter.
     frameRects:PLAYER_ATLASES.office,
     // player agarre sheet stacked under the main sheet: frames 44-47 grab, 48-51 knee, 52-55 throw.
-    // Corrected walk follows the grab sheet: frames 56-61, one complete stride.
+    // Corrected walk follows the grab sheet: frames 56-73 from the updated 18-pose sheet.
     appendUrls: [officeGrabUrl, officeWalkUrl],
     grab:{start:[44,45],hold:[46,47],knee:[48,49,50,51],kneeContact:50,throw:[52,53,54,55],throwContact:54},
     frameScales:{...Object.fromEntries(Array.from({length:12},(_,i)=>[44+i,157/295])),
-      ...Object.fromEntries([396,398,399,382,386,379].map((height,i)=>[56+i,153/height]))},
+      ...Object.fromEntries([180,184,172,183,180,187,183,179,185,171,182,180,178,181,180,184,171,182].map((height,i)=>[56+i,153/height]))},
     // Hip (or chest, for kicks) x of every pose, measured on the updated 11-row sheet.
     frameAnchors: {0:139,1:359,2:598,3:816,4:120,5:358,6:576,7:823,8:130,9:359,10:599,11:833,12:120,13:379,14:622,15:818,16:112,17:351,18:565,19:805,20:116,21:346,22:582,23:823,24:125,25:327,26:549,27:805,28:117,29:358,30:581,31:826,32:125,33:353,34:586,35:821,36:118,37:361,38:588,39:813,40:122,41:354,42:592,43:821,
       44:216,45:610,46:1016,47:1421,48:221,49:642,50:1041,51:1418,52:201,53:610,54:992,55:1421,
-      56:240,57:694,58:1115,59:229,60:686,61:1110},
+      56:114,57:380,58:637,59:874,60:1140,61:120,62:356,63:619,64:892,65:1149,66:112,67:369,68:634,69:868,70:1131,71:123,72:381,73:622},
     // K, K, K: three-kick combo (rows 9-11); the third kick pushes the opponent back.
     combo:{inputs:['kick','kick','kick'],animations:['combo1','combo2','combo3'],knockback:40},
-    animations: { walk: sequence(56,61), punch: sequence(4, 7), kick: sequence(8, 11), dash: sequence(12, 15), iphone:[16,17,18,19,4], hurt: sequence(20, 23), defeat: sequence(24, 27), victory:sequence(28,31),
+    animations: { walk: sequence(56,73), punch: sequence(4, 7), kick: sequence(8, 11), dash: sequence(12, 15), iphone:[16,17,18,19,4], hurt: sequence(20, 23), defeat: sequence(24, 27), victory:sequence(28,31),
       combo1:sequence(32,35), combo2:sequence(36,39), combo3:sequence(40,43) },
     attacks: {
       punch: { damage: 30, range: 88, duration: 260, hitAt: 110, knockback: 12 },
@@ -69,13 +70,14 @@ export const characters = {
     },
   },
   teleperforman: {
-    name: 'TELEPERFORMAN', texture: 'teleperforman', url: teleperformanUrl, rows:[6, 6, 5, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4],
+    name: 'TELEPERFORMAN', texture: 'teleperforman', url: teleperformanUrl, rows:[6, 6, 5, 6, 6, 6, 6, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 2],
     // player_3_combo.png is stacked under the main sheet (frames 41-52, drawn at the main sheet's scale).
-    appendUrls: [teleperformanComboUrl, teleperformanGrabUrl],
-    frameScales: {...Object.fromEntries(Array.from({length:12},(_,i)=>[41+i,178/303])),...Object.fromEntries(Array.from({length:12},(_,i)=>[53+i,178/318]))},
+    appendUrls: [teleperformanComboUrl, teleperformanGrabUrl, teleperformanWalkUrl],
+    frameScales: {...Object.fromEntries(Array.from({length:12},(_,i)=>[41+i,178/303])),...Object.fromEntries(Array.from({length:12},(_,i)=>[53+i,178/318])),
+      ...Object.fromEntries([170,168,165,164,164,164,167,165,163,163,166,168,168,165,164,163,166,167,165,162,163,166].map((height,i)=>[65+i,195/height]))},
     // H, H, H: lanyard combo (longer reach); the third strike pushes the opponent back.
     combo:{inputs:['punch','punch','punch'],animations:['combo1','combo2','combo3'],ranges:[150,170,150],knockback:40},
-    height: 116, speed: ARCADE.player.speeds.teleperforman, color: 0xb3ace6, idle: 6, jump: 19,
+    height: 116, walkRate:24, speed: ARCADE.player.speeds.teleperforman, color: 0xb3ace6, idle: 6, jump: 19,
     special: 'headset', specialLabel: 'DIADEMA', cleanFringes:true,
     // Follow the hips, not the bounds of the extended arm, leg or headset.
     frameRects:PLAYER_ATLASES.teleperforman,
@@ -91,8 +93,9 @@ export const characters = {
       29:85,30:289,31:460,32:628,33:811,34:970,
       35:87,36:271,37:462,38:645,39:825,40:1005,
       41:180,42:553,43:847,44:1295,45:170,46:548,47:962,48:1308,49:208,50:549,51:898,52:1292,
-      53:175,54:528,55:897,56:1261,57:171,58:548,59:913,60:1254,61:191,62:505,63:891,64:1248},
-    animations: { walk: sequence(0, 5), punch: sequence(6, 11), headset: sequence(12, 16), kick: sequence(17, 22), dash: sequence(23, 28), hurt:[30,31,29], defeat:[30,31,32,34], victory:sequence(35,40),
+      53:175,54:528,55:897,56:1261,57:171,58:548,59:913,60:1254,61:191,62:505,63:891,64:1248,
+      65:123,66:381,67:638,68:893,69:1148,70:126,71:379,72:637,73:892,74:1147,75:125,76:381,77:637,78:893,79:1148,80:125,81:381,82:635,83:893,84:1146,85:123,86:381},
+    animations: { walk: sequence(65, 86), punch: sequence(6, 11), headset: sequence(12, 16), kick: sequence(17, 22), dash: sequence(23, 28), hurt:[30,31,29], defeat:[30,31,32,34], victory:sequence(35,40),
       combo1:sequence(41,44), combo2:sequence(45,48), combo3:sequence(49,52) },
     attacks: {
       punch: { damage: 26, range: 88, duration: 250, hitAt: 110, knockback: 12 },

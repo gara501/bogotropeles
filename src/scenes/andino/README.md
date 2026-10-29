@@ -20,3 +20,5 @@ Zona de combate sugerida: `x = 65…895`, `y = 415…500`. Mantener los personaj
 `preview.png` muestra las capas superpuestas. `reference.png` conserva el diseño completo inicial. `parallax.json` documenta dimensiones, orden y factores; este paquete no sustituye ningún nivel de la campaña.
 
 La fachada es un punto de referencia único. Para un nivel largo, prolongar el entorno lateral o colocar la fachada una sola vez; revisar las uniones antes de repetir las imágenes horizontalmente.
+
+La campaña de Zona Rosa usa ahora `../level7/panorama.png`, una extensión continua basada en este paquete, sin repetir la fachada. Mantiene el piso independiente `../level7/floor.png` para el desplazamiento a velocidad del mundo. Ver `docs/andino-panorama.md` en la raíz del proyecto.

@@ -20,5 +20,5 @@ export const levels = CAMPAIGN.map((level, index) => {
 });
 
 /** Every texture a level needs: its fallback background plus parallax layers and traffic. */
-export const levelTextures = level => [{ key: level.key, url: level.url },
-  ...(level.layers ?? []), ...(level.traffic ? [level.traffic] : [])].filter(asset => asset.url);
+export const levelTextures = level => [...new Map([{ key: level.key, url: level.url },
+  ...(level.layers ?? []), ...(level.traffic ? [level.traffic] : [])].filter(asset => asset.url).map(asset=>[asset.key,asset])).values()];

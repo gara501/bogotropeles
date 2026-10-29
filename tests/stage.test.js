@@ -5,6 +5,59 @@ import {ARCADE} from '../src/data/arcade.js';
 import {COMBAT_CAMPAIGN as CAMPAIGN} from '../src/data/campaign.js';
 import {waveSizes,stageLayout,arenaScroll,nextScroll,floorSpan,viewLeft} from '../src/stage/scroll.js';
 import {WaveDirector} from '../src/combat/WaveDirector.js';
+import {ParallaxBackground} from '../src/stage/ParallaxBackground.js';
+
+test('El Dorado pans one continuous panorama across every arena without wrapping or exposing its ends',()=>{
+  const level=CAMPAIGN.find(level=>level.boss==='jugo'),layout=stageLayout({...level,total:25}),images=[],tiles=[];
+  const makeSprite=()=>({x:0,setOrigin(){return this;},setScrollFactor(){return this;},setDepth(){return this;},
+    setDisplaySize(w,h){this.displayWidth=w;this.displayHeight=h;return this;},destroy(){this.destroyed=true;}});
+  const frames=new Map(),texture={getSourceImage:()=>({width:2109,height:745}),has:key=>frames.has(key),add:(key,...rect)=>frames.set(key,rect)};
+  const scene={textures:{get:()=>texture},
+    add:{image(){const sprite=makeSprite();images.push(sprite);return sprite;},tileSprite(){const sprite=makeSprite();sprite.setTileScale=scale=>{sprite.scale=scale;return sprite;};tiles.push(sprite);return sprite;}}};
+  const background=new ParallaxBackground(scene,level.art.layers,layout.width),sprite=images[0];
+  assert.equal(level.art.layers[0].repeat,false);assert.equal(tiles.length,1);assert.equal(images.length,1);
+  assert.deepEqual([...frames.values()][0],[0,0,559,2109,186]);
+  assert.equal(sprite.displayWidth,2109*540/745);assert.equal(sprite.displayHeight,540);
+  const travel=sprite.displayWidth-960;
+  for(const scroll of [0,240,720,960,1440,2160,2880]){
+    background.update(scroll);assert.ok(Math.abs(sprite.x+scroll*travel/(layout.width-960))<1e-8);
+    assert.ok(sprite.x<=0 && sprite.x+sprite.displayWidth>=960-1e-8);
+    assert.ok(Math.abs(tiles[0].tilePositionX*tiles[0].scale-scroll)<1e-8,'asphalt moves at full world speed while the facade pans');
+  }
+  background.update(layout.width*2);assert.equal(sprite.x,-travel);
+  background.update(-100);assert.equal(sprite.x,0);
+  background.destroy();assert.equal(sprite.destroyed,true);
+});
+
+test('existing repeating parallax layers retain their scale and drift offsets',()=>{
+  const sprite={setOrigin(){return this;},setScrollFactor(){return this;},setDepth(){return this;},
+    setTileScale(scale){this.scale=scale;return this;},destroy(){}};
+  const scene={textures:{get:()=>({getSourceImage:()=>({width:1920,height:1080})})},add:{tileSprite:()=>sprite}};
+  const background=new ParallaxBackground(scene,[{key:'sky',factor:.2,drift:6}],3840);
+  background.update(720,1000);assert.equal(sprite.scale,.5);assert.equal(sprite.tilePositionX,300);
+});
+
+test('Andino facade pans continuously through all six arenas while its floor retains full speed',()=>{
+  const level=CAMPAIGN.find(level=>level.boss==='pacho'),layout=stageLayout(level);
+  const png=readFileSync(new URL('../src/scenes/level7/panorama.png',import.meta.url));
+  const source={width:png.readUInt32BE(16),height:png.readUInt32BE(20)},images=[],tiles=[];
+  const visual=()=>({x:0,setOrigin(){return this;},setScrollFactor(){return this;},setDepth(){return this;},
+    setDisplaySize(w,h){this.displayWidth=w;this.displayHeight=h;return this;},setTileScale(scale){this.scale=scale;return this;},destroy(){this.destroyed=true;}});
+  const scene={textures:{get:key=>({getSourceImage:()=>key==='panorama'?source:{width:960,height:540}})},
+    add:{image(){const v=visual();images.push(v);return v;},tileSprite(){const v=visual();tiles.push(v);return v;}}};
+  const layers=level.art.layers.map(layer=>({...layer,key:layer.file})),background=new ParallaxBackground(scene,layers,layout.width);
+  assert.equal(images.length,1);assert.equal(tiles.length,1);assert.equal(layout.arenas,6);
+  assert.equal(images[0].displayHeight,560,'panorama curb aligns with the original floor at y=402');
+  const panorama=images[0],travel=panorama.displayWidth-960;let previous=0;
+  assert.ok(travel>0);assert.equal(panorama.displayWidth/panorama.displayHeight,source.width/source.height);
+  for(let scroll=0;scroll<=layout.width-960;scroll+=90){
+    background.update(scroll);assert.ok(panorama.x<=previous);assert.ok(panorama.x>=-travel);
+    assert.ok(panorama.x+panorama.displayWidth>=960-1e-8);
+    assert.equal(tiles[0].tilePositionX,scroll);previous=panorama.x;
+  }
+  background.update(layout.width-960);assert.equal(panorama.x,-travel);
+  background.destroy();assert.ok([...images,...tiles].every(v=>v.destroyed));
+});
 
 test('wave sizes follow the campaign rule and every level splits into arenas',()=>{
   assert.deepEqual(waveSizes(15),[2,3,2,3,2,3]);

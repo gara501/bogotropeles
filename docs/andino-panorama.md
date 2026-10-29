@@ -1,0 +1,11 @@
+# Andino continuo en Zona Rosa
+
+Archivo final: `src/scenes/level7/panorama.png`, 2172×724. Generado con ImageGen integrado a partir de `src/scenes/andino/preview.png`. La altura de dibujo de 560 px alinea el borde del andén a y=402 con el piso original; la parte inferior excedente queda fuera de la vista.
+
+La fachada y el letrero se dibujan una sola vez con `repeat:false`. El desplazamiento recorre el ancho disponible de la panorámica durante las seis arenas de Zona Rosa, conservando su proporción. El piso original `src/scenes/level7/floor.png` se mantiene en una capa repetible independiente a velocidad 1. Las capas originales se conservan como referencia.
+
+Prueba local: `/?campaignPreview=andino`, con controles para resolver oleadas y avanzar por todo el escenario.
+
+Prompt utilizado:
+
+> Use case: stylized-concept. Generate a single continuous EXTRA WIDE horizontal panoramic background for the side-scrolling beat-em-up Street Bogotá, based on the supplied original Andino background. Target aspect ratio 3:1, 2160x720 pixels. Preserve its crisp detailed pixel-art style, Bogotá blue daylight sky and white clouds, distant mountain skyline, warm orange brick shopping center with black framed windows and storefronts, low brick planters with flowers, shallow stairs, traditional green street lamps. Recompose the image as a long coherent side-on street elevation. The recognizable ANDINO logo and entrance must appear EXACTLY ONCE, on the LEFT THIRD of the panorama. Extend original brick architecture naturally to the RIGHT into different connected shopping facades with different windows and small entrances; no more ANDINO signs, no copies of the central entrance. Single coherent roofline with architectural variations and no tiled or collage seams. Keep architecture and storefront scale constant across full width. Straight horizontal curb/edge of pedestrian plaza at exactly 75% image height all the way across. Bottom 25%: completely clear grey paved fighting area, unobstructed, full width. No foreground planters, no characters or NPCs, no UI, no borders. Balanced building heights, enough daylight sky. It will pan from left to right ONCE, never repeat. Reference image is a style and architecture guide, not an edit that must preserve its original composition.

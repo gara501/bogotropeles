@@ -51,10 +51,9 @@ El cargador acepta PNG en `src/scenes/levelN/game/` o directamente en `src/scene
 con prioridad para `game/` si hay nombres duplicados. `level_N.png` es opcional: si falta,
 la intro compone las mismas capas del nivel. La zona caminable se toma de `top` y `bottom` del escenario.
 
-Zona Rosa usa `level7/`: `sky`, `skyline`, `buildings`, `floor`, `streetlights` y `front`.
-Los factores son 0.06, 0.18, 0.55, 1, 0.85 y 1.25; `front` se dibuja delante de los personajes.
+Zona Rosa usa `level7/panorama.png` una sola vez, con `repeat:false`, para evitar cortes al repetir la fachada del Andino. La panorámica conserva sus proporciones y recorre su ancho disponible a lo largo del nivel. `level7/floor.png` permanece como capa independiente y repetible a factor 1, para mantener la velocidad visual del jugador.
 Los peatones de `npc_politicos.png`, basados en la foto de referencia, reemplazan a los gomelos y se reparten en doce posiciones con ocho personajes distintos.
-Comparten factor 0.55 con la fachada, con los pies sobre el piso frente a la terraza. Los huecos de 960 px
+Los peatones conservan factor 0.55, con los pies sobre el piso frente a la terraza. Los huecos de 960 px
 evitan las jardineras de las esquinas. `edgeMargin:32` y `edgeFade:24` ocultan suavemente cada sprite
 antes de que sus manos, zapatos o sombra alcancen el borde de la vista; esta opción solo se aplica a Zona Rosa.
 Para agregar otro escenario basta con añadir su registro de campaña y sus PNG; no hay un contador fijo de niveles.

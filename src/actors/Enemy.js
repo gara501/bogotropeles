@@ -12,6 +12,8 @@ import {ENEMY_ATTACK_SOUNDS,BOSS_SOUNDS,chargeSound} from '../audio/SoundEffects
 import {ShieldBreakPhase} from './ShieldBreakPhase.js';
 import {BrayatanController,BRAYATAN_STATES} from './BrayatanController.js';
 import {PachoController,PACHO_STATES} from './PachoController.js';
+import {JugoController} from './JugoController.js';
+import {OrtencioController} from './OrtencioController.js';
 import {BOSS_CORNER,nearBossCorner,bossEscapeTarget} from '../combat/bossCorner.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const ENEMY_STATES=['approach','circle','windup','attack','recover','hurt','evade','heal','grabbed','thrown','down','shield','phaseChange','bombRun'];
@@ -34,6 +36,9 @@ transitions.ringFight=['hurt','recover','approach'];
 ENEMY_STATES.push('reversa');
 for(const next of Object.values(transitions))next.push('reversa');
 transitions.reversa=['hurt','recover','approach'];
+ENEMY_STATES.push('jugoFight');
+for(const next of Object.values(transitions))next.push('jugoFight');
+transitions.jugoFight=['hurt','recover','approach','evade'];
 export class Enemy {
   constructor(runtime,actor){this.runtime=runtime;this.scene=runtime.scene;this.actor=actor;this.state='approach';this.age=0;this.clock=0;this.ready=Math.round((ARCADE.ai.initialCooldown+(actor.slot??(actor.index??0)%ARCADE.ai.spawnSlots)*ARCADE.ai.spawnStagger)/this.scene.level.pressure);this.action=null;this.stage=0;}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid enemy transition: ${this.state} → ${state}`);if(this.state==='grabbed' && state!=='grabbed')this.endStruggle();if(this.state==='heal' && state!=='heal'){this.healAura?.destroy();this.healAura=null;this.actor.sprite.clearTint?.();}this.state=state;this.age=0;if(['circle','approach','recover','hurt'].includes(state))this.runtime.combat.tokens.release(this.actor);}
@@ -41,6 +46,8 @@ export class Enemy {
   hurt(attack=null){
     if(this.actor.config.ringFighter){(this.ringFighter??=new RingFighter(this)).hurt();return;}
     if(this.actor.config.reversa){(this.reversa??=new ReversaController(this)).hurt(attack??{});return;}
+    if(this.actor.config.jugo){(this.jugo??=new JugoController(this)).hurt(attack);return;}
+    this.ortencio?.interrupt();
     this.papero?.interrupt();
     this.pollero?.interrupt();
     if(this.actor.arriving || this.actor.sackSpinning)return;
@@ -109,6 +116,7 @@ export class Enemy {
       ['approach','circle','windup','recover','hurt'].includes(this.state) && !this.action?.charge;
   }
   seize(){
+    this.ortencio?.interrupt();
     this.papero?.cancel();
     this.sackSpin?.interrupt();
     const a=this.actor;this.action=null;a.pending=null;a.tell.setVisible(false);this.rush=false;
@@ -165,7 +173,7 @@ export class Enemy {
     if(ev.stain)s.paintStain?.(a.x,a.y,ev.stain,a); // takeoff mark
   }
   bossEscapeBlocked(){
-    return this.pacho?.entering || ['evade','phaseChange','shield','rage','pachoRage','pachoArrival','pachoExit','pachoLaugh','stompAir','stompLand'].includes(this.state)
+    return this.pacho?.entering || this.jugo?.locked || ['evade','phaseChange','shield','rage','pachoRage','pachoArrival','pachoExit','pachoLaugh','stompAir','stompLand'].includes(this.state)
       || (this.actor.z??0)>0;
   }
   bossCornerHit(){
@@ -182,6 +190,7 @@ export class Enemy {
       if(this.state==='pachoHeal')this.pacho.healReady=this.clock+this.pacho.config.heal.interruptCooldown;
       this.pacho.reset();
     }else if(this.brayatan)this.brayatan.cancel();
+    else if(this.jugo)this.jugo.cancel();
     else {
       if(this.state==='heal')this.healReady=this.clock+toFrames(a.config.heal.interruptCooldown);
       if(this.state==='bombRun')this.shieldPhase?.interrupt();
@@ -223,6 +232,8 @@ export class Enemy {
   }
   move(dx,dy,speed=this.actor.config.speed){const a=this.actor,n=Math.max(1,Math.hypot(dx,dy));if(this.barragePhase())speed*=a.config.barrage.speedMultiplier;a.x=clamp(a.x+dx/n*speed/ARCADE.clock.fps,this.scene.floor.left,this.scene.floor.right);a.y=clamp(a.y+dy/n*speed*ARCADE.ai.depthRatio/ARCADE.clock.fps,this.scene.floor.top,this.scene.floor.bottom);}
   begin(forceMelee=false){
+    if(this.actor.config.ortencio)return (this.ortencio??=new OrtencioController(this)).begin();
+    if(this.actor.config.jugo)return (this.jugo??=new JugoController(this)).start(forceMelee?'belly':'grab');
     if(this.actor.config.sackSpin)return (this.sackSpin??=new SackSpin(this)).begin();
     const a=this.actor,s=this.scene;if(!this.runtime.combat.tokens.acquire(a))return false;this.rush=false;
     a.facing=Math.sign(s.player.x-a.x)||1;a.pending={enemy:a,connected:false,finisher:false};this.stage=0;
@@ -250,14 +261,17 @@ export class Enemy {
     }
   }
   step(){
-    const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){combat.tokens.release(a);this.sackSpin?.clear();this.endStruggle();return;}
+    const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){combat.tokens.release(a);this.jugo?.destroy();this.ortencio?.destroy();this.sackSpin?.clear();this.endStruggle();return;}
     if(a.config.ringFighter){(this.ringFighter??=new RingFighter(this)).step();return;}
     if(a.config.reversa){(this.reversa??=new ReversaController(this)).step();return;}
     if(a.arriving)return;
+    this.jugo?.tint();
+    this.ortencio?.red();
     if(a.config.boss && this.bossCornerStep())return;
     this.checkShieldPhase();
     if(combat.frozen(a))return;
     this.clock++;this.age++;
+    if(a.config.jugo){(this.jugo??=new JugoController(this)).step();return;}
     if(this.sackSpin?.step())return;
     if(a.config.pacho){this.pacho??=new PachoController(this);this.pacho.step();return;}
     if(a.config.brayatan){this.brayatan??=new BrayatanController(this);this.brayatan.step();return;}
@@ -343,6 +357,7 @@ export class Enemy {
     if(this.state==='hurt'){
       this.pose('hurt');if(this.age>=ARCADE.attack.stun)this.transition('approach');return;
     }
+    if(a.config.ortencio){(this.ortencio??=new OrtencioController(this)).step();return;}
     if(this.action?.charge){
       const p=this.action,c=a.config.charge;
       if(this.state==='windup'){

@@ -89,7 +89,7 @@ function pick(key) {
 }
 // TEST LEVEL SELECTOR: lets you start any level from the character screen.
 // Set LEVEL_SELECT to false to remove it (the game then always continues from the campaign's current level).
-const LEVEL_SELECT = false;
+const LEVEL_SELECT = true;
 const levelPicker=import.meta.env.DEV && LEVEL_SELECT?createLevelPicker():null;
 function createLevelPicker(){
   const label=document.createElement('label');label.className='level-picker';
@@ -337,19 +337,27 @@ if (import.meta.env.DEV) {
     const {installCombatPreview}=await import('./debug/combatPreview.js');installCombatPreview(game);
   });
   const enemyTest=debugParams.get('enemyTest');
-  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap || enemies[enemyTest]?.juggler || enemies[enemyTest]?.paint || enemies[enemyTest]?.throw?.fruit || enemies[enemyTest]?.diablito || enemies[enemyTest]?.pollero || enemies[enemyTest]?.papero || enemies[enemyTest]?.reversa)game.events.once('menu-ready',async()=>{
+  if(enemies[enemyTest]?.combo || enemies[enemyTest]?.charge || enemies[enemyTest]?.shieldBreak || enemies[enemyTest]?.brayatan || enemies[enemyTest]?.pacho || enemies[enemyTest]?.leap || enemies[enemyTest]?.juggler || enemies[enemyTest]?.paint || enemies[enemyTest]?.throw?.fruit || enemies[enemyTest]?.diablito || enemies[enemyTest]?.pollero || enemies[enemyTest]?.papero || enemies[enemyTest]?.reversa || enemies[enemyTest]?.ortencio)game.events.once('menu-ready',async()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
     showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
     const testArt=['frutatiana','don_diablo','don_pico','papero','reversa'].includes(enemyTest)?(await import('./data/palomojao.js')).PALOMOJAO_ART:null;
-    game.scene.start('Street',{character:selected,level:campaignIndexForCombat(testArt?7:enemies[enemyTest].mime?1:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2),enemyTest,testArt});focusGame();
+    game.scene.start('Street',{character:selected,level:campaignIndexForCombat(['jugo','ortencio','agente_pare'].includes(enemyTest)?8:testArt?7:enemies[enemyTest].mime?1:enemies[enemyTest].leap?5:enemies[enemyTest].pacho?6:enemies[enemyTest].brayatan?5:enemies[enemyTest].shieldBreak?4:2),enemyTest,testArt});focusGame();
   });
   if(debugParams.has('campaignPreview'))game.events.once('menu-ready',async()=>{
     const {installCampaignPreview}=await import('./debug/campaignPreview.js');installCampaignPreview(game);
-    if(debugParams.get('campaignPreview')==='palomojao'){
+    if(['palomojao','dorado','andino','taxis'].includes(debugParams.get('campaignPreview'))){
       selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
       showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
-      game.events.once('level-start',()=>{game.scene.getScene('Street').invulnerableUntil=Infinity;});
-      game.scene.start('Street',{character:selected,level:campaignIndexForCombat(7)});focusGame();
+      game.events.once('level-start',()=>{
+        const s=game.scene.getScene('Street');
+        if(debugParams.get('campaignPreview')==='taxis'){
+          for(const enemy of s.enemies)if(enemy.hp>0)s.hitEnemy(enemy,{damage:99999,knockback:0,facing:1});
+          Object.assign(s.waves,{spawned:15,wave:6,arena:2,arenaWave:2,waiting:false});s.defeated=15;
+          s.stage.jumpToArena(2);s.invulnerableUntil=0;s.waves.update();s.updateCounter();
+        }else s.invulnerableUntil=Infinity;
+      });
+      const previewCombat={palomojao:7,dorado:8,andino:6,taxis:8}[debugParams.get('campaignPreview')];
+      game.scene.start('Street',{character:selected,level:campaignIndexForCombat(previewCombat)});focusGame();
     }
   });
   if(debugParams.has('playerPreview')) game.events.once('menu-ready',async()=>{

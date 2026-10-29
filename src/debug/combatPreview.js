@@ -14,6 +14,22 @@ export function installCombatPreview(game) {
   add('Cruceta',s=>{const e=s.enemies.find(e=>e.hp>0 && e.config.melee);if(e&&!e.pending&&!s.finished){if(s.arcade)s.arcade.enemies.get(e)?.begin(true);else beginEnemyAttack(s,e,s.player.x<e.x?-1:1);}});
   add('Contraatacar',s=>{const e=s.enemies.find(e=>e.hp>0);if(e)s.hitEnemy(e,{damage:1,knockback:0,facing:1});});
   const previewKind=new URLSearchParams(location.search).get('enemyTest');
+  if(previewKind==='ortencio'){
+    add('Aviso rojo + agarre',s=>{
+      const actor=s.enemies.find(e=>e.key==='ortencio' && e.hp>0),m=s.arcade?.enemies.get(actor);if(!m || ['evade','down','thrown','grabbed'].includes(m.state))return;
+      m.ortencio?.interrupt();m.transition('hurt');m.transition('approach');m.ready=0;
+      s.invulnerableUntil=0;s.respawnProtectedUntil=0;m.begin();
+    });
+    add('Recuperar energía',s=>{s.health=100;s.healthBar.width=200;});
+  }
+  if(previewKind==='jugo'){
+    const boss=s=>s.arcade?.enemies.get(s.enemies.find(e=>e.key==='jugo'))?.jugo;
+    add('Carrera + agarre',s=>{const c=boss(s);if(c){s.invulnerableUntil=0;c.debugAttack('grab');}});
+    add('Taxímetro',s=>boss(s)?.debugAttack('meter'));
+    add('Barrigazo',s=>boss(s)?.debugAttack('belly'));
+    add('Furia al 50%',s=>{const c=boss(s);if(c){c.actor.hp=c.actor.config.hp*.5;c.phaseCheck();}});
+    add('Bola',s=>boss(s)?.debugAttack('roll'));
+  }
   if(previewKind==='reversa'){
     const boss=s=>s.arcade?.enemies.get(s.enemies.find(e=>e.key==='reversa'))?.reversa;
     add('Subir a la cabina',s=>{const c=boss(s);if(c){c.actor.hp=c.actor.config.hp*.49;c.actor.invulnerableUntil=0;c.phaseCheck();}});

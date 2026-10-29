@@ -14,9 +14,10 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export class Player {
   constructor(runtime){this.runtime=runtime;this.scene=runtime.scene;this.buffer=new InputBuffer();this.reset();}
   get actor(){return this.scene.player;}
-  reset(){this.dropGrab();this.state='walk';this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.dashReady=0;this.buffer.clear();if(this.actor)this.actor.z=0;}
+  reset(){this.captor?.releasePlayer();this.dropGrab();this.state='walk';this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.dashReady=0;this.buffer.clear();if(this.actor)this.actor.z=0;}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid player transition: ${this.state} → ${state}`);if(this.state==='grab' && state!=='grab')this.dropGrab();this.state=state;this.age=0;if(!['attack','special'].includes(state)){this.action=null;this.scene.playerAttack=null;}}
   request(type){
+    if(this.captor){this.captor.strugglePress?.(type);return;}
     if(this.runtime.diablitos?.holdsPlayer)return;
     if(type==='punch' && this.runtime.diablitos?.tryPlayerUse())return;
     this.buffer.push(type,this.runtime.frame);
@@ -35,6 +36,7 @@ export class Player {
     return true;
   }
   dash(dx,dy){
+    if(this.captor)return false;
     // Only from states that may dash (not while grabbing, hurt, down…): an invalid transition would throw inside the game loop.
     if(this.state!=='dash' && !transitions[this.state]?.includes('dash'))return false;
     if(this.runtime.frame<this.dashReady || ['hurt','knockdown','celebration'].includes(this.state) || this.actor.z>0)return false;
@@ -45,6 +47,7 @@ export class Player {
   }
   hurt(finisher=false){
     if(this.state==='celebration')return; // level already won
+    this.captor?.onPlayerHit?.(finisher || this.scene.health<=0);
     this.lastCombo=null;
     // A combo follow-up can land while the player is already down: stay down (knockdown → hurt is not a valid transition).
     this.transition(this.scene.health<=0 || finisher || this.state==='knockdown'?'knockdown':'hurt');this.buffer.clear();
@@ -63,6 +66,8 @@ export class Player {
   }
   step(input){
     const s=this.scene,combat=this.runtime.combat;this.buffer.expire(this.runtime.frame);
+    this.captor?.heldInput?.(input);
+    if(this.captor){this.captor.holdPlayer();this.buffer.clear();s.jumpHeight=0;return;}
     if(this.runtime.diablitos?.holdsPlayer){this.buffer.clear();s.jumpHeight=this.actor.z??0;return;}
     if(combat.frozen(this.actor))return;
     const previous={x:this.actor.x,y:this.actor.y};

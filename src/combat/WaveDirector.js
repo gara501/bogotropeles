@@ -1,4 +1,5 @@
 import {waveSize} from '../data/campaign.js';
+import {TaxiRush} from '../stage/TaxiRush.js';
 
 // With a StageCamera (s.stage) waves are grouped into arenas: the camera stays locked
 // while an arena has enemies; once its waves are cleared the player must walk to the
@@ -9,7 +10,7 @@ export class WaveDirector {
   get cleared(){return this.spawned===this.scene.level.total && this.scene.defeated===this.scene.level.total;}
   get awaitingAdvance(){
     const s=this.scene;
-    return Boolean(s.stage) && this.spawned<s.level.total && s.enemies.every(e=>e.hp<=0) && !s.stage.reached(this.arena);
+    return !s.taxiRush?.active && Boolean(s.stage) && this.spawned<s.level.total && s.enemies.every(e=>e.hp<=0) && !s.stage.reached(this.arena);
   }
   update() {
     const s=this.scene;
@@ -18,6 +19,10 @@ export class WaveDirector {
     if(this.spawned>=s.level.total)return;
     if(s.stage){
       if(this.arenaWave>=s.stage.wavesPerArena){this.arena++;this.arenaWave=0;this.waiting=false;}
+      if(s.level.taxiRush && !s.enemyTest && !this.rushSkipped && this.arena>=s.level.taxiRush.arena){
+        s.taxiRush??=new TaxiRush(s,s.level.taxiRush);
+        if(!s.taxiRush.done){s.taxiRush.start(this.arena);return;}
+      }
       if(!s.stage.reached(this.arena))return;
     }
     // First wave: immediate. Same arena: normal gap. Arriving at a new arena: half gap.
@@ -31,5 +36,5 @@ export class WaveDirector {
     this.wave++;this.arenaWave++;this.waiting=false;s.updateCounter();
   }
   /** Boss checkpoints: every wave counts as resolved and the camera sits in the last arena. */
-  skipToEnd(){this.spawned=this.scene.level.total;this.arena=this.scene.stage?.layout.arenas-1||0;this.arenaWave=0;}
+  skipToEnd(){this.rushSkipped=true;this.scene.taxiRush?.skip();this.spawned=this.scene.level.total;this.arena=this.scene.stage?.layout.arenas-1||0;this.arenaWave=0;}
 }

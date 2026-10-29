@@ -8,6 +8,7 @@ import {COMBAT_CAMPAIGN as ALL_COMBAT_STAGES,CAMPAIGN as PLAYABLE_CAMPAIGN,campa
 import {RingBonus} from '../src/bonus/RingBonus.js';
 import {RING_ORDER} from '../src/bonus/ringRules.js';
 import {WaveDirector} from '../src/combat/WaveDirector.js';
+import {stageLayout} from '../src/stage/scroll.js';
 import {beginEnemyCharge,updateEnemyCharge} from '../src/combat/enemyCharge.js';
 import {beginEnemyAttack,updateEnemyAttack} from '../src/combat/enemyAttacks.js';
 import {ArcadeRuntime} from '../src/game/ArcadeRuntime.js';
@@ -40,6 +41,8 @@ const hooks=registerHooks({load(url,context,nextLoad){
   return result;
 }});
 const {StreetScene}=await import('../src/scenes/StreetScene.js');
+const {MenuScene}=await import('../src/scenes/MenuScene.js');
+const {StageCamera}=await import('../src/stage/StageCamera.js');
 const {IntroScene}=await import('../src/scenes/IntroScene.js');
 const {BOSS_INTROS}=await import('../src/data/bossIntros.js');
 const {EnergyPickups}=await import('../src/game/EnergyPickups.js');
@@ -54,8 +57,8 @@ const {CYCLING}=await import('../src/cycling/CyclingRun.js');
 const {CYCLING_PLAYERS,CYCLING_ASSETS}=await import('../src/data/cycling.js');
 
 test('Ciclovía stays second and Palomojao follows Chorro while original bosses retain their relative order',()=>{
-  assert.equal(PLAYABLE_CAMPAIGN.length,9);assert.equal(playableLevels.length,9);
-  assert.deepEqual(PLAYABLE_CAMPAIGN.map(l=>l.name),['Transmilleno · Exterior','Ciclovía','Plaza de Bolívar','La Candelaria','Transmilleno · Estación','Chorro de Quevedo','Plaza de Palomojao','Calles del centro','Zona Rosa']);
+  assert.equal(PLAYABLE_CAMPAIGN.length,10);assert.equal(playableLevels.length,10);
+  assert.deepEqual(PLAYABLE_CAMPAIGN.map(l=>l.name),['Transmilleno · Exterior','Ciclovía','Plaza de Bolívar','La Candelaria','Transmilleno · Estación','Chorro de Quevedo','Plaza de Palomojao','Calles del centro','EL dorado','Zona Rosa']);
   assert.deepEqual(PLAYABLE_CAMPAIGN.filter(l=>l.boss && l.combatIndex<7),CAMPAIGN);
   assert.equal(playableLevels[1].boss,null);assert.deepEqual(playableLevels[1].enemies,[]);
   assert.ok(playableLevels[1].url.includes('ciclovia/background.png'));
@@ -66,7 +69,7 @@ test('Ciclovía stays second and Palomojao follows Chorro while original bosses 
 
 test('Palomojao has its own market art, enemy pool and forward transitions from Chorro to Centro',()=>{
   const market=playableLevels[6];
-  assert.equal(campaignIndexForCombat(7),6);assert.equal(campaignIndexForCombat(5),7);assert.equal(campaignIndexForCombat(6),8);
+  assert.equal(campaignIndexForCombat(7),6);assert.equal(campaignIndexForCombat(5),7);assert.equal(campaignIndexForCombat(6),9);
   assert.equal(market.name,'Plaza de Palomojao');assert.deepEqual(market.enemies,['frutatiana','don_diablo','don_pico','papero']);
   assert.ok(actorsFor(market,'student').has('pico-hen'),'the market preloads the separate hen sheet');
   assert.equal(market.boss,'reversa');assert.ok(actorsFor(market,'office').has('estibador'));assert.equal(market.rain,null);assert.equal(market.total,20);
@@ -261,6 +264,268 @@ function setup(index,character='office') {
   s.input={keyboard:{resetKeys(){}}};s.waves=new WaveDirector(s);s.waves.update();return s;
 }
 const strike={damage:10000,knockback:0,facing:1};
+
+test('shared menu preload works without wanted and loads the meter only for Jugo when uncached',()=>{
+  for(const wanted of [undefined,new Set(),new Set(['jugo'])])for(const cached of [false,true]){
+    const menu=new MenuScene(),loaded=[];
+    if(wanted)menu.wanted=wanted;
+    menu.textures={exists:key=>cached && key==='taximeter'};
+    menu.anims={remove(){}};menu.cache={audio:{exists:()=>false}};
+    menu.load={image:(key,url)=>loaded.push({key,url}),audio(){},once(){}};
+    menu.add={text:()=>new Visual()};
+    assert.doesNotThrow(()=>menu.preload());
+    assert.equal(loaded.filter(asset=>asset.key==='taximeter-source').length,wanted?.has('jugo') && !cached?1:0);
+  }
+});
+
+function doradoSetup(){
+  const s=setup(0);s.init({level:campaignIndexForCombat(8),character:'office'});
+  s.enemies=[];s.projectiles=[];s.waves=new WaveDirector(s);s.waves.update();
+  s.add.image=(x,y)=>{const v=new Visual(x,y);v.setFrame=function(frame){this.frame=frame;return this;};return v;};
+  return s;
+}
+
+test('EL dorado has airport art and exclusive street enemies, requires Jugo and then unlocks Zona Rosa',()=>{
+  const s=doradoSetup(),level=s.level;
+  assert.equal(level.name,'EL dorado');assert.equal(level.combatIndex,8);assert.equal(level.boss,'jugo');
+  assert.equal(PLAYABLE_CAMPAIGN[s.levelIndex-1].boss,'brayatan');
+  assert.equal(PLAYABLE_CAMPAIGN[s.levelIndex+1].boss,'pacho');
+  assert.deepEqual(level.enemies,['ortencio','agente_pare','belly']);assert.equal(level.total,25);
+  assert.equal(level.layers.length,2);assert.ok(existsSync(new URL(level.layers[0].url.replace('?url',''))));
+  assert.equal(levelTextures(level).length,1,'panorama and moving asphalt share one source');
+  assert.ok(actorsFor(level,'office').has('jugo'));assert.ok(actorsFor(level,'office').has('belly'));
+  assert.equal(s.enemies.length,2);finishWaves(s);assert.equal(s.defeated,25);assert.equal(s.waves.cleared,true);
+  assert.ok(s.enemies.every(e=>level.enemies.includes(e.key)));
+  assert.equal(s.beginBossIntro(),true);assert.equal(BOSS_INTROS.jugo.name,'JUGO ESPINAS');
+  s.resumeBoss();assert.equal(s.miniBoss.enemy.key,'jugo');assert.equal(s.finished,false);
+  s.arcade=new ArcadeRuntime(s);s.debugPreview=true;
+  s.hitEnemy(s.miniBoss.enemy,strike);
+  for(let i=0;i<190;i++)s.update(0,ARCADE.clock.stepMs);
+  assert.equal(s.finished,true);assert.equal(s.run.score>=4500,true);
+  const next=[];s.game.events.on('level-transition',e=>next.push(e));s.nextLevel();
+  assert.deepEqual(next,[{character:'office',level:campaignIndexForCombat(6)}]);
+});
+
+function jugoArena(){
+  const s=doradoSetup();s.enemies=[];s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};s.invulnerableUntil=0;
+  const a=s.spawnMiniBoss(bossFor(s.level)).enemy;a.x=650;a.y=450;s.player.x=300;s.player.y=450;
+  a.sprite.setFrame=function(frame){this.frame=frame;return this;};a.sprite.setTint=function(tint){this.tint=tint;return this;};
+  const model=new Enemy(s.arcade,a);s.arcade.enemies.set(a,model);
+  const step=(n=1)=>{for(let i=0;i<n;i++)s.update(0,ARCADE.clock.stepMs);};step();
+  return {s,a,model,controller:model.jugo,step};
+}
+
+function ortencioArena(){
+  const s=doradoSetup();s.enemies=[];s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};s.invulnerableUntil=0;
+  const a=s.spawnEnemy('ortencio',0,0,2,0);a.x=650;a.y=450;s.player.x=300;s.player.y=450;
+  a.sprite.setFrame=function(frame){this.frame=frame;return this;};a.sprite.setTint=function(tint){this.tint=tint;return this;};
+  a.sprite.clearTint=function(){this.tint=null;return this;};
+  const model=new Enemy(s.arcade,a);s.arcade.enemies.set(a,model);
+  const step=(n=1)=>{for(let i=0;i<n;i++)s.update(0,ARCADE.clock.stepMs);};step();
+  return {s,a,model,controller:model.ortencio,step};
+}
+function ortencioHold(f){
+  f.controller.begin();let guard=0;while(!f.s.arcade.player.captor && guard++<150)f.step();
+  assert.equal(f.s.arcade.player.captor,f.controller);return f;
+}
+
+test('Ortencio appears first in the extended Dorado route and is available only there',()=>{
+  const level=PLAYABLE_CAMPAIGN.find(l=>l.boss==='jugo');assert.equal(level.total,25);
+  assert.equal(level.enemies[0],'ortencio');assert.equal(enemies.ortencio.name,'ORTENCIO');
+  assert.ok(actorsFor(level,'office').has('ortencio'));
+  assert.ok(PLAYABLE_CAMPAIGN.filter(l=>l!==level).every(l=>!l.enemies.includes('ortencio')));
+  const c=enemies.ortencio,png=readFileSync(new URL(c.url.replace('?url',''))),w=png.readUInt32BE(16),h=png.readUInt32BE(20);
+  assert.equal(c.frameRects.length,24);assert.equal(c.rows.reduce((a,b)=>a+b),24);
+  for(const r of c.frameRects)assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=w && r.y+r.height<=h);
+  for(const [key,frames] of Object.entries(c.animations))for(const frame of frames)assert.ok(c.frameRects[frame],key);
+  for(const [i,anchor] of Object.entries(c.frameAnchors)){const r=c.frameRects[i];assert.ok(anchor>=r.x && anchor<=r.x+r.width);}
+});
+
+test('Ortencio turns red before the rush and holds without dealing damage or taking an ally attack slot',()=>{
+  const f=ortencioArena(),{s,a,model,controller:c,step}=f;assert.equal(c.begin(),true);
+  const x=a.x;step(c.config.windup-1);assert.equal(a.x,x);assert.equal(a.sprite.tint,0xff7770);assert.equal(s.health,100);
+  let guard=0;while(!s.arcade.player.captor && guard++<120)step();
+  assert.equal(c.phase,'hold');assert.ok(a.x<x-100);assert.equal(a.sprite.tint,null);assert.equal(s.health,100);
+  assert.equal(s.arcade.combat.tokens.owners.has(a),false);const heldX=s.player.x;s.keys.D.isDown=true;step(15);
+  assert.equal(s.player.x,heldX);assert.equal(s.health,100);assert.equal(model.state,'attack');
+  s.keys.D.isDown=false;step(c.config.holdFrames+5);assert.equal(s.arcade.player.captor,null);assert.equal(s.health,100);
+  step(c.config.cooldown+30);assert.ok(model.clock>c.config.holdFrames);
+});
+
+test('another enemy can hit the restrained player while Ortencio keeps holding',()=>{
+  const {s,controller:c,step}=ortencioHold(ortencioArena()),health=s.health;
+  const ally=s.spawnEnemy('walker',1,1,2,0);ally.x=s.player.x-50;ally.y=s.player.y;
+  const m=new Enemy(s.arcade,ally);s.arcade.enemies.set(ally,m);assert.equal(m.begin(),true);
+  let guard=0;while(s.health===health && guard++<90)step();
+  assert.ok(s.health<health);assert.equal(s.arcade.player.captor,c);assert.equal(c.phase,'hold');
+  s.invulnerableUntil=0;s.hitPlayer(1,{enemy:ally,connected:false,finisher:true},ally);
+  assert.equal(s.arcade.player.captor,null,'a knockdown breaks the hold');
+});
+
+test('six separate struggle presses break the hold without spending special energy',()=>{
+  const {s,controller:c,step}=ortencioHold(ortencioArena()),health=s.health;
+  for(let i=0;i<c.config.escapePresses;i++){s.arcade.player.request('punch');if(s.arcade.player.captor)s.arcade.player.request('kick');step();}
+  assert.equal(s.arcade.player.captor,null);assert.equal(c.phase,'recover');assert.equal(s.health,health);
+  assert.ok(s.invulnerableUntil>s.combatTime);assert.equal(s.arcade.player.buffer.entries.length,0);
+  step(c.config.cooldown+40);
+});
+
+test('jump and sidestep avoid the committed rush, and close attacks provoke an evasive hop',()=>{
+  for(const evade of ['lane','jump']){
+    const {s,controller:c,step}=ortencioArena();c.begin();step(c.config.windup);
+    if(evade==='lane')s.player.y=405;
+    else s.arcade.player.step=()=>{s.player.z=65;s.jumpHeight=65;};
+    step(95);assert.equal(s.arcade.player.captor??null,null);assert.equal(s.health,100);
+  }
+  const {s,a,model,step}=ortencioArena(),random=Math.random;
+  try {Math.random=()=>0;s.player.x=a.x-100;s.playerAttack={start:s.combatTime};model.ready=Infinity;model.step();}
+  finally {Math.random=random;}
+  assert.equal(model.state,'evade');step(8);assert.ok(a.z>30);step(14);assert.equal(a.z,0);
+});
+
+test('pause freezes Ortencio holds; damage, death, player death and shutdown always release the victim',()=>{
+  for(const action of ['damage','enemyDeath','playerDeath','destroy']){
+    const {s,a,model,controller:c,step}=ortencioHold(ortencioArena()),age=model.age;
+    s.paused=true;step(100);assert.equal(model.age,age);assert.equal(s.arcade.player.captor,c);s.paused=false;
+    if(action==='destroy')s.arcade.destroy();
+    else if(action==='playerDeath'){s.health=0;step();}
+    else s.hitEnemy(a,{damage:action==='enemyDeath'?10000:1,knockback:0,facing:1});
+    assert.equal(s.arcade.player.captor,null,action);assert.equal(s.arcade.combat.tokens.owners.has(a),false,action);
+  }
+});
+
+test('every Jugo attack completes its recovery and naturally resumes combat',()=>{
+  for(const kind of ['grab','meter','belly','roll']){
+    const {s,a,model,controller:c,step}=jugoArena();
+    if(kind==='roll'){a.hp=a.config.hp*.5;c.phaseCheck();}
+    if(kind!=='grab')s.invulnerableUntil=Infinity;
+    c.debugAttack(kind);let guard=0;
+    while(c.mode!=='recover' && guard++<500)step();
+    assert.ok(guard<500,kind);assert.equal(model.state,'recover',kind);
+    const recoveryEnd=model.ready;let rest=0;while(model.clock<recoveryEnd && rest++<150)step();
+    assert.equal(c.mode,'idle',kind);assert.equal(model.state,'circle',kind);
+    step(120);assert.ok(model.clock>recoveryEnd+100,kind);
+  }
+});
+
+test('Jugo preview can restart an attack directly from recovery',()=>{
+  const {controller:c,step}=jugoArena();c.debugAttack('belly');step(c.config.bellyWindup+12);
+  assert.equal(c.mode,'recover');assert.equal(c.debugAttack('meter'),true);step(130);
+});
+
+test('Jugo keeps advancing through repeated natural attack cycles in both phases',()=>{
+  for(const phase of [1,2]){
+    const {s,a,model,controller:c,step}=jugoArena();s.invulnerableUntil=Infinity;s.player.y=405;
+    if(phase===2){a.hp=a.config.hp*.5;c.phaseCheck();}
+    const starts=[],start=c.start.bind(c);c.start=kind=>{const result=start(kind);if(result)starts.push(kind);return result;};
+    step(2400);
+    assert.ok(starts.length>6,`phase ${phase}: ${starts.join(',')}`);assert.ok(starts.includes('grab'));
+    if(phase===2)assert.ok(starts.filter(kind=>kind==='roll').length>=3);
+    assert.ok(model.clock>2300);assert.equal(s.arcade.player.captor??null,null);
+  }
+});
+
+test('GO keeps every fighter at their normal world speed while the camera advances',()=>{
+  for(const character of ['office','student','teleperforman','gymbro','magolita']){
+    const s=setup(0,character);s.enemies=[];s.arcade=new ArcadeRuntime(s);s.player.x=650;s.player.y=450;
+    s.stage=Object.assign(Object.create(StageCamera.prototype),{scene:s,camera:s.cameras.main,layout:stageLayout(s.level),scrollX:0,time:0,
+      background:{update(){}},go:new Visual()});
+    s.waves.spawned=5;s.defeated=5;s.waves.arena=1;s.waves.arenaWave=0;
+    assert.equal(s.waves.awaitingAdvance,true);s.keys.D.isDown=true;
+    const from=s.player.x;
+    for(let i=0;i<90;i++)s.update(0,ARCADE.clock.stepMs);
+    assert.ok(Math.abs(s.player.x-from-s.character.speed*1.5)<1e-7,`${character}: ${s.player.x-from} vs ${s.character.speed*1.5}`);
+    assert.ok(s.stage.scrollX>0);assert.equal(s.arcade.player.state,'walk');
+  }
+});
+
+test('Jugo has separate running, holding, headbutt and curled-ball frames inside the appended sheet',()=>{
+  const c=enemies.jugo,base=readFileSync(new URL(c.url.replace('?url',''))),extra=readFileSync(new URL(c.appendUrls[0].replace('?url','')));
+  const baseHeight=base.readUInt32BE(20),width=Math.max(base.readUInt32BE(16),extra.readUInt32BE(16)),height=baseHeight+extra.readUInt32BE(20);
+  assert.equal(c.frameRects.length,40);assert.equal(c.rows.reduce((a,b)=>a+b,0),40);
+  for(const r of c.frameRects)assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=width && r.y+r.height<=height);
+  const poses=['run','grabReach','hold','headbutt','roll','rage','curl','recover'].flatMap(name=>c.animations[name]);
+  assert.equal(new Set(poses).size,16);assert.ok(poses.every(i=>c.frameRects[i].y>=baseHeight));
+  assert.ok(c.animations.roll.every(i=>c.frameRects[i].height*c.frameScales[i]<220),'ball is a compact curled silhouette');
+});
+
+test('pause freezes a Jugo hold and player death releases it before continuing',()=>{
+  const {s,controller:c,step}=jugoArena();c.debugAttack('grab');let guard=0;while(!s.arcade.player.captor && guard++<140)step();
+  const age=c.model.age,health=s.health;s.paused=true;step(120);
+  assert.equal(c.model.age,age);assert.equal(s.health,health);assert.equal(s.arcade.player.captor,c);
+  s.paused=false;s.health=0;step();assert.equal(s.arcade.player.captor,null);assert.equal(s.arcade.combat.tokens.owners.size,0);
+});
+
+test('Jugo runs in, holds the player for exactly two headbutts and releases them',()=>{
+  const {s,a,controller:c,step}=jugoArena(),hits=[],original=s.hitPlayer.bind(s);
+  s.hitPlayer=(damage,token,source)=>{const hit=original(damage,token,source);if(hit)hits.push({pose:a.sprite.frame,finisher:token?.finisher});return hit;};
+  c.debugAttack('grab');step(c.config.grabWindup);assert.equal(s.health,100);assert.equal(s.arcade.player.captor,undefined);
+  const from=a.x;let guard=0;while(!s.arcade.player.captor && guard++<90)step();
+  assert.ok(a.x<from-100);assert.equal(s.arcade.player.captor,c);assert.equal(s.health,100);
+  assert.equal(s.arcade.player.dash(1,0),false);s.arcade.player.request('punch');
+  step(c.config.headInterval*2+8);
+  assert.deepEqual(hits,[{pose:a.config.animations.headbutt[1],finisher:false},{pose:a.config.animations.headbutt[1],finisher:true}]);
+  assert.equal(s.health,100-a.config.damage*2);assert.equal(s.arcade.player.captor,null);assert.equal(a.pending,null);
+  assert.equal(s.arcade.combat.tokens.owners.has(a),false);
+});
+
+test('Jugo commits the rush lane; sidestepping, jumping and dash protection avoid the grab',()=>{
+  for(const evade of ['lane','jump','dash']){
+    const {s,controller:c,step}=jugoArena();c.debugAttack('grab');step(c.config.grabWindup);
+    if(evade==='lane')s.player.y=405;
+    if(evade==='jump'){s.player.z=65;s.arcade.player.jumpAge=0;}
+    if(evade==='dash')s.invulnerableUntil=s.combatTime+3000;
+    // A jumping player can land after the boss has passed their committed x.
+    if(evade==='jump'){s.player.x=510;s.arcade.player.transition('jump');}
+    step(115);assert.equal(s.health,100,evade);assert.equal(s.arcade.player.captor??null,null,evade);
+  }
+});
+
+test('counterattack, boss death and shutdown release a held player and clear attack ownership',()=>{
+  for(const cancel of ['hurt','death','destroy']){
+    const {s,a,controller:c,step}=jugoArena();c.debugAttack('grab');let guard=0;while(!s.arcade.player.captor && guard++<140)step();
+    assert.equal(s.arcade.player.captor,c);
+    if(cancel==='destroy')s.arcade.destroy();
+    else s.hitEnemy(a,{damage:cancel==='death'?10000:1,knockback:0,facing:1});
+    assert.equal(s.arcade.player.captor,null,cancel);assert.equal(s.arcade.combat.tokens.owners.has(a),false,cancel);
+  }
+});
+
+test('half health triggers one red rage transition, then the rolling ball; its lane can be dodged',()=>{
+  for(const evade of ['none','lane','jump']){
+    const {s,a,controller:c,step}=jugoArena();assert.equal(c.start('roll'),false);
+    a.hp=a.config.hp*.51;assert.equal(c.phaseCheck(),false);
+    a.hp=a.config.hp*.5;assert.equal(c.phaseCheck(),true);assert.equal(c.phase,2);assert.equal(a.sprite.tint,0xff8b80);
+    assert.equal(c.phaseCheck(),false);step(c.config.rage+2);assert.equal(c.mode,'rollTell');
+    step(c.config.rollWindup-2);const health=s.health;
+    if(evade==='lane')s.player.y=405;
+    if(evade==='jump'){
+      // Keep the jump above the ball for the deterministic collision window.
+      s.arcade.player.step=()=>{s.player.z=65;s.jumpHeight=65;};
+    }
+    let guard=0;while(c.mode!=='recover' && guard++<300)step();
+    assert.ok(guard<300);assert.equal(c.passes,3);assert.equal(a.invulnerableUntil,0);
+    assert.ok(a.x>=s.floor.left && a.x<=s.floor.right);
+    assert.equal(evade==='none'?s.health<health:s.health===health,true,evade);
+    assert.equal(s.arcade.combat.tokens.owners.has(a),false);
+  }
+});
+
+test('Jugo releases the animated meter on pose 6, explodes once on swept impact and removes the blast',()=>{
+  const s=doradoSetup();s.enemies=[];s.arcade=new ArcadeRuntime(s);s.invulnerableUntil=0;
+  const a=s.spawnMiniBoss(bossFor(s.level)).enemy;a.x=650;a.y=450;s.player.x=300;s.player.y=450;
+  a.sprite.setFrame=function(frame){this.frame=frame;return this;};
+  const shots=[],launch=s.throwProjectile.bind(s);
+  s.throwProjectile=(...args)=>{shots.push(a.sprite.frame);launch(...args);};
+  const model=new Enemy(s.arcade,a);model.step();model.jugo.debugAttack('meter');
+  for(let i=0;i<100 && !s.projectiles.length;i++){s.combatTime+=ARCADE.clock.stepMs;model.step();}
+  assert.deepEqual(shots,[6]);const p=s.projectiles[0];assert.ok(p.taximeter);assert.equal(p.sprite.frame,undefined);
+  s.updateProjectiles(.06);assert.equal(p.sprite.frame,'1');
+  s.updateProjectiles(1);assert.equal(p.blasting,true);assert.equal(p.sprite.frame,'8');
+  assert.equal(s.health,100-p.damage);assert.equal(p.x,s.player.x);
+  const health=s.health;s.updateProjectiles(.15);assert.equal(s.health,health);assert.equal(p.sprite.frame,'11');
+  s.updateProjectiles(.3);assert.equal(s.projectiles.length,0);assert.equal(p.sprite.destroyed,true);
+});
 test('reusing StreetScene for the next level or a restart clears the last enemy hit',()=>{
   const s=setup(1),enemy=s.enemies[0];
   for(const level of [3,3]){
@@ -986,7 +1251,7 @@ test('actual combat emits sounds on accepted attacks, releases and deaths, never
   for(const e of s.enemies.slice(0,2))e.key='brawler'; // no own death or hurt sound: alternates hurt/hurt2
   s.hitEnemy(s.enemies[0],strike);s.hitEnemy(s.enemies[0],strike);s.hitEnemy(s.enemies[1],strike);
   assert.deepEqual(calls.slice(-2),['hurt','hurt2']);
-  for(const [key,sound] of [['guard','tambo'],['sweeper','bar'],['chain','bar']]) {
+  for(const [key,sound] of [['guard','tambo'],['sweeper','bar'],['chain','chain'],['agente_pare','pipe']]) {
     const e=s.spawnEnemy(key,0,0,2,0);beginEnemyAttack(s,e,1);
     s.combatTime=e.pending.release;updateEnemyAttack(s,e);assert.equal(calls.at(-1),sound);
     const n=calls.length;updateEnemyAttack(s,e);assert.equal(calls.length,n);
@@ -1074,18 +1339,20 @@ test('all campaign scene spawners emit only the specified types, exact totals an
   }
 });
 
-test('Zona Rosa follows downtown and resolves all six root-level parallax assets without a flattened background',()=>{
+test('Zona Rosa uses one Andino panorama and a separate floor without repeating the facade',()=>{
   const level=levels[6],s=setup(6);
   assert.equal(level.name,'Zona Rosa');assert.equal(level.art.folder,'level7');assert.equal(level.url,undefined);
-  assert.deepEqual(level.layers.map(l=>l.file),['sky','skyline','buildings','floor','streetlights','front']);
-  assert.equal(levelTextures(level).length,6);assert.equal(level.layers.at(-1).front,true);
+  assert.deepEqual(level.layers.map(l=>l.file),['panorama','floor']);
+  assert.equal(levelTextures(level).length,2);assert.equal(level.layers[0].repeat,false);assert.equal(level.layers[0].factor,1);
+  assert.equal(level.layers[1].factor,1);assert.notEqual(level.layers[1].repeat,false);
   for(const layer of level.layers){
     assert.ok(layer.url.endsWith(`/level7/${layer.file}.png?url`),layer.file);
     const png=readFileSync(new URL(layer.url.slice(0,-4)));
-    assert.equal(png.readUInt32BE(16),960);assert.equal(png.readUInt32BE(20),540);
+    if(layer.file==='panorama')assert.ok(png.readUInt32BE(16)/png.readUInt32BE(20)>2.4);
+    else {assert.equal(png.readUInt32BE(16),960);assert.equal(png.readUInt32BE(20),540);}
   }
   assert.equal(s.floor.top,415);assert.equal(s.floor.bottom,500);assert.equal(s.level.total,30);
-  s.updateCounter();assert.ok(s.counter.text.startsWith('NIVEL 9 ·'));
+  s.updateCounter();assert.ok(s.counter.text.startsWith('NIVEL 10 ·'));
 });
 
 test('Zona Rosa requires Don Pacho after its own waves before reporting campaign victory',()=>{
@@ -1154,7 +1421,7 @@ test('parked Dormilon controller retains its intro and cleanup when explicitly e
 });
 
 test('all seven bosses wait behind their own intro; no clock, input or boss entry before continuing',()=>{
-  assert.equal(Object.keys(BOSS_INTROS).length,8);
+  assert.equal(Object.keys(BOSS_INTROS).length,9);
   const seen=new Set();
   for(let index=0;index<CAMPAIGN.length;index++){
     const s=setup(index),events=[],card=BOSS_INTROS[s.level.boss];
@@ -1249,15 +1516,15 @@ test('final victory reaches the record screen only after the character ending an
   assert.deepEqual(calls,[['result',intermediate]],'intermediate victories keep their existing flow');
 });
 
-test('Zona Rosa intro preloads and displays the six layers, with no fixed campaign total in its title',()=>{
+test('Zona Rosa intro preloads the continuous Andino panorama and floor',()=>{
   const intro=new IntroScene();intro.init({kind:'level',level:campaignIndexForCombat(6),character:'office'});
   const loaded=[],images=[],texts=[];intro.textures={exists:()=>false};intro.load={image:(key,url)=>loaded.push({key,url})};intro.preload();
-  assert.equal(loaded.filter(l=>l.key.startsWith('level7-')).length,6);assert.ok(loaded.every(l=>l.url));
+  assert.equal(loaded.filter(l=>l.key.startsWith('level7-')).length,2);assert.ok(loaded.every(l=>l.url));
   intro.add={image:(x,y,key)=>{images.push(key);return new Visual();},rectangle:()=>new Visual(),text:(x,y,text)=>{texts.push(text);return new Visual();}};
   intro.cameras={main:{setBackgroundColor(){},setZoom(){return this;},centerOn(){return this;}}};intro.tweens={add(){}};
   intro.input=new EventEmitter();intro.input.keyboard=new EventEmitter();intro.events=new EventEmitter();
   intro.time={delayedCall(){}};intro.game={events:new EventEmitter()};intro.create();
-  assert.deepEqual(images,levels[6].layers.map(l=>l.key));assert.ok(texts.includes('NIVEL 9'));assert.ok(texts.includes('ZONA ROSA'));
+  assert.deepEqual(images,levels[6].layers.map(l=>l.key));assert.ok(texts.includes('NIVEL 10'));assert.ok(texts.includes('ZONA ROSA'));
   assert.ok(!texts.some(t=>/NIVEL \d+\s*\//.test(t)));
 });
 
@@ -1690,8 +1957,8 @@ test('the jump sends him backwards leaving cyan stains at takeoff and landing, a
   assert.ok(jumped,'hops back after painting when crowded');
 });
 
-test('players 2, 4 and 5 grunt when hit (player_2_grunt, player_4_grunt, female_grunt); the others stay silent',()=>{
-  for(const [character,expected] of [['student',['player2Grunt']],['gymbro',['player4Grunt']],['magolita',['femaleGrunt']],['office',['gruntSound']],['teleperforman',[]]]) {
+test('each player uses its configured hurt recording and stays silent during invulnerability',()=>{
+  for(const [character,expected] of [['student',['player2Grunt']],['gymbro',['player4Grunt']],['magolita',['femaleGrunt']],['office',['gruntSound']],['teleperforman',['player3Hit']]]) {
     const {s}=arcadeSetup(character),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
     s.invulnerableUntil=0;s.respawnProtectedUntil=0;assert.equal(s.hitPlayer(10),true);
     assert.deepEqual(calls,expected,character);
@@ -1754,7 +2021,7 @@ function brayatanSetup(){
   return {s,a,model,controller:model.brayatan,shots,sounds,shakes,step};
 }
 
-test('Brayatan guards level six after the thirty enemies; defeating him unlocks Zona Rosa',()=>{
+test('Brayatan guards level six after the thirty enemies; defeating him unlocks EL dorado',()=>{
   const s=setup(5);assert.equal(s.beginBossIntro(),false);finishWaves(s);
   assert.equal(s.beginBossIntro(),true);assert.equal(s.cinematic,true);assert.equal(s.miniBoss,null);
   s.resumeBoss();assert.equal(s.miniBoss.enemy.key,'brayatan');assert.equal(s.boss,null);
@@ -1764,7 +2031,7 @@ test('Brayatan guards level six after the thirty enemies; defeating him unlocks 
   scene.hitEnemy(a,{damage:a.hp+1,knockback:0,facing:1});step(190);
   assert.equal(scene.finished,true);assert.equal(results.length,1);assert.equal(results[0].last,false);assert.equal(scene.run.score,4000);
   const transitions=[];scene.game.events.on('level-transition',data=>transitions.push(data));scene.nextLevel();
-  assert.deepEqual(transitions,[{character:'gymbro',level:campaignIndexForCombat(6)}]);assert.equal(scene.run.level,campaignIndexForCombat(6));
+  assert.deepEqual(transitions,[{character:'gymbro',level:campaignIndexForCombat(8)}]);assert.equal(scene.run.level,campaignIndexForCombat(8));
 });
 
 test('Brayatan knife volleys use the throwing pose and become five knives after the rage transition',()=>{
@@ -2525,4 +2792,76 @@ test('ending a guitarist hold restores scale even if an animation already change
  a.sprite.setTexture=function(key){this.texture={key};return this;};a.sprite.setScale=function(n){this.scaleY=n;return this;};
  s.textures={exists:()=>true,get:()=>({referenceHeight:250})};model.seize();model.struggle();
  a.sprite.texture={key:'guitarist'};model.breakFree();assert.equal(a.sprite.scaleY,a.config.height/250);
+});
+
+
+test('Teleperforman walking sheet fits the stacked atlas and keeps combat poses separate',()=>{
+  const c=setup(0,'teleperforman').character;
+  const files=['player_3.png','player_3_combo.png','player_3_agarre.png','player_3_walking.png'];
+  const pngs=files.map(file=>readFileSync(new URL(`../src/data/players/${file}`,import.meta.url)));
+  const offset=pngs.slice(0,3).reduce((sum,png)=>sum+png.readUInt32BE(20),0),png=pngs[3];
+  assert.equal(c.appendUrls.length,3);assert.equal(c.animations.walk.length,22);
+  assert.equal(c.rows.reduce((sum,n)=>sum+n,0),c.frameRects.length);
+  for(const frame of c.animations.walk){
+    const r=c.frameRects[frame],anchor=c.frameAnchors[frame];
+    assert.ok(r.x>=0 && r.y>=offset && r.x+r.width<=png.readUInt32BE(16) && r.y+r.height<=offset+png.readUInt32BE(20));
+    assert.ok(anchor>=r.x && anchor<=r.x+r.width);
+    assert.ok(Math.abs(r.height*c.frameScales[frame]-195)<.01,'consistent standing height');
+  }
+  for(const [name,frames] of Object.entries(c.animations))if(name!=='walk')assert.ok(frames.every(frame=>!c.animations.walk.includes(frame)),name);
+});
+
+
+test('updated Gomelo walk uses only valid poses from the new sheet at consistent scale',()=>{
+  const c=setup(0,'office').character,files=['player_1.png','player_1_agarre.png','player_1_walk.png'];
+  const pngs=files.map(file=>readFileSync(new URL(`../src/data/players/${file}`,import.meta.url)));
+  const offset=pngs[0].readUInt32BE(20)+pngs[1].readUInt32BE(20),png=pngs[2];
+  assert.equal(c.animations.walk.length,18);assert.equal(c.rows.reduce((sum,n)=>sum+n,0),c.frameRects.length);
+  for(const frame of c.animations.walk){
+    const r=c.frameRects[frame];
+    assert.ok(r.x>=0 && r.y>=offset && r.x+r.width<=png.readUInt32BE(16) && r.y+r.height<=offset+png.readUInt32BE(20));
+    assert.ok(c.frameAnchors[frame]>=r.x && c.frameAnchors[frame]<=r.x+r.width);
+    assert.ok(Math.abs(r.height*c.frameScales[frame]-153)<.01);
+  }
+  for(const [name,frames] of Object.entries(c.animations))if(name!=='walk')assert.ok(frames.every(frame=>!c.animations.walk.includes(frame)),name);
+});
+
+
+test('Agente Paredes is exclusive to Dorado with complete heavy-sign animation frames',()=>{
+  const c=enemies.agente_pare,level=PLAYABLE_CAMPAIGN.find(l=>l.boss==='jugo');
+  assert.ok(level.enemies.includes('agente_pare'));
+  assert.ok(PLAYABLE_CAMPAIGN.filter(l=>l!==level).every(l=>!l.enemies.includes('agente_pare')));
+  const png=readFileSync(new URL(c.url.replace('?url',''))),w=png.readUInt32BE(16),h=png.readUInt32BE(20);
+  assert.equal(c.frameRects.length,24);
+  for(const r of c.frameRects)assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=w && r.y+r.height<=h);
+  for(const [i,anchor] of Object.entries(c.frameAnchors)){const r=c.frameRects[i];assert.ok(anchor>=r.x && anchor<=r.x+r.width);}
+  assert.ok(c.combo.windup>=900 && c.combo.interval>=700 && c.damage>enemies.belly.damage);
+});
+
+test('Agente Paredes production combat performs three slow strong impacts and can be evaded',()=>{
+  for(const evade of [false,true]){
+    const s=doradoSetup();s.enemies=[];s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};s.invulnerableUntil=0;
+    const a=s.spawnEnemy('agente_pare',0,0,2,0);a.x=500;a.y=450;s.player.x=420;s.player.y=evade?490:450;
+    a.sprite.setFrame=function(frame){this.frame=frame;return this;};
+    const model=new Enemy(s.arcade,a);s.arcade.enemies.set(a,model);
+    const hits=[],original=s.hitPlayer.bind(s);
+    s.hitPlayer=(damage,source)=>{const result=original(damage,source);if(result)hits.push({damage,at:s.combatTime,finisher:source.finisher});return result;};
+    s.arcade.combat.push=()=>{};s.arcade.combat.impact=()=>{};
+    model.begin();
+    for(let i=0;i<52;i++)s.update(0,ARCADE.clock.stepMs);assert.equal(hits.length,0);
+    let frames=0;while(model.action && frames++<400)s.update(0,ARCADE.clock.stepMs);
+    assert.ok(frames<400);assert.equal(hits.length,evade?0:3);
+    if(!evade){assert.equal(s.health,100-a.config.damage*3);assert.equal(hits[2].finisher,true);assert.ok(hits[1].at-hits[0].at>=700);}
+  }
+});
+
+test('taxi camera crosses exactly one arena while preserving the player screen position',()=>{
+  const s=doradoSetup();s.enemies=[];
+  s.stage=Object.assign(Object.create(StageCamera.prototype),{scene:s,camera:s.cameras.main,layout:stageLayout(s.level),scrollX:0,time:0,background:{update(){}},go:new Visual()});
+  s.stage.jumpToArena(2);const screenX=s.player.x-s.stage.scrollX;
+  s.taxiRush={active:true,from:s.stage.arenaScroll(2),to:s.stage.arenaScroll(3),progress:.5};
+  s.stage.update();assert.equal(s.player.x-s.stage.scrollX,screenX);
+  s.taxiRush.progress=1;s.taxiRush.active=false;s.taxiRush.justFinished=true;s.stage.update();
+  assert.equal(s.stage.scrollX,s.stage.arenaScroll(3));assert.equal(s.player.x-s.stage.scrollX,screenX);
+  assert.equal(s.taxiRush.justFinished,false);
 });

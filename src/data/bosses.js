@@ -3,6 +3,7 @@
 export const BOSS_MUSIC={key:'boss-music',url:`${import.meta.env?.BASE_URL??'./'}assets/boss.mp3`};
 export const FINAL_BOSS_MUSIC={key:'boss-final-music',url:`${import.meta.env?.BASE_URL??'./'}assets/boss_final.mp3`};
 export const BOSSES={
+  jugo:{kind:'enemy',enemy:'jugo',name:'JUGO ESPINAS',music:BOSS_MUSIC.key,score:4500,deathMs:1700},
   barra:{kind:'enemy',enemy:'barra',name:'THE CHIKEN GOMEZ',music:BOSS_MUSIC.key,score:1500,deathMs:1300},
   palomera:{kind:'enemy',enemy:'palomera',name:'PALOMERA',music:BOSS_MUSIC.key,score:2000,deathMs:1500},
   grafitero:{kind:'enemy',enemy:'grafitero',name:'PINTURITA',music:BOSS_MUSIC.key,score:2500,deathMs:1500},

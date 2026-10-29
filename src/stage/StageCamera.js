@@ -10,7 +10,7 @@ import {GroundPigeons} from './GroundPigeons.js';
 export class StageCamera {
   constructor(scene) {
     this.scene=scene;this.camera=scene.cameras.main;this.layout=stageLayout(scene.level);this.scrollX=0;this.time=0;
-    this.background=new ParallaxBackground(scene,scene.level.layers??[{key:scene.level.key,factor:1}]);
+    this.background=new ParallaxBackground(scene,scene.level.layers??[{key:scene.level.key,factor:1}],this.layout.width);
     this.go=scene.add.text(ARCADE.screen.width-36,250,'GO →',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'30px',color:'#ffcf69',fontStyle:'bold',stroke:'#142127',strokeThickness:6})
       .setOrigin(1,.5).setScrollFactor(0).setDepth(1000).setVisible(false);
     this.traffic=scene.level.traffic?new AmbientTraffic(scene,scene.level.traffic,this.background):null;
@@ -27,7 +27,13 @@ export class StageCamera {
   get limit(){return this.arenaScroll(this.scene.waves?.arena??0)+ARCADE.screen.width;}
   update(frame=0) {
     const s=this.scene;this.time+=ARCADE.clock.stepMs;
-    if(!s.finished && !s.cinematic && s.health>0 && !s.paused)this.apply(stepScroll(this.scrollX,nextScroll({scrollX:this.scrollX,playerX:s.player.x,limit:this.limit})));
+    if(!s.finished && !s.cinematic && s.health>0 && !s.paused){
+      const rush=s.taxiRush;
+      if(rush?.active || rush?.justFinished){
+        const next=rush.from+(rush.to-rush.from)*rush.progress,delta=next-this.scrollX;
+        this.apply(next);s.player.x=Math.max(s.floor.left,Math.min(s.floor.right,s.player.x+delta));rush.justFinished=false;
+      }else this.apply(stepScroll(this.scrollX,nextScroll({scrollX:this.scrollX,playerX:s.player.x,limit:this.limit})));
+    }
     this.background.update(this.scrollX,this.time);
     this.traffic?.update(this.scrollX);
     this.props?.update(ARCADE.clock.stepMs);

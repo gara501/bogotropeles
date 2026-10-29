@@ -1,3 +1,4 @@
+import {AGENTE_PARE} from './agentePare.js';
 import walkerUrl from './enemies/enemy_1.png?url';
 import {MOTORATA} from './motorata.js';
 import {HOMELESS} from './homeless.js';
@@ -53,6 +54,8 @@ import {DON_PICO} from './donPico.js';
 import {RING_FIGHTERS,RING_PROP_URL} from './ring.js';
 import {DON_REVERSA,REVERSA_TRUCK_URL,REVERSA_EGG_URL} from './reversa.js';
 import {PAPERO,POTATO_URL} from './papero.js';
+import {JUGO} from './jugo.js';
+import {ORTENCIO} from './ortencio.js';
 
 const animations = { walk: sequence(0, 5), attack: sequence(6, 11), hurt: sequence(12, 17), defeat: sequence(18, 23) };
 export const enemies = {
@@ -70,6 +73,9 @@ export const enemies = {
   ...RING_FIGHTERS,
   papero:PAPERO,
   reversa:DON_REVERSA,
+  jugo:JUGO,
+  ortencio:ORTENCIO,
+  agente_pare:AGENTE_PARE,
   estibador:{...PAPERO,name:'ESTIBADOR',papero:false,minion:true,height:115,hp:90,speed:160,range:70,damage:7,idle:20,animations:{idle:[20],walk:[16,17,18,19],attack:[20,21,22,23],hurt:[28,29],defeat:[30,31]}},
   // enemy_12.png (4×6): guard · run · machete slash · leaping slash · crouch/hop · lunges. The fastest fighter in the game:
   // a 2-slash machete combo and, when the player swings at her up close, a lightning hop to the other side of the player.

@@ -55,6 +55,7 @@ export class ArcadeRuntime {
     this.diablitos.update();
     this.player.step({...this.input,...this.edges});this.edges={jump:false,dash:false};
     s.stage?.rain?.slip(s.player,previous,walking && this.player.state==='walk');
+    s.taxiRush?.update(1/ARCADE.clock.fps);
     s.stage?.update(frame); // moves the camera and the floor span before enemies use it
     s.energyPickups?.update(frame);
     if(!s.chivaBonus)s.vuvuzela?.update(frame);
@@ -124,5 +125,5 @@ export class ArcadeRuntime {
     s.play(s.player,'victory',ARCADE.flow.victoryFrames*ARCADE.clock.stepMs);s.game.events.emit('level-clear',s.levelIndex);s.game.events.emit('level-victory');
     s.pendingResult={won:true,last,bossCheckpoint:Boolean(s.boss||s.miniBoss),score:s.run.score,character:s.character.name};s.victoryRemaining=ARCADE.flow.resultDelayFrames*ARCADE.clock.stepMs;
   }
-  destroy(){if(this.destroyed)return;this.destroyed=true;this.diablitos.clear();this.poultry.clear();this.potatoes.clear();this.clock.clear();for(const enemy of this.enemies.values()){enemy.healAura?.destroy();enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();enemy.reversa?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
+  destroy(){if(this.destroyed)return;this.destroyed=true;this.scene.taxiRush?.destroy();this.diablitos.clear();this.poultry.clear();this.potatoes.clear();this.clock.clear();for(const enemy of this.enemies.values()){enemy.healAura?.destroy();enemy.sackSpin?.clear();enemy.brayatan?.destroy();enemy.pacho?.destroy();enemy.reversa?.destroy();enemy.jugo?.destroy();enemy.ortencio?.destroy();}this.combat.clear();this.enemies.clear();this.clearInput();this.boxGraphics?.destroy();}
 }

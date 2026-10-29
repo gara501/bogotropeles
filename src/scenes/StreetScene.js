@@ -1,3 +1,4 @@
+import {TAXI_RUSH_ATLAS} from '../data/taxis.js';
 import Phaser from 'phaser';
 import { characters } from '../data/characters.js';
 import { levels, levelTextures } from '../data/levels.js';
@@ -12,6 +13,8 @@ import groundPigeonUrl from '../data/NPC/pigeon_ground.png?url';
 import { SprayBarrage } from '../boss/SprayBarrage.js';
 import { GroundStains } from '../game/GroundStains.js';
 import { GasClouds } from '../game/GasClouds.js';
+import {TAXIMETER} from '../data/jugo.js';
+import {updateTaximeter} from '../projectiles/Taximeter.js';
 import { registerAnimations, prepareEffects, prepareCutout, prepareSheet, releaseSources, needsSource } from '../data/spriteSheets.js';
 import { IPHONE } from '../data/iphone.js';
 import { actorsFor } from '../data/actorSet.js';
@@ -134,6 +137,7 @@ export class StreetScene extends Phaser.Scene {
     this.books = null;
     this.waves = null;
     this.stage = null;
+    this.taxiRush = null;
     this.bossIntroShown = false;
     this.cinematic = false;
     this.transitioning = false;
@@ -171,6 +175,8 @@ export class StreetScene extends Phaser.Scene {
     for (const asset of currentArt) if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.url);
     // Only the fighter, enemies and boss this level needs; the menu (no level yet) loads none.
     const wanted = this.wanted ?? new Set();
+    if(wanted.has('jugo') && !this.textures.exists('taximeter'))this.load.image('taximeter-source',TAXIMETER.url);
+    if(this.level?.taxiRush && !this.textures.exists('taxi-rush'))this.load.image('taxi-rush-source',TAXI_RUSH_ATLAS.url);
     evictActors(this, wanted);
     for (const key of wanted) loadActor(this, key, ACTOR_SHEETS[key]);
     if (!this.textures.exists('knife')) this.load.image('knife', knife.url);
@@ -208,6 +214,8 @@ export class StreetScene extends Phaser.Scene {
     if (this.wanted.has('office')) prepareCutout(this,IPHONE.texture,'office-source',IPHONE.sourceRect);
     // Tear-gas canister and cloud stages from the level 5 boss sheet.
     if (this.wanted.has('antidisturbios')) enemies.antidisturbios.gasRects.forEach(([x,y,width,height],i)=>prepareCutout(this,`gas-${i}`,'antidisturbios-source',{x,y,width,height}));
+    if(this.level.taxiRush)prepareEffects(this,'taxi-rush',TAXI_RUSH_ATLAS);
+    if(this.wanted.has('jugo'))prepareEffects(this,'taximeter',TAXIMETER);
     releaseSources(this);
     this.drawStreet();
     this.player = this.makeFighter(200, 450, this.characterKey, this.character);
@@ -259,14 +267,18 @@ export class StreetScene extends Phaser.Scene {
       this.invulnerableUntil=Infinity;
       this.enemies.forEach((enemy,index)=>{enemy.x=560+index*120;enemy.y=index?this.floor.top:450;});
     }
-    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap || enemies[this.enemyTest]?.juggler || enemies[this.enemyTest]?.paint || enemies[this.enemyTest]?.throw?.fruit || enemies[this.enemyTest]?.diablito || enemies[this.enemyTest]?.pollero || enemies[this.enemyTest]?.papero || enemies[this.enemyTest]?.reversa)) {
+    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap || enemies[this.enemyTest]?.juggler || enemies[this.enemyTest]?.paint || enemies[this.enemyTest]?.throw?.fruit || enemies[this.enemyTest]?.diablito || enemies[this.enemyTest]?.pollero || enemies[this.enemyTest]?.papero || enemies[this.enemyTest]?.reversa || enemies[this.enemyTest]?.ortencio)) {
       for(const enemy of this.enemies)for(const object of [enemy.sprite,enemy.shadow,enemy.healthBar,enemy.tell,enemy.taunt])object?.destroy();
       this.enemies=[];this.waves.spawned=this.level.total;this.defeated=this.level.total-1;
-      const isPacho=Boolean(enemies[this.enemyTest].pacho || enemies[this.enemyTest].reversa);
-      if(isPacho){this.defeated=this.level.total;this.bossIntroShown=true;}
-      const enemy=isPacho?this.spawnMiniBoss(bossFor(this.level)).enemy:this.spawnEnemy(this.enemyTest,0,0,2,0);
-      enemy.x=450;enemy.y=450;if(!enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap && !enemy.config.juggler && !enemy.config.paint && !enemy.config.throw?.fruit && !enemy.config.diablito && !enemy.config.pollero && !enemy.config.papero && !enemy.config.reversa)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
+      const isBossPreview=Boolean(enemies[this.enemyTest].pacho || enemies[this.enemyTest].reversa || this.enemyTest==='jugo');
+      if(isBossPreview){this.defeated=this.level.total;this.bossIntroShown=true;}
+      const enemy=isBossPreview?this.spawnMiniBoss(bossFor(this.level)).enemy:this.spawnEnemy(this.enemyTest,0,0,2,0);
+      enemy.x=450;enemy.y=450;if(!isBossPreview && !enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap && !enemy.config.juggler && !enemy.config.paint && !enemy.config.throw?.fruit && !enemy.config.diablito && !enemy.config.pollero && !enemy.config.papero && !enemy.config.reversa && !enemy.config.ortencio)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
       this.player.x=400;this.player.y=450;this.nextGroupAttack=Infinity;this.updateCounter();
+      if(this.enemyTest==='ortencio'){
+        this.level={...this.level,boss:null,total:2};this.waves.spawned=2;this.defeated=0;this.invulnerableUntil=0;
+        const ally=this.spawnEnemy('belly',1,1,2,0);ally.x=800;ally.y=450;this.updateCounter();
+      }
     }
     this.game.events.emit('level-start', this.levelIndex);
     // HUD stays on screen while the camera scrolls (depth >= 999 is the HUD band).
@@ -426,6 +438,7 @@ export class StreetScene extends Phaser.Scene {
 
   handleDeath() {
     if(this.deathHandled)return;
+    this.arcade?.player?.captor?.cancel();
     this.deathHandled=true;this.run.loseLife();this.updateRunStatus();
     this.vuvuzela?.clearHeld();
     this.iphone?.clear();this.books?.clear();this.playerAttack=null;this.comboVictim=null;
@@ -732,7 +745,7 @@ export class StreetScene extends Phaser.Scene {
   throwProjectile(enemy, facing, config, damage) {
     // Released where the drawn object is in the throw pose (ball, pigeon…); faces its direction of travel.
     const x = enemy.x + facing * (config.offset ?? 70);
-    const sprite = this.add.image(x, enemy.y - (config.lift ?? 70), config.texture).setDisplaySize(config.width, config.height).setDepth(enemy.y + 1);
+    const sprite = this.add.image(x, enemy.y - (config.lift ?? 70), config.texture,config.taximeter?'0':undefined).setDisplaySize(config.width, config.height).setDepth(enemy.y + 1);
     sprite.setFlipX?.(facing < 0);
     if(config.fruit){
       const flight=createFruitFlight({x,y:enemy.y},this.player,config,this.floor);
@@ -746,7 +759,7 @@ export class StreetScene extends Phaser.Scene {
     // Gas canisters are lobbed at where the player stands (within the throw range) and burst on landing.
     const target = config.gas ? Phaser.Math.Clamp(Math.abs(this.player.x - x), config.minRange * .6, config.maxRange) : null;
     this.projectiles.push({ x, y: enemy.y, facing, damage, sprite, owner:enemy, speed:config.speed, spin:config.spin ?? 0, texture:config.texture,
-      gas:config.gas, startX:x, landX:config.gas ? x + facing * target : null, lift:config.lift ?? 70 });
+      gas:config.gas,taximeter:config.taximeter, startX:x, landX:config.gas ? x + facing * target : null, lift:config.lift ?? 70 });
   }
 
   launchSprayBarrage(owner,config,damage){
@@ -757,6 +770,7 @@ export class StreetScene extends Phaser.Scene {
   updateProjectiles(dt) {
     this.sprayBarrage?.update();
     this.projectiles = this.projectiles.filter(projectile => {
+      if(projectile.taximeter)return updateTaximeter(this,projectile,dt);
       if(projectile.fruit){
         const p=fruitPosition(projectile.flight,dt);
         projectile.x=p.x;projectile.y=p.groundY;

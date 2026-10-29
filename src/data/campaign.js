@@ -23,8 +23,8 @@ const LEVEL5_ART={folder:'level5',
 const LEVEL6_ART={folder:'level6',
   layers:[{file:'sky',factor:.06,drift:6},{file:'skyline',factor:.2},{file:'buildings',factor:.6},{file:'floor',factor:1}]};
 const LEVEL7_ART={folder:'level7',
-  layers:[{file:'sky',factor:.06},{file:'skyline',factor:.18},{file:'buildings',factor:.55},{file:'floor',factor:1},
-    {file:'streetlights',factor:.85},{file:'front',factor:1.25,front:true}]};
+  // The panorama's curb aligns at y=402 with the original independent floor.
+  layers:[{file:'panorama',factor:1,height:560,repeat:false},{file:'floor',factor:1}]};
 const ORIGINAL_COMBAT_CAMPAIGN = [
   {name:'Transmilleno · Exterior',art:LEVEL1_ART,boss:'barra',top:400,enemies:['fan','brawler'],total:15,hp:.65,speed:.85,damage:.8,pressure:.8,gap:1100,props:{kinds:['station0','station4','station8','station5','station15','station9','station1','station10','station12','station6','station3','station13','station11','station14','station2','station7'],start:180,spacing:260,jitter:80,baseline:-18,depthJitter:3}},
   {name:'Plaza de Bolívar',art:LEVEL2_ART,boss:'palomera',top:410,enemies:['walker','rider','vendor','belly'],total:20,mode:'crossing',crossingEnemies:['rider'],hp:.75,speed:.95,damage:.9,pressure:.9,gap:1000,
@@ -48,8 +48,14 @@ export const PALOMOJAO_LEVEL={name:'Plaza de Palomojao',combatIndex:7,
   hp:1.18,speed:1.18,damage:1.25,pressure:1.25,gap:650,
   props:{kinds:['palomojao-flowers','palomojao-onions','palomojao-oranges','palomojao-basket'],start:350,spacing:630,jitter:80,baseline:-10,flip:false}};
 // Combat IDs remain stable for art, containers and boss previews. CAMPAIGN defines the playable order.
-export const COMBAT_CAMPAIGN=[...ORIGINAL_COMBAT_CAMPAIGN,PALOMOJAO_LEVEL];
-export const CAMPAIGN=[COMBAT_CAMPAIGN[0],CYCLING_LEVEL,...COMBAT_CAMPAIGN.slice(1,5),PALOMOJAO_LEVEL,...COMBAT_CAMPAIGN.slice(5,7)];
+export const DORADO_LEVEL={name:'EL dorado',combatIndex:8,
+  art:{folder:'level8',layers:[{file:'panorama',factor:1,repeat:false},
+    {file:'panorama',factor:1,y:405,height:135,frameRect:[0,559,2109,186]}]},
+  top:405,bottom:500,enemies:['ortencio','agente_pare','belly'],total:25,boss:'jugo',rain:null,
+  taxiRush:{arena:3,min:8,max:15,leadIn:500,warning:900,spacing:1100,speed:1100,width:230,height:95,hitDepth:13,avoidHeight:35,damage:22,tail:400},
+  hp:1.3,speed:1.24,damage:1.35,pressure:1.35,gap:575};
+export const COMBAT_CAMPAIGN=[...ORIGINAL_COMBAT_CAMPAIGN,PALOMOJAO_LEVEL,DORADO_LEVEL];
+export const CAMPAIGN=[COMBAT_CAMPAIGN[0],CYCLING_LEVEL,...COMBAT_CAMPAIGN.slice(1,5),PALOMOJAO_LEVEL,COMBAT_CAMPAIGN[5],DORADO_LEVEL,COMBAT_CAMPAIGN[6]];
 export const campaignIndexForCombat=index=>CAMPAIGN.findIndex(level=>level.combatIndex===index);
 
 export function waveSize(wave,remaining){return Math.min(wave%2?3:2,remaining);}

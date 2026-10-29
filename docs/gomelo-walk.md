@@ -1,5 +1,15 @@
 # Caminata de Gomelo
 
+## Versión actual: hoja de 18 poses
+
+Se integra el nuevo `src/data/players/player_1_walk.png` (1280 × 1024), proporcionado por el usuario, sin editar el dibujo. Posee cinco columnas y cuatro filas, con tres poses en la última fila. El estilo es un trote con inclinación del cuerpo.
+
+Cuadros 56–73, anexados después de la hoja principal (1705 px) y agarre (941 px). Recortes por alfa, anclas individuales de torso y escalas para una altura de referencia constante de 153 px, a 24 fps. Los ataques y agarres conservan sus índices.
+
+Validación: 418 pruebas aprobadas y build correcto. Prueba visual: `?playerPreview=office`.
+
+## Historial: hoja anterior de seis cuadros
+
 Asset: `src/data/players/player_1_walk.png`.
 
 Generado con la herramienta integrada `image_gen`, usando `player_1.png` como referencia de identidad y estilo. El PNG conserva la transparencia. La hoja original y sus ataques se mantienen.
