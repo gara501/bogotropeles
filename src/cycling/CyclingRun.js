@@ -1,4 +1,4 @@
-export const CYCLING={duration:90000,speed:650,steerSpeed:300,playerX:230,top:305,bottom:475,
+export const CYCLING={duration:90000,speed:650,acceleration:80,steerSpeed:300,playerX:230,top:305,bottom:475,
   lanes:[315,390,465],invulnerability:1400,finishPoints:1500,cardPoints:1000,pixelsPerMeter:52,changuaProgress:.58};
 export const GUARDIAN={firstMeters:120,spacingMeters:140,approachSeconds:2.1,windup:500,crossing:900,encounterGap:3400};
 export const CYCLING_DASH={duration:3000,cooldown:5000,multiplier:2.2};
@@ -22,22 +22,39 @@ export const obstacleHits=(previousX,obstacle,y)=>!obstacle.hit && Math.abs(obst
 
 /** Automatic forward travel with an optional boost; only vertical steering. */
 export class CyclingRun{
-  constructor(random=Math.random){this.random=random;this.elapsed=0;this.extraDistance=0;this.dashUntil=0;this.dashReadyAt=0;this.y=390;this.obstacles=[];this.pickups=[];this.cardsCollected=0;this.changuaSpawned=false;this.nextPickup=3500;this.nextWave=2000;this.nextGuardianMeters=GUARDIAN.firstMeters;this.guardianUntil=0;this.nextId=0;this.invulnerableUntil=0;this.done=false;this.safeLane=1;}
+  constructor(random=Math.random){this.random=random;this.elapsed=0;this.pace=0;this.extraDistance=0;this.dashUntil=0;this.dashReadyAt=0;this.y=390;this.obstacles=[];this.pickups=[];this.cardsCollected=0;this.changuaSpawned=false;this.nextPickup=3500;this.nextWave=2000;this.nextGuardianMeters=GUARDIAN.firstMeters;this.guardianUntil=0;this.nextId=0;this.invulnerableUntil=0;this.done=false;this.safeLane=1;}
   // Extra distance includes both the second-half acceleration and the optional dash.
   get roadOffset(){return this.elapsed/1000*CYCLING.speed+this.extraDistance;}
   get remainingDistance(){const remaining=CYCLING.duration/1000*CYCLING.speed-this.roadOffset;return remaining<1e-6?0:remaining;}
   get remainingMs(){
-    let from=this.roadOffset,remaining=0;
+    let from=this.roadOffset,remaining=0,speed=this.speed;
     for(const phase of CYCLING_PHASES){
       const end=Math.min(CYCLING.duration,phase.until)/1000*CYCLING.speed;
-      if(end>from){remaining+=(end-from)/(CYCLING.speed*phase.speedMultiplier)*1000;from=end;}
+      if(end>from){
+        const target=CYCLING.speed*phase.speedMultiplier,distance=end-from;
+        const ramp=Math.max(0,target-speed)/CYCLING.acceleration,rampDistance=(speed+target)*ramp/2;
+        remaining+=(distance<rampDistance?2*distance/(speed+Math.sqrt(speed*speed+2*CYCLING.acceleration*distance))
+          :ramp+(distance-rampDistance)/target)*1000;
+        speed=target;from=end;
+      }
     }
     return remaining;
   }
   get progress(){return this.remainingDistance<1e-6?1:this.roadOffset/(CYCLING.duration/1000*CYCLING.speed);}
   get distance(){return this.roadOffset/CYCLING.pixelsPerMeter;}
   get difficulty(){return CYCLING_PHASES.find(phase=>this.progress*CYCLING.duration+1e-6<phase.until);}
-  get speed(){return CYCLING.speed*this.difficulty.speedMultiplier;}
+  get targetSpeed(){return CYCLING.speed*this.difficulty.speedMultiplier;}
+  get speed(){return this.pace;}
+  get travelSpeed(){return this.speed*(this.dashing?CYCLING_DASH.multiplier:1);}
+  approachDistance(seconds){
+    const accelerating=Math.min(seconds,Math.max(0,this.targetSpeed-this.speed)/CYCLING.acceleration);
+    return this.speed*accelerating+CYCLING.acceleration*accelerating*accelerating/2+this.targetSpeed*(seconds-accelerating);
+  }
+  loseSpeed(){
+    this.pace=0;
+    if(this.dashing)this.dashReadyAt=this.elapsed+CYCLING_DASH.cooldown;
+    this.dashUntil=0;
+  }
   get dashing(){return !this.done && this.elapsed+1e-7<this.dashUntil;}
   get dashRemaining(){return this.dashing?this.dashUntil-this.elapsed:0;}
   get dashCooldown(){return Math.max(0,this.dashReadyAt-this.elapsed);}
@@ -58,8 +75,8 @@ export class CyclingRun{
     const spawn=(lane,delay=0)=>{
       const roll=this.random(),cyclists=phase.cyclists??.45,kind=roll<cyclists?'cyclist':roll<cyclists+(1-cyclists)*.5?'dog':'hole';
       // Different approach speeds, same arrival window: a full lane remains traversable between groups.
-      const speed=this.speed+OBSTACLES[kind].speed;
-      this.obstacles.push({id:this.nextId++,kind,variant:Math.floor(this.random()*3),x:CYCLING.playerX+speed*(1.65+delay),
+      const seconds=1.65+delay;
+      this.obstacles.push({id:this.nextId++,kind,variant:Math.floor(this.random()*3),x:Math.max(1040,CYCLING.playerX+this.approachDistance(seconds)+OBSTACLES[kind].speed*seconds),
         y:CYCLING.lanes[lane],lane,born:this.elapsed,sway:kind==='hole'?0:phase.sway,hit:false});
     };
     for(const lane of blocked.slice(0,phase.count))spawn(lane);
@@ -67,7 +84,7 @@ export class CyclingRun{
       for(const lane of phase.followers===2?blocked:[blocked[Math.floor(this.random()*blocked.length)]])spawn(lane,.32);
     }
     if(!this.changuaSpawned && this.progress>=CYCLING.changuaProgress){
-      this.pickups.push({id:this.nextId++,kind:'full',x:CYCLING.playerX+this.speed*1.75,y:CYCLING.lanes[this.safeLane]});
+      this.pickups.push({id:this.nextId++,kind:'full',x:Math.max(1040,CYCLING.playerX+this.approachDistance(1.75)),y:CYCLING.lanes[this.safeLane]});
       this.changuaSpawned=true;
     }
     if(this.elapsed>=this.nextPickup){
@@ -77,7 +94,7 @@ export class CyclingRun{
   spawnGuardian(){
     const lane=CYCLING.lanes.reduce((nearest,y,i)=>Math.abs(y-this.y)<Math.abs(CYCLING.lanes[nearest]-this.y)?i:nearest,0);
     const targetY=CYCLING.lanes[lane],startY=targetY>=390?CYCLING.top-18:CYCLING.bottom+18;
-    const guardian={id:this.nextId++,kind:'guardian',x:CYCLING.playerX+this.speed*GUARDIAN.approachSeconds,
+    const guardian={id:this.nextId++,kind:'guardian',x:Math.max(1040,CYCLING.playerX+this.approachDistance(GUARDIAN.approachSeconds)),
       y:startY,startY,targetY,lane,born:this.elapsed,hit:false};
     this.obstacles.push(guardian);
     // Keep another reachable lane available while this crossing replaces a normal traffic group.
@@ -86,7 +103,7 @@ export class CyclingRun{
   }
   spawnCards(lane){
     const count=1+Math.floor(this.random()*3),y=clamp(CYCLING.lanes[lane]+(this.random()-.5)*16,CYCLING.top+8,CYCLING.bottom-8);
-    for(let i=0;i<count;i++)this.pickups.push({id:this.nextId++,kind:'money',x:CYCLING.playerX+this.speed*1.75+i*105,y});
+    for(let i=0;i<count;i++)this.pickups.push({id:this.nextId++,kind:'money',x:Math.max(1040,CYCLING.playerX+this.approachDistance(1.75))+i*105,y});
   }
   advance(ms){
     const start=this.roadOffset;let remaining=ms;
@@ -94,10 +111,15 @@ export class CyclingRun{
     while(remaining>1e-7 && this.remainingDistance>0){
       const phase=this.difficulty,baseSpeed=this.speed,boost=this.dashing?CYCLING_DASH.multiplier:1;
       const boundary=Math.min(CYCLING.duration,phase.until)/1000*CYCLING.speed;
-      const segment=Math.min(remaining,(boundary-this.roadOffset)/(baseSpeed*boost)*1000,
-        this.dashing?this.dashRemaining:Infinity);
+      const acceleration=baseSpeed<this.targetSpeed-1e-7?CYCLING.acceleration:0;
+      const distance=(boundary-this.roadOffset)/boost;
+      const toBoundary=acceleration?2*distance/(baseSpeed+Math.sqrt(baseSpeed*baseSpeed+2*acceleration*distance)):distance/baseSpeed;
+      const toCruise=acceleration?(this.targetSpeed-baseSpeed)/acceleration:Infinity;
+      const segment=Math.min(remaining,toBoundary*1000,toCruise*1000,this.dashing?this.dashRemaining:Infinity);
       if(segment<=1e-7)break;
-      this.extraDistance+=(baseSpeed*boost-CYCLING.speed)*segment/1000;
+      const seconds=segment/1000;
+      this.extraDistance+=(baseSpeed*seconds+acceleration*seconds*seconds/2)*boost-CYCLING.speed*seconds;
+      this.pace=Math.min(this.targetSpeed,baseSpeed+acceleration*seconds);
       this.elapsed+=segment;remaining-=segment;
     }
     return {ms:ms-remaining,roadMovement:this.roadOffset-start};
@@ -108,7 +130,7 @@ export class CyclingRun{
     const movement=this.advance(ms),roadMovement=movement.roadMovement;ms=movement.ms;
     this.y=clamp(this.y+clamp(steer,-1,1)*CYCLING.steerSpeed*ms/1000,CYCLING.top,CYCLING.bottom);
     // Stop adding obstacles early enough to have a clear finish straight.
-    if(this.elapsed>=this.nextWave && this.remainingMs>5000){this.spawnWave();this.nextWave=Math.max(this.elapsed+this.difficulty.interval,this.guardianUntil);}
+    if(this.elapsed>=this.nextWave && this.remainingDistance>this.targetSpeed*5){this.spawnWave();this.nextWave=Math.max(this.elapsed+this.difficulty.interval,this.guardianUntil);}
     const hits=[],passed=[],collected=[];
     for(const obstacle of this.obstacles){
       // Oncoming riders and dogs move relative to the road; potholes belong to the ground.
@@ -120,7 +142,7 @@ export class CyclingRun{
       if(obstacle.sway)obstacle.y=CYCLING.lanes[obstacle.lane]+Math.sin((this.elapsed-obstacle.born)/230)*obstacle.sway;
       if(obstacleHits(previous,obstacle,this.y)){
         obstacle.hit=true;
-        if(this.elapsed>=this.invulnerableUntil){hits.push(obstacle);this.invulnerableUntil=this.elapsed+CYCLING.invulnerability;}
+        if(this.elapsed>=this.invulnerableUntil){hits.push(obstacle);this.invulnerableUntil=this.elapsed+CYCLING.invulnerability;this.loseSpeed();}
       }
       if(!obstacle.passed && obstacle.x<CYCLING.playerX-110){obstacle.passed=true;if(!obstacle.hit)passed.push(obstacle);}
     }
@@ -134,5 +156,5 @@ export class CyclingRun{
     this.obstacles=this.obstacles.filter(o=>o.x>-130);this.done=this.progress===1;
     return {hits,passed,collected};
   }
-  respawn(){if(this.dashing)this.dashReadyAt=this.elapsed+CYCLING_DASH.cooldown;this.dashUntil=0;this.y=390;this.obstacles=[];this.pickups=[];this.guardianUntil=0;this.nextWave=this.elapsed+2300;this.nextPickup=Math.max(this.nextPickup,this.elapsed+2500);this.invulnerableUntil=this.elapsed+3000;}
+  respawn(){this.loseSpeed();this.y=390;this.obstacles=[];this.pickups=[];this.guardianUntil=0;this.nextWave=this.elapsed+2300;this.nextPickup=Math.max(this.nextPickup,this.elapsed+2500);this.invulnerableUntil=this.elapsed+3000;}
 }

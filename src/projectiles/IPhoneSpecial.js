@@ -84,12 +84,14 @@ export class IPhoneSpecial {
     for(const part of parts)part.setDepth?.(y+3);
     this.bursts.push({parts,born:s.combatTime});
     s.cameras?.main?.shake?.(70,.0025);
+    s.fx?.burst(x,cy,y+4,{colors:[0xffffff,0x7fe9ff,0x2a9fd8],glowColor:0x7fe9ff,glowSize:90,n:14,speed:[2.5,6.5],light:{color:0x7fe9ff,radius:130,intensity:.95,ms:240}});
   }
   /** Beam of light behind the flying phone: wide cyan glow, white core and sparkles. */
   drawTrail(phone){
     const g=phone.trail;if(!g?.clear)return;
     const T=IPHONE.trail,y=phone.y-IPHONE.flightHeight,len=Math.min(T.length,phone.distance),x0=phone.x-phone.facing*len,t=this.scene.combatTime;
     g.clear().setDepth?.(phone.y);
+    this.scene.fx?.lamp(phone,phone.x,y,{color:T.color,radius:90,intensity:.6});
     g.lineStyle(T.glow,T.color,.28).lineBetween(x0,y,phone.x,y);
     g.lineStyle(T.glow*.55,T.color,.5).lineBetween(x0+phone.facing*len*.3,y,phone.x,y);
     g.lineStyle(T.core,T.coreColor,.95).lineBetween(x0+phone.facing*len*.5,y,phone.x,y);

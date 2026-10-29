@@ -1,6 +1,6 @@
 import {ARCADE} from '../data/arcade.js';
 
-export const HEN={speed:205,damage:5,peckEvery:54,lifetime:540,reflectSpeed:620,reflectDamage:34,height:25};
+export const HEN={speed:205,damage:5,peckEvery:54,lifetime:540,reflectSpeed:620,reflectDamage:34,height:33};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 /** Ankle-height hazards are separate from the ordinary enemy hurtboxes: fists pass over them. */
 export class Poultry {

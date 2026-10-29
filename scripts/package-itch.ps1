@@ -10,7 +10,9 @@ if ($html -match '(?:src|href)="/(?!/)') { throw 'El HTML contiene una ruta abso
 for ($track = 1; $track -le 7; $track++) {
   if (!(Test-Path -LiteralPath (Join-Path $buildRoot "assets/music$track.ogg"))) { throw "Falta pista OGG $track." }
 }
-if (Get-ChildItem -LiteralPath (Join-Path $buildRoot 'assets') -Filter 'music*.mp3') { throw 'El paquete contiene musica MP3 retirada.' }
+for ($track = 8; $track -le 10; $track++) {
+  if (!(Test-Path -LiteralPath (Join-Path $buildRoot "assets/music$track.mp3"))) { throw "Falta pista MP3 $track." }
+}
 $files = @(Get-ChildItem -LiteralPath $buildRoot -Recurse -File)
 $totalBytes = ($files | Measure-Object -Property Length -Sum).Sum
 if ($files.Count -gt 1000 -or $totalBytes -gt 500MB) { throw 'El paquete supera los limites de itch.io.' }

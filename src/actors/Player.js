@@ -17,6 +17,8 @@ export class Player {
   reset(){this.captor?.releasePlayer();this.dropGrab();this.state='walk';this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.dashReady=0;this.buffer.clear();if(this.actor)this.actor.z=0;}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid player transition: ${this.state} → ${state}`);if(this.state==='grab' && state!=='grab')this.dropGrab();this.state=state;this.age=0;if(!['attack','special'].includes(state)){this.action=null;this.scene.playerAttack=null;}}
   request(type){
+    if(type==='super'){this.scene.superPower?.activate();return;}
+    if(this.scene.superPower?.active)return;
     if(this.captor){this.captor.strugglePress?.(type);return;}
     if(this.runtime.diablitos?.holdsPlayer)return;
     if(type==='punch' && this.runtime.diablitos?.tryPlayerUse())return;
@@ -27,7 +29,7 @@ export class Player {
     if(airborne && type!=='kick')return false;
     if(type===s.character.special && (s.combatTime<s.specialReadyAt || !canSpendSpecialEnergy(s)))return false;
     let data=playerAttackData(s.character,type,stage,airborne);if(!data)return false;
-    if(!airborne)data=s.vuvuzela?.attack(data)??data;
+    if(!airborne){data=s.vuvuzela?.attack(data)??data;data=s.panela?.attack(data)??data;}
     if(this.state==='jump' && !airborne)this.transition('walk'); // landing frame: the jump state ends this same step
     this.transition(type===s.character.special?'special':'attack');
     this.action={data,index:0,displayedFrame:data.frames[0],targets:new Set(),committed:false};
@@ -69,6 +71,7 @@ export class Player {
     this.captor?.heldInput?.(input);
     if(this.captor){this.captor.holdPlayer();this.buffer.clear();s.jumpHeight=0;return;}
     if(this.runtime.diablitos?.holdsPlayer){this.buffer.clear();s.jumpHeight=this.actor.z??0;return;}
+    if(s.superPower?.active){this.buffer.clear();s.jumpHeight=0;return;}
     if(combat.frozen(this.actor))return;
     const previous={x:this.actor.x,y:this.actor.y};
     if(input.dash && this.state!=='walk' && this.state!=='jump')this.dash(input.dx,input.dy);
@@ -133,7 +136,7 @@ export class Player {
   /** Walking into a grabbable enemy for a few frames seizes it. */
   tryGrab(input){
     const s=this.scene,p=this.actor,g=ARCADE.grab,dir=Math.sign(input.dx);
-    if(!dir || (p.z??0)>0 || s.vuvuzela?.remaining){this.grabTouch=null;return false;}
+    if(!dir || (p.z??0)>0 || s.vuvuzela?.remaining || s.panela?.remaining){this.grabTouch=null;return false;}
     const target=s.enemies.find(e=>{
       const model=this.runtime.enemies.get(e);
       return model?.grabbable() && Math.sign(e.x-p.x)===dir && Math.abs(e.x-p.x)<=g.reach && Math.abs(e.y-p.y)<=g.depth;
@@ -195,6 +198,7 @@ export class Player {
     const s=this.scene,attack=s.playerAttack;if(!attack)return;
     if(!action.committed){
       s.vuvuzela?.commit(action);
+      s.panela?.commit(action);
       if(attack.type==='iphone'){action.committed=true;s.iphone?.release(attack);return;}
       if(attack.type==='books'){action.committed=true;s.books?.summon(attack);return;}
       if(attack.type===s.character.special){

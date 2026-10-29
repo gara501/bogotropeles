@@ -28,15 +28,17 @@ export class CombatSystem {
     victim?.sprite?.setTintFill?.(0xffffff);this.flashes.set(victim,this.frame+ARCADE.feedback.flash);
     const f=ARCADE.feedback,s=this.scene,byPlayer=attacker && attacker===s.player;
     if(byPlayer && attack.finisher)s.cameras?.main.shake(f.finisherShake.ms,f.finisherShake.strength);else s.cameras?.main.shake(f.shakeMs,f.shakeStrength);
-    const graphic=this.acquire();
-    if(!graphic)return;
-    if(!byPlayer){this.impacts.push({graphic,x:((attacker?.x??victim.x)+victim.x)/2,y:victim.y-(victim.config?.height??0)/2,until:this.frame+f.impact});return;}
+    if(!byPlayer){const graphic=this.acquire();if(!graphic)return;this.impacts.push({graphic,x:((attacker?.x??victim.x)+victim.x)/2,y:victim.y-(victim.config?.height??0)/2,until:this.frame+f.impact});return;}
     // The player's hits: sparks by strike type at the contact point (kicks land lower), plus a rebound on finishers.
     const kick=/kick|stomp/i.test(attack.type??''),kind=attack.finisher?'finisher':kick?'kick':'punch',life=f.sparks[kind];
     const facing=attack.facing||Math.sign(victim.x-attacker.x)||1,height=victim.config?.height??100;
-    this.impacts.push({graphic,kind,facing,x:victim.x-facing*24,y:victim.y-height*(kick?.42:.62),born:this.frame,until:this.frame+life,life,
-      seed:(victim.x*7+this.frame*13)%360});
-    if(attack.finisher)attacker.x=Math.max(s.floor.left,Math.min(s.floor.right,attacker.x-facing*f.recoil));
+    const x=victim.x-facing*24,y=victim.y-height*(kick?.42:.62);
+    // Pooled sprite particles + a light when FX are on; the old redrawn-Graphics burst remains as the fallback.
+    if(!s.fx?.hit(x,y,facing,kind)){
+      const graphic=this.acquire();if(!graphic)return;
+      this.impacts.push({graphic,kind,facing,x,y,born:this.frame,until:this.frame+life,life,seed:(victim.x*7+this.frame*13)%360});
+    }
+    if(attack.finisher && !attack.super)attacker.x=Math.max(s.floor.left,Math.min(s.floor.right,attacker.x-facing*f.recoil));
   }
   /** Spark burst: rays radiating from the contact point that shoot out and fade. */
   drawSparks(p,frame){
@@ -75,6 +77,7 @@ export class CombatSystem {
   splash(actor,facing,range){
     const graphic=this.acquire();if(!graphic)return;
     this.impacts.push({graphic,splash:true,x:actor.x,y:actor.y,facing,range,born:this.frame,until:this.frame+36,life:36,seed:Math.round(actor.x)%97});
+    this.scene.fx?.flash(actor.x+facing*range*.25,actor.y-24,{color:0x7fd0ff,radius:120,intensity:.55,ms:520,vx:facing*range*.55/36});
   }
   drawSplash(p,frame){
     const t=Math.min(1,(frame-p.born)/p.life),g=p.graphic.clear().setDepth(p.y+90),alpha=1-t*t;
@@ -101,6 +104,7 @@ export class CombatSystem {
     const graphic=this.acquire();if(!graphic)return;
     this.impacts.push({graphic,wave:true,x:actor.x+facing*20,y:actor.y-(actor.config?.height??110)*.55,floor:actor.y,facing,range,born:this.frame,until:this.frame+30,life:30});
     this.scene.cameras?.main?.shake?.(80,.003);
+    this.scene.fx?.flash(actor.x+facing*20,actor.y-(actor.config?.height??110)*.55,{color:0x9a63ff,radius:130,intensity:.9,ms:500,vx:facing*range/30,grow:1.1});
   }
   drawWave(p,frame){
     const t=Math.min(1,(frame-p.born)/p.life),g=p.graphic.clear().setDepth(p.floor+90),alpha=1-t;
@@ -117,7 +121,8 @@ export class CombatSystem {
   /** Gymbro stomp: floor shockwave rings, cracks radiating from the foot, dust clouds and flying debris. */
   quake(actor,range){
     const graphic=this.acquire();if(!graphic)return;
-    this.impacts.push({graphic,quake:true,x:actor.x,y:actor.y,range,born:this.frame,until:this.frame+42,life:42,seed:Math.round(actor.x)%89});
+    const fx=Boolean(this.scene.fx?.quake(actor.x,actor.y,range));
+    this.impacts.push({graphic,quake:true,fx,x:actor.x,y:actor.y,range,born:this.frame,until:this.frame+42,life:42,seed:Math.round(actor.x)%89});
     this.scene.cameras?.main?.shake?.(160,.008);
   }
   drawQuake(p,frame){
@@ -136,13 +141,13 @@ export class CombatSystem {
       g.lineStyle(14-i*3,0xffb347,alpha*.45*(1-i*.2)).strokeEllipse(p.x,p.y,r*2,r*.62);
       g.lineStyle(7-i*1.5,i?0xffe0a8:0xffffff,alpha*(1-i*.2)).strokeEllipse(p.x,p.y,r*2,r*.62);
     }
-    // Dust clouds rolling out on both sides.
-    for(let i=0;i<10;i++){
+    // Dust clouds rolling out on both sides (particles take over this and the debris when FX are on).
+    if(!p.fx)for(let i=0;i<10;i++){
       const side=i%2?1:-1,a=((p.seed+i*29)%100)/100,d=p.range*(.2+t*(.6+a*.4));
       g.fillStyle(0xd8c6a6,.75*alpha).fillCircle(p.x+side*d,p.y-8-a*18-t*14,(12+a*14)*(.6+t));
     }
     // Debris thrown up.
-    for(let i=0;i<8;i++){
+    if(!p.fx)for(let i=0;i<8;i++){
       const a=((p.seed*7+i*31)%100)/100,side=i%2?1:-1,dx=side*(20+a*70)*t,dy=-(40+a*60)*Math.sin(Math.min(1,t*1.4)*Math.PI);
       g.fillStyle(i%3?0x5a4c40:0x9a8a78,alpha).fillRect(p.x+dx,p.y-10+dy,6+a*5,5+a*4);
     }

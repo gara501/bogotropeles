@@ -48,7 +48,7 @@ export class ArcadeRuntime {
       s.chivaBonus.tick();
       if(s.chivaBonus.locked){
         this.clearInput();s.stage?.update(frame);s.chivaBonus.update(frame);
-        s.placeFighter(s.player,s.player.z??0);s.vuvuzela?.render();return;
+        s.placeFighter(s.player,s.player.z??0);s.vuvuzela?.render();s.panela?.render();s.superPower?.render();return;
       }
     }
     const previous={x:s.player.x,y:s.player.y},walking=this.player.state==='walk' && !this.combat.frozen(s.player);
@@ -59,6 +59,7 @@ export class ArcadeRuntime {
     s.stage?.update(frame); // moves the camera and the floor span before enemies use it
     s.energyPickups?.update(frame);
     if(!s.chivaBonus)s.vuvuzela?.update(frame);
+    s.panela?.update(frame);s.superPower?.update();
     s.motorcycles?.update();
     for(const actor of s.enemies){
       if(actor.hp<=0){this.combat.tokens.release(actor);continue;}
@@ -91,7 +92,7 @@ export class ArcadeRuntime {
     const blinking=s.combatTime<s.respawnProtectedUntil || s.combatTime<s.invulnerableUntil;
     s.player.sprite.setFlipX(s.facing<0).setAlpha(blinking && frame%ARCADE.flow.blinkPeriod<ARCADE.flow.blinkVisible?ARCADE.flow.blinkAlpha:1);
     s.placeFighter(s.player,s.player.z??0);
-    s.vuvuzela?.render();
+    s.vuvuzela?.render();s.panela?.render();s.superPower?.render();
     if(this.debugBoxes){
       this.boxGraphics??=s.add.graphics().setDepth(1100);this.boxGraphics.clear();
       for(const actor of [s.player,...s.enemies.filter(e=>e.hp>0)]){const b=this.combat.hurtbox(actor);this.boxGraphics.lineStyle(1/ARCADE.screen.zoom,0x66ff88,1).strokeRect(b.x-b.halfWidth,b.y-b.halfDepth,b.halfWidth*2,b.halfDepth*2);}
@@ -110,11 +111,11 @@ export class ArcadeRuntime {
     this.enemies.get(actor).checkShieldPhase();
   }
   playerHit(combo,source){this.player.hurt(Boolean(combo?.finisher));if(!combo)this.combat.impact(source??null,this.scene.player,{finisher:false});}
-  resetPlayer(revive=false){this.diablitos.cancelPlayer();this.poultry.clear();this.potatoes.clear();this.scene.vuvuzela?.clearHeld();this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
+  resetPlayer(revive=false){this.diablitos.cancelPlayer();this.poultry.clear();this.potatoes.clear();this.scene.vuvuzela?.clearHeld();this.scene.panela?.clearHeld();this.scene.panela?.clearFlights();this.scene.superPower?.reset();this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
   clearInput(){this.player.buffer.clear();this.edges={jump:false,dash:false};this.input={dx:0,dy:0};}
   win(){
     const s=this.scene;this.diablitos.clear();this.poultry.clear();this.potatoes.clear();s.finished=true;this.player.transition('celebration');this.clearInput();this.combat.tokens.clear();
-    s.vuvuzela?.clearHeld();
+    s.vuvuzela?.clearHeld();s.panela?.clearHeld();s.panela?.clearFlights();s.superPower?.reset();
     s.stage?.rain?.clear();
     s.stage?.pigeons?.clear();
     s.motorcycles?.clear();

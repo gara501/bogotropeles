@@ -143,3 +143,6 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 .audio-toggle[aria-pressed=true]{color:#142127;background:#d6ed64;border-color:#d6ed64}
 .is-mobile .stage-bar{height:44px;min-height:44px}
 .is-mobile .audio-toggle{min-height:40px;min-width:120px;font-size:8px}
+
+.touch-actions .touch-super{background:#153f59;border-color:#85faff;color:#b9ffff}
+.touch-actions .touch-super:disabled{opacity:.45}

@@ -1,3 +1,4 @@
+import {SUPER} from './game/SuperPower.js';
 import Phaser from 'phaser';
 import './style.css';
 import selectionBackground from './data/players/fondo_players.png?url';
@@ -89,7 +90,7 @@ function pick(key) {
 }
 // TEST LEVEL SELECTOR: lets you start any level from the character screen.
 // Set LEVEL_SELECT to false to remove it (the game then always continues from the campaign's current level).
-const LEVEL_SELECT = true;
+const LEVEL_SELECT = false;
 const levelPicker=import.meta.env.DEV && LEVEL_SELECT?createLevelPicker():null;
 function createLevelPicker(){
   const label=document.createElement('label');label.className='level-picker';
@@ -345,7 +346,7 @@ if (import.meta.env.DEV) {
   });
   if(debugParams.has('campaignPreview'))game.events.once('menu-ready',async()=>{
     const {installCampaignPreview}=await import('./debug/campaignPreview.js');installCampaignPreview(game);
-    if(['palomojao','dorado','andino','taxis'].includes(debugParams.get('campaignPreview'))){
+    if(['palomojao','dorado','andino','taxis','panela','super'].includes(debugParams.get('campaignPreview'))){
       selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
       showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
       game.events.once('level-start',()=>{
@@ -354,9 +355,19 @@ if (import.meta.env.DEV) {
           for(const enemy of s.enemies)if(enemy.hp>0)s.hitEnemy(enemy,{damage:99999,knockback:0,facing:1});
           Object.assign(s.waves,{spawned:15,wave:6,arena:2,arenaWave:2,waiting:false});s.defeated=15;
           s.stage.jumpToArena(2);s.invulnerableUntil=0;s.waves.update();s.updateCounter();
-        }else s.invulnerableUntil=Infinity;
+        }else {
+          s.invulnerableUntil=Infinity;
+          if(debugParams.get('campaignPreview')==='super'){
+            s.superPower.charge=SUPER.hits;s.superPower.showCharge();
+            s.enemies.forEach((enemy,i)=>{enemy.x=600+i*130;enemy.y=450;enemy.config={...enemy.config,speed:0};});
+          }
+          if(debugParams.get('campaignPreview')==='panela'){
+            s.debugPreview=true;s.panela?.equip();
+            s.enemies.forEach((enemy,i)=>{enemy.x=600+i*130;enemy.y=450;});
+          }
+        }
       });
-      const previewCombat={palomojao:7,dorado:8,andino:6,taxis:8}[debugParams.get('campaignPreview')];
+      const previewCombat={palomojao:7,dorado:8,andino:6,taxis:8,panela:1,super:2}[debugParams.get('campaignPreview')];
       game.scene.start('Street',{character:selected,level:campaignIndexForCombat(previewCombat)});focusGame();
     }
   });

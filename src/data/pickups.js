@@ -16,9 +16,9 @@ const strip=(top,bottom,cell=543)=>[0,1,2,3].map(i=>[i*cell,top,cell,bottom-top+
 // can/taquilla/boxes have 6 poses (intact, hit, dented, three breaking); parking has 4 (intact, cracked, bursting, rubble).
 // levels: 0-based level indexes where each one can appear.
 export const CONTAINERS={
-  can:{source:'can-source',url:canUrl,height:76,levels:[0,1,4,5,6,7],poses:{hit:1,dented:2,breaking:[3,4,5]},
+  can:{source:'can-source',url:canUrl,height:76,levels:[0,1,4,5,6,7],poses:{hit:1,dented:2,breaking:[3,4,5]},align:'bottom',
     rects:[[6,152,292,440],[330,157,301,432],[685,160,296,431],[1017,173,368,420],[1385,386,370,224],[1773,453,388,163]]},
-  taquilla:{source:'taquilla-source',url:taquillaUrl,height:104,levels:[2,3,4,5],poses:{hit:1,dented:2,breaking:[3,4,5]},
+  taquilla:{source:'taquilla-source',url:taquillaUrl,height:104,levels:[2,3,4,5],poses:{hit:1,dented:2,breaking:[3,4,5]},align:'bottom',
     rects:[[207,64,181,432],[673,71,237,428],[1153,66,248,432],[85,534,344,431],[514,681,469,282],[1031,771,476,196]]},
   // Parking meter: outdoor street levels.
   parking:{source:'parking-source',url:parkingUrl,height:96,levels:[0,2,4,5,6],poses:{hit:1,dented:1,breaking:[2,3]},align:'bottom',

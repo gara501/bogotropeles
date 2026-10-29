@@ -1,3 +1,4 @@
+import {SuperPower,SUPER} from '../src/game/SuperPower.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
@@ -51,6 +52,9 @@ const CAMPAIGN=ALL_COMBAT_STAGES.filter(level=>level.boss && level.combatIndex<7
 const levels=playableLevels.filter(level=>level.boss && level.combatIndex<7);
 const {enemies}=await import('../src/data/enemies.js');
 const {MOTORATA_ENTRY}=await import('../src/data/motorata.js');
+const {PANELA_PLAYERS,PANELA_POSES,PANELA_ATLAS}=await import('../src/data/panela.js');
+const {SUPER_PLAYERS,SUPER_POSES}=await import('../src/data/superPlayers.js');
+const {Panela}=await import('../src/game/Panela.js');
 const {actorsFor}=await import('../src/data/actorSet.js');hooks.deregister();
 const {CyclingStage}=await import('../src/cycling/CyclingStage.js');
 const {CYCLING}=await import('../src/cycling/CyclingRun.js');
@@ -140,7 +144,7 @@ test('cycling steering keeps normal pedaling frames and incoming dogs face the p
   for(const key of ['UP','DOWN']){
     s.keys[key].isDown=true;c.run.y=390;const before=c.run.y;
     for(let phase=0;phase<4;phase++){
-      c.run.elapsed=phase*115;tick();assert.equal(s.player.sprite.frame,phase);
+      c.run.extraDistance=phase*72-c.run.elapsed/1000*CYCLING.speed;tick();assert.equal(s.player.sprite.frame,phase);
       assert.equal(s.player.sprite.y,c.run.y);
     }
     assert.ok(key==='UP'?c.run.y<before:c.run.y>before);s.keys[key].isDown=false;
@@ -149,7 +153,7 @@ test('cycling steering keeps normal pedaling frames and incoming dogs face the p
   const cyclist=new Visual();cyclist.setFrame=function(frame){this.frame=frame;return this;};
   const dog=c.visuals.get(0).sprite;dog.setFrame=function(frame){this.frame=frame;return this;};
   c.run.obstacles.push({id:1,kind:'cyclist',variant:2,x:1000,y:465,hit:false});c.visuals.set(1,{sprite:cyclist});
-  c.run.elapsed=210;c.render();
+  c.run.elapsed=210;c.run.extraDistance=72-c.run.elapsed/1000*CYCLING.speed;c.render();
   assert.equal(s.player.sprite.frame,1);assert.equal(cyclist.frame,11);assert.equal(dog.frame,3);
   c.flashUntil=c.run.elapsed+100;c.render();assert.equal(s.player.sprite.frame,6);
   s.finished=true;c.render();assert.equal(s.player.sprite.frame,7);
@@ -202,7 +206,7 @@ test('cycling dash accepts keyboard and touch taps, freezes during pause and doe
 test('cycling finish awards once, waits for the result and advances to Plaza de Bolívar',()=>{
   const {s,c,tick}=cyclingFixture(),results=[],transitions=[];
   s.game.events.on('level-result',r=>results.push(r));s.game.events.on('level-transition',r=>transitions.push(r));
-  c.run.elapsed=CYCLING.duration-10;c.run.nextWave=Infinity;const score=s.run.score;tick();
+  c.run.elapsed=CYCLING.duration-10;c.run.pace=c.run.targetSpeed;c.run.nextWave=Infinity;const score=s.run.score;tick();
   assert.equal(s.finished,true);assert.equal(s.run.score,score+1500);s.nextLevel();assert.equal(transitions.length,0);
   tick(80);assert.equal(results.length,1);assert.equal(results[0].cycling,true);assert.equal(results[0].last,false);
   s.nextLevel();s.nextLevel();assert.deepEqual(transitions,[{character:'office',level:2}]);
@@ -689,15 +693,29 @@ test('energy pickup requires ground proximity, caps health and stays available a
   s.paused=false;system.update(4);assert.equal(s.health,100);assert.equal(s.healthBar.width,200);assert.equal(item.sprite.destroyed,true);
 });
 
-test('can spawn rolls once per reached arena and respects scrolling coordinates; shutdown cleans remaining objects',()=>{
+test('containers for the entire route exist before scrolling; arena entry never spawns or rerolls them',()=>{
   const {s}=pickupSetup();let calls=0;
   s.energyPickups.destroy();s.energyPickups=new EnergyPickups(s,()=>{calls++;return .5;});
-  s.waves.arena=1;let reached=false;s.stage={reached:()=>reached,arenaScroll:()=>720};
-  const system=s.energyPickups;system.update(0);assert.equal(calls,0);
-  reached=true;system.update(1);assert.equal(calls,4,'chance, x, y and which container');assert.equal(system.cans.length,1);
-  const can=system.cans[0];assert.ok(can.x>720 && can.x<1680);assert.ok(can.y>=s.floor.top && can.y<=s.floor.bottom);
-  for(let frame=2;frame<200;frame++)system.update(frame);assert.equal(calls,4);
-  system.destroy();system.destroy();assert.equal(can.sprite.destroyed,true);assert.equal(system.cans.length,0);assert.equal(system.items.length,0);
+  s.waves.arena=0;s.stage={layout:{arenas:4},reached:()=>false,arenaScroll:i=>i*720};
+  const system=s.energyPickups;system.prepare();assert.equal(calls,16,'one chance, x, y and type roll per arena');
+  assert.equal(system.cans.length,4);const originals=[...system.cans];
+  originals.forEach((can,i)=>{assert.ok(can.x>i*720 && can.x<i*720+960);assert.ok(can.y>=s.floor.top+18 && can.y<=s.floor.bottom-18);});
+  assert.ok(originals.at(-1).x>2*960,'even containers beyond the next screen are already placed');
+  for(let frame=1;frame<200;frame++){s.waves.arena=Math.min(3,Math.floor(frame/50));system.update(frame);}
+  assert.equal(calls,16);assert.deepEqual(system.cans,originals);
+  system.destroy();system.destroy();assert.ok(originals.every(can=>can.sprite.destroyed));assert.equal(system.cans.length,0);assert.equal(system.items.length,0);
+});
+
+test('container footprints avoid scenery and potato supplies instead of stacking on the same spot',()=>{
+  const {s}=pickupSetup();s.level={...s.level,potatoSupplies:true};
+  s.stage={layout:{arenas:1},arenaScroll:()=>0,props:{items:[{factor:1,y:s.floor.bottom-18,sprite:{x:672,displayWidth:220}}]}};
+  const system=new EnergyPickups(s,()=>.5);system.prepare();assert.equal(system.cans.length,2);
+  const [supplies,random]=system.cans;assert.equal(supplies.potatoSacks,2);
+  assert.ok(Math.abs(supplies.x-random.x)>=80 || Math.abs(supplies.y-random.y)>=32);
+  for(const can of system.cans){
+    const prop=s.stage.props.items[0];assert.ok(Math.abs(can.x-prop.sprite.x)>=150 || can.y<=prop.y-20 || can.y>=prop.y+28);
+    assert.ok(can.y>=s.floor.top+18 && can.y<=s.floor.bottom-18);
+  }
 });
 function arcadeSetup(character='gymbro'){
   const s=setup(0,character);s.arcade=new ArcadeRuntime(s);s.debugPreview=true;s.waves.update=()=>{};
@@ -1805,12 +1823,14 @@ test('La Palomera: pigeon cloud only from half health — summon poses 28-33, th
   const p=enemies.palomera;assert.deepEqual(p.flock.poses,[28,29,30,31,32,33]);
   assert.equal(enemyFlockData(p).frames.find(f=>f.phase==='active').pose,31);
   const {s,step,boss,model}=palomeraArena();model.throwReady=1e9;model.healReady=1e9;
+  const flightSounds=[];s.sfx={play:name=>flightSounds.push(name)};
   const fake=(x,y)=>{const o=new Proxy({x,y,destroy(){},setPosition(nx,ny){o.x=nx;o.y=ny;return o;}},{get:(t,k)=>k in t?t[k]:()=>o});return o;};
   s.add.sprite??=(x,y)=>fake(x,y);s.add.ellipse??=(x,y)=>fake(x,y);
   boss.x=s.player.x+300;boss.y=s.player.y;model.ready=0;step(60);assert.ok(!model.action?.flock,'healthy: no cloud');
   boss.hp=Math.round(boss.config.hp*.45);model.ready=0;let guard=0;
   while(!s.flock?.active && guard++<900)step(); // after any combo in progress and its cooldown
   assert.ok(s.flock?.active,'the cloud is launched below half health');assert.equal(s.flock.birds.length,p.flock.birds);
+  assert.equal(flightSounds.filter(name=>name==='pigeonFlight').length,1);
   // Run it out with the player standing still: some poop lands on them and takes health.
   boss.x=s.player.x+700;model.ready=1e9;model.flockReady=1e9; // keep her out of it
   s.invulnerableUntil=0;const before=s.health;guard=0;
@@ -1829,6 +1849,7 @@ function palomeraArena(){
 }
 test('La Palomera: after the pigeon cloud, a 5 s pigeon shield — invincible, many pigeons thrown, the ring hurts up close',()=>{
   const {s,step,boss,model}=palomeraArena();model.throwReady=1e9;model.healReady=1e9;
+  const flightSounds=[];s.sfx={play:name=>flightSounds.push(name)};
   const fake=(x,y)=>{const o=new Proxy({x,y,destroy(){},setPosition(nx,ny){o.x=nx;o.y=ny;return o;}},{get:(t,k)=>k in t?t[k]:()=>o});return o;};
   s.add.sprite??=(x,y)=>fake(x,y);s.add.ellipse??=(x,y)=>fake(x,y);s.add.image??=(x,y)=>fake(x,y);
   boss.x=s.player.x+300;boss.y=s.player.y;boss.hp=Math.round(boss.config.hp*.45);model.ready=0;
@@ -1862,9 +1883,10 @@ test('any hit interrupts La Palomera healing and she cannot restart it immediate
   model.ready=0;step(30);assert.notEqual(model.state,'heal');
 });
 test('La Palomera throws a pigeon that faces its flight and hurts the player',()=>{
-  const {s,step,boss,model}=palomeraArena();boss.x=s.player.x+420;boss.y=s.player.y;s.invulnerableUntil=0;s.respawnProtectedUntil=0;
+  const {s,step,boss,model}=palomeraArena();const flightSounds=[];s.sfx={play:name=>flightSounds.push(name)};boss.x=s.player.x+420;boss.y=s.player.y;s.invulnerableUntil=0;s.respawnProtectedUntil=0;
   let thrown=null;for(let i=0;i<220 && !thrown;i++){step();thrown=s.projectiles.find(p=>p.texture==='paloma');}
   assert.ok(thrown,'a pigeon is thrown');assert.equal(thrown.facing,-1);assert.equal(thrown.spin,0,'pigeons fly, they do not spin');
+  assert.equal(flightSounds.filter(name=>name==='pigeonFlight').length,1);
   const health=s.health;for(let i=0;i<120 && s.projectiles.includes(thrown);i++)step();assert.ok(s.health<health);
 });
 
@@ -2864,4 +2886,142 @@ test('taxi camera crosses exactly one arena while preserving the player screen p
   s.taxiRush.progress=1;s.taxiRush.active=false;s.taxiRush.justFinished=true;s.stage.update();
   assert.equal(s.stage.scrollX,s.stage.arenaScroll(3));assert.equal(s.player.x-s.stage.scrollX,screenX);
   assert.equal(s.taxiRush.justFinished,false);
+});
+
+
+test('all five panela sheets have nine complete isolated poses and valid body pivots',()=>{
+  assert.equal(Object.keys(PANELA_PLAYERS).length,5);
+  for(const [key,url] of Object.entries(PANELA_PLAYERS)){
+    const png=readFileSync(new URL(url.replace('?url',''))),w=png.readUInt32BE(16),h=png.readUInt32BE(20),config=PANELA_POSES[key];
+    assert.equal(png[25],6,'RGBA transparent asset');assert.equal(config.frameRects.length,9);
+    for(const [i,r] of config.frameRects.entries()){
+      assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=w && r.y+r.height<=h);
+      assert.ok(config.frameAnchors[i]>=r.x && config.frameAnchors[i]<=r.x+r.width);
+    }
+  }
+  const png=readFileSync(new URL(PANELA_ATLAS.url.replace('?url',''))),w=png.readUInt32BE(16),h=png.readUInt32BE(20);
+  assert.equal(png[25],6);
+  for(const [x,y,width,height] of Object.values(PANELA_ATLAS.frames))assert.ok(x>=0 && y>=0 && x+width<=w && y+height<=h);
+});
+
+test('panela release uses real player timing and hits enemies for twice the normal punch',()=>{
+  for(const character of ['office','student','teleperforman','gymbro','magolita']){
+    const s=setup(1,character);s.enemies=[];s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};s.invulnerableUntil=Infinity;
+    s.player.x=200;s.player.y=450;s.facing=1;
+    const visual=(x,y)=>{const v=new Visual(x,y);v.setScrollFactor=()=>v;v.setRotation=()=>v;return v;};
+    s.add.image=visual;s.add.text=visual;s.textures={exists:()=>false};
+    s.panela=new Panela(s,()=>1);s.panela.rolled.add(0);s.panela.equip();
+    const e=s.spawnEnemy('walker',0,0,2,0);e.x=500;e.y=450;e.config.speed=0;
+    const hp=e.hp;s.debugPreview=true;s.arcade.player.begin('punch');
+    for(let i=0;i<14;i++)s.update(0,ARCADE.clock.stepMs);
+    assert.equal(s.panela.remaining,1);assert.equal(e.hp,hp);
+    for(let i=0;i<46;i++)s.update(0,ARCADE.clock.stepMs);
+    assert.equal(s.panela.remaining,0);assert.equal(e.hp,hp-s.character.attacks.punch.damage*2,character);
+    assert.equal(s.panela.shots.length,0);s.panela.destroy();
+  }
+});
+
+
+function attachSuper(s){
+  const visual=(x,y)=>{const v=new Visual(x,y);v.setScrollFactor=()=>v;v.setTexture=(key,frame)=>{v.key=key;v.frame=frame;return v;};return v;};
+  s.add.image=visual;s.add.text=visual;
+  s.add.graphics=()=>{const g=new Proxy({destroy(){this.destroyed=true;}},{get:(t,k)=>k in t?t[k]:()=>g});return g;};
+  s.textures={exists:key=>key.endsWith('-super'),get:()=>({referenceHeight:450})};
+  s.superPower=new SuperPower(s);return s.superPower;
+}
+function superArena(character='office'){
+  const s=setup(2,character);s.enemies=[];s.arcade=new ArcadeRuntime(s);s.waves.update=()=>{};s.invulnerableUntil=0;
+  attachSuper(s);
+  const step=(n=1)=>{for(let i=0;i<n;i++)s.update(0,ARCADE.clock.stepMs);};
+  const enemy=(key,x,y,hp)=>{const a=s.spawnEnemy(key,0,0,2,0);a.x=x;a.y=y;a.hp=hp??a.hp;a.config={...a.config,speed:0};
+    const m=new Enemy(s.arcade,a);m.ready=1e9;s.arcade.enemies.set(a,m);return {a,m};};
+  return {s,power:s.superPower,step,enemy};
+}
+test('super meter counts 20 damaging hits, ignores blocked attempts and resets only on accepted player damage',()=>{
+  const {s,power,enemy}=superArena(),{a}=enemy('walker',600,450,10000);
+  const hit={type:'punch',damage:1,knockback:0,facing:1};a.invulnerableUntil=Infinity;s.hitEnemy(a,hit);assert.equal(power.charge,0);
+  a.invulnerableUntil=0;for(let i=0;i<SUPER.hits-1;i++)s.hitEnemy(a,hit);assert.equal(power.charge,SUPER.hits-1);assert.equal(power.activate(),false);
+  s.hitEnemy(a,hit);assert.equal(power.ready,true);s.hitEnemy(a,hit);assert.equal(power.charge,SUPER.hits);
+  s.invulnerableUntil=Infinity;s.hitPlayer(1);assert.equal(power.charge,SUPER.hits);
+  s.invulnerableUntil=0;s.hitPlayer(1);assert.equal(power.charge,0);assert.equal(power.ready,false);
+});
+test('super activation consumes the meter and halves only visible enemies once across every lane',()=>{
+  const {s,power,step,enemy}=superArena();s.player.x=200;
+  const near=enemy('walker',500,410,200),far=enemy('walker',800,500,300),outside=enemy('walker',1100,450,400);outside.m.step=()=>{};
+  power.charge=SUPER.hits;assert.equal(power.activate(),true);assert.equal(power.charge,0);assert.equal(s.arcade.player.state,'special');
+  step(SUPER.release-1);assert.equal(near.a.hp,200);s.keys.D.isDown=true;s.keys.SHIFT.isDown=true;s.keys.SHIFT.justDown=true;
+  const x=s.player.x;step();assert.equal(s.player.x,x,'charging cannot be cancelled by a dash');s.keys.D.isDown=false;s.keys.SHIFT.isDown=false;
+  assert.equal(near.a.hp,100);assert.equal(far.a.hp,150);assert.equal(outside.a.hp,400);
+  assert.equal(near.m.state,'superDown');assert.equal(far.m.state,'superDown');assert.equal(power.charge,0);
+  step(150);assert.equal(near.a.hp,100);assert.equal(far.a.hp,150);assert.notEqual(near.m.state,'superDown');assert.equal(power.active,false);
+});
+test('super bypasses shields and temporary invulnerability, and pause freezes the release timer',()=>{
+  const {s,power,step,enemy}=superArena(),{a,m}=enemy('antidisturbios',600,450,1800);
+  a.invulnerableUntil=Infinity;power.charge=SUPER.hits;power.activate();step(12);const age=power.age;
+  s.paused=true;step(120);assert.equal(power.age,age);assert.equal(a.hp,1800);
+  s.paused=false;step(SUPER.release-age);assert.equal(a.hp,900);assert.equal(m.state,'superDown');
+});
+test('super knocks Jugo down safely, releases his controller and lets his rage resume after getting up',()=>{
+  const {s,a,model,controller,step}=jugoArena(),power=attachSuper(s);const hp=a.hp;
+  power.charge=SUPER.hits;assert.equal(power.activate(),true);step(SUPER.release);
+  assert.equal(a.hp,Math.floor(hp/2));assert.equal(model.state,'superDown');assert.equal(controller.mode,'idle');
+  step(180);assert.notEqual(model.state,'superDown');assert.equal(controller.phase,2);
+});
+test('super interrupts the spinning sack, removes invulnerability and keeps all transitions valid',()=>{
+  const {s,a,model,spin,step}=sackArena(),power=attachSuper(s);step(40);assert.equal(spin.phase,'spin');const hp=a.hp;
+  power.charge=SUPER.hits;power.activate();step(SUPER.release);assert.equal(a.hp,Math.floor(hp/2));
+  assert.equal(a.sackSpinning,false);assert.equal(model.state,'superDown');assert.equal(spin.phase,null);
+  step(150);assert.notEqual(model.state,'superDown');
+});
+test('all five players have six valid super poses and a dedicated charge, release and recovery animation',()=>{
+  for(const [key,url] of Object.entries(SUPER_PLAYERS)){
+    const png=readFileSync(new URL(url.replace('?url',''))),w=png.readUInt32BE(16),h=png.readUInt32BE(20),c=SUPER_POSES[key];
+    assert.equal(png[25],6);assert.equal(c.frameRects.length,6);
+    c.frameRects.forEach((r,i)=>{assert.ok(r.x+r.width<=w && r.y+r.height<=h);assert.ok(c.frameAnchors[i]>=r.x && c.frameAnchors[i]<=r.x+r.width);});
+    const {power,step,s}=superArena(key);power.charge=SUPER.hits;power.activate();
+    const poses=new Set();for(let i=0;i<SUPER.duration;i++){step();if(power.active)poses.add(power.held.frame);}
+    assert.deepEqual([...poses],[0,1,2,3,4,5]);assert.equal(s.player.sprite.visible,true);
+  }
+});
+test('enemy_12 now has a complete six-frame knockout sheet ending on the ground',()=>{
+  const c=enemies.yulitza,base=readFileSync(new URL(c.url.replace('?url',''))),extra=readFileSync(new URL(c.appendUrls[0].replace('?url','')));
+  assert.equal(c.frameRects.length,30);assert.deepEqual(c.animations.defeat,[24,25,26,27,28,29]);
+  const w=Math.max(base.readUInt32BE(16),extra.readUInt32BE(16)),h=base.readUInt32BE(20)+extra.readUInt32BE(20);
+  for(const r of c.frameRects)assert.ok(r.x+r.width<=w && r.y+r.height<=h);
+  assert.ok(c.frameRects[29].height<c.frameRects[24].height*.65);
+  const s=setup(3);const a=s.spawnEnemy('yulitza',0,0,1,0);s.hitEnemy(a,strike);assert.equal(a.sprite.animation,'yulitza-defeat');
+});
+test('the spinning sack now moves slowly enough to create space for dodging',()=>{
+  const {s,a,step}=sackArena();s.player.x=800;step(37);const x=a.x;step(30);
+  assert.ok(a.config.sackSpin.moveMultiplier<.6);assert.ok(a.x-x<=a.config.speed*.55*.5+1);
+});
+
+
+test('Q and the mobile Q action activate the ready power without spending the normal special energy',()=>{
+  for(const mobile of [false,true]){
+    const {s,power,step}=superArena();power.charge=SUPER.hits;const health=s.health;
+    if(mobile){s.game.touchControls={input:new TouchInput()};s.game.touchControls.input.down('Q','super-finger');}
+    else {s.keys.Q={isDown:true,justDown:true};}
+    step();assert.equal(power.active,true);assert.equal(s.health,health);assert.equal(power.charge,0);
+  }
+});
+test('death and character reset cancel super visuals and clear the unbroken streak',()=>{
+  const {s,power,step}=superArena();power.charge=SUPER.hits;power.activate();step(5);
+  s.arcade.resetPlayer();assert.equal(power.active,false);assert.equal(power.charge,0);assert.equal(s.player.sprite.visible,true);
+  power.charge=SUPER.hits-3;s.invulnerableUntil=0;s.hitPlayer(100);assert.equal(power.charge,0);assert.equal(power.active,false);
+  power.destroy();assert.equal(power.held.destroyed,true);assert.equal(power.label.destroyed,true);
+});
+
+
+test('super particles, body light and special.mp3 are synchronized to the release and stop on reset',()=>{
+  const {s,power,step}=superArena(),events=[],sounds=[];
+  s.fx={superCharge:(owner,x,y,depth,age,release,color)=>events.push({kind:'charge',owner,age,color}),
+    superBlast:(owner,x,y,depth,color)=>events.push({kind:'blast',owner,color}),clearSuper:owner=>events.push({kind:'clear',owner})};
+  s.sfx={play:name=>sounds.push(name)};power.charge=SUPER.hits;power.activate();
+  step(SUPER.release-1);assert.equal(events.filter(e=>e.kind==='charge').length,29);assert.deepEqual(sounds,[]);
+  const count=events.length;s.paused=true;step(60);assert.equal(events.length,count);s.paused=false;
+  step();assert.equal(events.filter(e=>e.kind==='blast').length,1);assert.deepEqual(sounds,['special']);
+  assert.ok(events.every(e=>e.owner===power));assert.equal(events.find(e=>e.kind==='blast').color,0xffd166);
+  power.release();step(8);assert.deepEqual(sounds,['special'],'release sound cannot be repeated');
+  power.reset();assert.equal(events.at(-1).kind,'clear');assert.equal(power.active,false);
 });

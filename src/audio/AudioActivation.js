@@ -45,6 +45,7 @@ export class AudioActivation {
     // Safari's media playback session is appropriate for game music and effects, including silent-mode devices.
     try{if(this.navigator?.audioSession)this.navigator.audioSession.type='playback';}catch{}
     if(!manager)return;
+    manager.emit('audio-gesture');
     if(!context){this.sync();return;} // Phaser's HTMLAudio fallback retains its built-in touch unlock.
     if(context.state==='running'){this.finishResume();return;}
     if(context.state==='closed'){this.sync();return;}

@@ -216,3 +216,14 @@ Los atlas filtran las poses vecinas antes de calcular sus límites. Teleperforma
 La partida ejecuta Player, Enemy y CombatSystem mediante ArcadeRuntime a 60 pasos/s, con canvas 960×540, pixelArt, roundPixels y escala FIT. La cámara usa zoom 1 para conservar el detalle original de sprites y textos. No hay inercia, tampoco bajo lluvia. Las motos siguen como peligros independientes; los demás enemigos comparten dos tokens de ataque.
 
 Configuración común: `src/data/arcade.js`. Fases y poses de contacto: `src/data/attacks.js`. Balance por tipo: `src/data/characters.js`, `src/data/enemies.js` y `src/boss/balance.js`. Diagnóstico, archivos, tuning y checklist completo: [docs/arcade-refactor.md](docs/arcade-refactor.md).
+
+## Efectos y luces (`src/fx`)
+
+Partículas e iluminación comparten un solo atlas generado por código (sin assets nuevos):
+
+- `ParticleSystem`: pool de sprites reutilizados, sin geometría por frame. Tope por calidad.
+- `Lighting`: una sola capa MULTIPLY (color ambiente + viñeta) y luces aditivas con pool (`flash` para destellos, `lamp` para luces que siguen a un proyectil o nube). La lluvia enfría el ambiente.
+- `Fx`: fachada (`scene.fx`) con `hit`, `quake`, `burst`, `flash`, `lamp`. Vigila los FPS y baja la calidad solo (high → low → off) si no se sostienen ~60.
+- Calidad manual: `?fx=high|low|off` en la URL (fija la calidad y desactiva el ajuste automático). En móviles empieza en `low`.
+- Luces estáticas por nivel: `lights:[{x,y,color,radius,intensity,factor,flicker}]` y `ambient:0xRRGGBB` en el registro del nivel.
+- Sin textura canvas (tests, escenas simuladas) todo es no-op y el combate usa el dibujo anterior con `Graphics`.

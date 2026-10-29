@@ -11,7 +11,7 @@ const spin=[[73,39,237,207],[401,36,192,210],[715,38,193,208],[997,41,216,205],
   [22,297,225,205],[376,298,193,204],[706,295,187,207],[1031,297,220,205],
   [65,555,190,203],[370,556,220,202],[685,556,231,202],[1039,564,162,194]];
 export const HOMELESS={name:'EL COSTAL',url,appendUrls:[spinUrl],rows:Array(9).fill(4),height:119,speed:115,hp:280,range:140,damage:8,idle:0,
-  sackSpin:{windup:600,turns:3,turnFrames:40,dizzy:2000,cooldown:700,radius:125,depth:32,moveMultiplier:1.25},
+  sackSpin:{windup:600,turns:3,turnFrames:40,dizzy:2000,cooldown:700,radius:125,depth:32,moveMultiplier:.55},
   frameRects:[...base,...spin.map(([x,y,w,h])=>[x,y+1536,w,h])].map(([x,y,width,height])=>({x,y,width,height})),
   frameAnchors:Object.fromEntries(Array.from({length:36},(_,i)=>[i,i%4*320+160])),
   animations:{idle:[0,1,2,3],walk:[4,5,6,7],windup:[8,9,10,11],hurt:[12,13,14,15],defeat:[16,17,18,19],

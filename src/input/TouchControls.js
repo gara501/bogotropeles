@@ -60,12 +60,13 @@ export class TouchControls {
     document.querySelector('[data-touch-action="SHIFT"]').hidden=false;
     this.sync();
   }
+  setSuperReady(value){if(this.superReady===value)return;this.superReady=value;this.syncButtons();}
   syncButtons() {
     for(const button of this.buttons){
       const action=button.dataset.touchAction;
       const cyclingAction=action==='P' || action==='SHIFT';
       button.hidden=this.cycling?!cyclingAction:action==='L' && this.game.scene.getScene('Street')?.characterKey!=='student';
-      button.disabled=!this.enabled || (this.paused && action!=='P') || (this.cycling && !cyclingAction);
+      button.disabled=!this.enabled || (this.paused && action!=='P') || (this.cycling && !cyclingAction) || (action==='Q' && !this.superReady);
       if(action==='SHIFT')button.setAttribute('aria-label',this.cycling?'Dash en bicicleta: 3 segundos, recarga de 5 segundos':'Dash');
     }
     const pause=document.querySelector('[data-touch-action="P"]');

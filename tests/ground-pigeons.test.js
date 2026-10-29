@@ -18,14 +18,14 @@ class Visual {
   destroy(){this.destroyed=true;}
 }
 function setup(){
-  const level=CAMPAIGN[1],width=stageLayout(level).width,hits=[];
-  const s={level,combatTime:0,health:100,player:{x:width/2,y:455},jumpHeight:0,floor:{top:410,bottom:500},
+  const level=CAMPAIGN[1],width=stageLayout(level).width,hits=[],sounds=[];
+  const s={sfx:{play:name=>sounds.push(name)},level,combatTime:0,health:100,player:{x:width/2,y:455},jumpHeight:0,floor:{top:410,bottom:500},
     cameras:{main:{scrollX:1190}},waves:{cleared:false},
     add:{sprite:(x,y,key)=>new Visual(x,y,key),ellipse:(x,y)=>new Visual(x,y)},
     hitPlayer:(damage)=>{hits.push(damage);return true;}};
   const system=new GroundPigeons(s,level.groundPigeons,width);
   const step=(n=1)=>{for(let i=0;i<n;i++){s.combatTime+=1000/60;system.update();}};
-  return {s,system,hits,step};
+  return {s,system,hits,step,sounds};
 }
 test('only Plaza de Bolivar has ground flocks, beginning halfway through the world with multiple safe groups',()=>{
   assert.ok(CAMPAIGN.every((level,i)=>i===1?level.groundPigeons:!level.groundPigeons));
@@ -41,13 +41,14 @@ test('only Plaza de Bolivar has ground flocks, beginning halfway through the wor
   assert.equal(png.readUInt32BE(20),GROUND_PIGEON.frameHeight);
 });
 test('proximity in both floor axes startles a flock, telegraphs its attack and permits at most one damage event',()=>{
-  const {s,system,hits,step}=setup();system.update();const g=system.groups[0];
+  const {s,system,hits,step,sounds}=setup();system.update();const g=system.groups[0];
   s.player.x=g.x;s.player.y=g.y+40;step();assert.equal(g.state,'ground');assert.equal(hits.length,0);
   s.player.y=g.y;step();assert.equal(g.state,'alert');assert.equal(hits.length,0);
   assert.ok(g.birds.every(b=>b.sprite.key==='pigeon-flight'));
   step(20);assert.equal(g.state,'alert');assert.equal(hits.length,0);
   step(80);assert.equal(g.state,'flight');assert.equal(hits.length,1);assert.ok(hits[0]<=5);
   step(60);assert.ok(!system.groups.includes(g));assert.equal(hits.length,1);
+  assert.deepEqual(sounds,['pigeonFlight'],'one flight sound per startled flock, never per frame');
 });
 test('moving away in depth or jumping avoids a flock whose target is fixed when startled',()=>{
   for(const dodge of ['lane','jump']){

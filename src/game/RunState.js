@@ -1,5 +1,5 @@
 // Arcade rule: at most MAX_CONTINUES continues per game; after that, losing the last life is game over.
-export const MAX_CONTINUES=3;
+export const MAX_CONTINUES=5;
 export class RunState {
   constructor(){this.reset();}
   reset(){this.level=0;this.lives=3;this.score=0;this.levelStartScore=0;this.continuesUsed=0;this.chivaBonusPlayed=false;this.ringBonusPlayed=false;}

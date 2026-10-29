@@ -6,6 +6,39 @@ import {ARCADE} from '../data/arcade.js';
  * `cans` holds every container, whatever its kind (specials and combat target that list). */
 export class EnergyPickups {
   constructor(scene,random=Math.random){this.scene=scene;this.random=random;this.rolled=new Set();this.cans=[];this.items=[];this.drops=0;}
+  /** Place the finite route before it is seen; arena unlocks never create visible objects. */
+  prepare(){
+    const s=this.scene,count=s.stage?.layout?.arenas??1;
+    for(let arena=0;arena<count;arena++){
+      if(this.rolled.has(arena))continue;
+      this.rolled.add(arena);
+      const left=s.stage?.arenaScroll(arena)??0;
+      if(s.level.potatoSupplies){
+        const position=this.groundPosition(left+ARCADE.screen.width*.7,s.floor.top+28,left);
+        if(position)this.spawn(position.x,position.y,'boxes').potatoSacks=2;
+      }
+      if(this.random()<C.chance){
+        const kinds=containersFor(s.level.combatIndex??s.levelIndex??0);
+        const x=left+ARCADE.screen.width*(C.spawnLeft+this.random()*(C.spawnRight-C.spawnLeft));
+        const y=s.floor.top+C.laneMargin+this.random()*Math.max(0,s.floor.bottom-s.floor.top-2*C.laneMargin);
+        const kind=kinds.length>1?kinds[Math.min(kinds.length-1,Math.floor(this.random()*kinds.length))]:kinds[0];
+        const position=this.groundPosition(x,y,left);
+        if(position)this.spawn(position.x,position.y,kind);
+      }
+    }
+  }
+  /** Reserve ground footprints, including scenery props that extend into the walkable street. */
+  groundPosition(x,y,left){
+    const s=this.scene,top=s.floor.top+C.laneMargin,bottom=s.floor.bottom-C.laneMargin;
+    const minX=left+ARCADE.screen.width*C.spawnLeft,maxX=left+ARCADE.screen.width*C.spawnRight;
+    // Try the rolled position first, then deterministic alternatives without rerolling the level.
+    const positions=[{x,y:Math.max(top,Math.min(bottom,y))}];
+    for(let lane=0;lane<=8;lane++)for(let column=0;column<=8;column++)positions.push({x:minX+(maxX-minX)*column/8,y:bottom-(bottom-top)*lane/8});
+    return positions.find(p=>!this.cans.some(c=>Math.abs(c.x-p.x)<80 && Math.abs(c.y-p.y)<32)
+      && !(s.stage?.props?.items??[]).some(prop=>!prop.walk && prop.factor===1
+        && Math.abs(prop.sprite.x-p.x)<(prop.sprite.displayWidth??0)/2+40
+        && p.y<prop.y+28 && p.y>prop.y-20));
+  }
   spawn(x,y,kind=containersFor(this.scene.level.combatIndex??this.scene.levelIndex??0)[0]){
     const s=this.scene,c=CONTAINERS[kind],sprite=s.add.image(x,y,`${kind}-0`).setOrigin(.5,1).setScale(c.height/c.rects[0][3]).setDepth(y);
     const can={x,y,kind,hp:C.hits,config:{height:c.height,hurtbox:{halfWidth:C.halfWidth,halfDepth:C.halfDepth}},sprite,brokenAt:null,hitAt:null};
@@ -30,20 +63,7 @@ export class EnergyPickups {
   }
   update(frame){
     const s=this.scene;if(s.paused || s.finished || s.cinematic || s.health<=0)return;
-    const arena=s.waves?.arena??0;
-    if(!this.rolled.has(arena) && (!s.stage || s.stage.reached(arena))){
-      this.rolled.add(arena);
-      if(s.level.potatoSupplies){
-        const left=s.stage?.arenaScroll(arena)??0;
-        this.spawn(left+ARCADE.screen.width*.7,s.floor.top+28,'boxes').potatoSacks=2;
-      }
-      if(this.random()<C.chance){
-        const left=s.stage?.arenaScroll(arena)??0,kinds=containersFor(s.level.combatIndex??s.levelIndex??0);
-        const x=left+ARCADE.screen.width*(C.spawnLeft+this.random()*(C.spawnRight-C.spawnLeft));
-        const y=s.floor.top+C.laneMargin+this.random()*Math.max(0,s.floor.bottom-s.floor.top-2*C.laneMargin);
-        this.spawn(x,y,kinds.length>1?kinds[Math.min(kinds.length-1,Math.floor(this.random()*kinds.length))]:kinds[0]);
-      }
-    }
+    this.prepare();
     this.cans=this.cans.filter(can=>{
       if(can.brokenAt!==null){
         const breaking=CONTAINERS[can.kind].poses.breaking,age=frame-can.brokenAt;

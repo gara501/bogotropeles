@@ -5,11 +5,14 @@ import {AmbientTraffic} from './AmbientTraffic.js';
 import {StageProps} from './StageProps.js';
 import {StageRain} from './StageRain.js';
 import {GroundPigeons} from './GroundPigeons.js';
+import {Fx} from '../fx/Fx.js';
 
 /** Owns the camera scroll, the walkable floor span, the parallax layers and the GO → prompt. */
 export class StageCamera {
   constructor(scene) {
     this.scene=scene;this.camera=scene.cameras.main;this.layout=stageLayout(scene.level);this.scrollX=0;this.time=0;
+    // Created first: rain, hits and specials all reach it through scene.fx. Safe no-op on scenes without canvas textures.
+    this.fx=scene.fx=new Fx(scene,{lights:scene.level.lights,ambient:scene.level.ambient});
     this.background=new ParallaxBackground(scene,scene.level.layers??[{key:scene.level.key,factor:1}],this.layout.width);
     this.go=scene.add.text(ARCADE.screen.width-36,250,'GO →',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'30px',color:'#ffcf69',fontStyle:'bold',stroke:'#142127',strokeThickness:6})
       .setOrigin(1,.5).setScrollFactor(0).setDepth(1000).setVisible(false);
@@ -38,6 +41,7 @@ export class StageCamera {
     this.traffic?.update(this.scrollX);
     this.props?.update(ARCADE.clock.stepMs);
     this.rain?.update(ARCADE.clock.stepMs/1000);
+    this.fx?.update(ARCADE.clock.stepMs);
     this.pigeons?.update();
     const waiting=Boolean(s.waves?.awaitingAdvance) && !s.finished && s.health>0;
     this.go.setVisible(waiting && frame%40<26);
@@ -53,5 +57,5 @@ export class StageCamera {
     const p=this.scene.player,{left,right}=this.scene.floor;
     if(p){p.x=Math.max(left,Math.min(right,p.x<left?left+135:p.x));this.scene.placeFighter?.(p,p.z??0);}
   }
-  destroy(){this.background.destroy();this.traffic?.destroy();this.props?.destroy();this.rain?.destroy();this.pigeons?.destroy();this.go.destroy();}
+  destroy(){this.background.destroy();this.traffic?.destroy();this.props?.destroy();this.rain?.destroy();this.pigeons?.destroy();this.fx?.destroy();if(this.scene.fx===this.fx)this.scene.fx=null;this.go.destroy();}
 }

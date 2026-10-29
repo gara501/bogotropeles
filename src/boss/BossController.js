@@ -100,6 +100,7 @@ export class BossController {
     if(this.state==='entry' || this.state==='transition' || (this.state==='attack' && this.attack?.key==='shield') || (now<this.guardUntil && frontal)) {
       this.blockUntil=now+350;this.cue(110,.07);return;
     }
+    this.scene.superPower?.onHit(attack);
     this.hp=Math.max(0,this.hp-attack.damage);this.bar.width=336*this.hp/BOSS.hp;
     if(this.hp>0 && now>=(this.gruntReady??0)){this.gruntReady=now+BOSS_HURT_COOLDOWN;this.scene.sfx?.play(BOSS_SOUNDS.dormilon.hurt);}
     this.actor.sprite.setTint(0xffcdb6);this.hurtFlashUntil=now+120;
@@ -128,9 +129,22 @@ export class BossController {
   }
   stopEffects() {this.hazards.clear();this.weather.clear();this.status.clear();this.guardUntil=0;this.guard.setVisible(false);this.stopAudio();}
   finish() {if(this.ended)return;this.ended=true;this.stopEffects();this.scene.idle(this.actor);}
+  superHit(){
+    if(this.dead || this.ended)return;
+    this.hp=Math.floor(this.hp/2);this.bar.width=336*this.hp/BOSS.hp;
+    if(!this.hp){this.defeat();return;}
+    this.stopEffects();this.attack=null;this.phase=phaseFor(this.hp);this.state='superDown';
+    this.superAt=this.scene.combatTime;this.until=this.superAt+1400;
+  }
   update(dt) {
     if(this.ended)return;
     const now=this.scene.combatTime;
+    if(this.state==='superDown'){
+      const poses=this.actor.config.animations.defeat,age=now-this.superAt;
+      this.actor.sprite.stop().setFrame(poses[Math.min(poses.length-1,Math.floor(age/100))]);
+      if(now>=this.until){this.state='idle';this.until=now+500;this.scene.idle(this.actor);}
+      return;
+    }
     if(this.scene.arcade && this.attack?.frames && ['windup','attack'].includes(this.state)){
       const frame=this.attack.frames[this.attack.frame++];
       this.actor.sprite.stop().setFrame(frame.pose);

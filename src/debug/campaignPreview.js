@@ -1,3 +1,4 @@
+import {SUPER} from '../game/SuperPower.js';
 // Opt-in QA shortcuts. Production never imports this module.
 export function installCampaignPreview(game) {
   const panel=document.createElement('div');panel.id='campaign-preview';
@@ -14,6 +15,8 @@ export function installCampaignPreview(game) {
   for(const [text,all] of [['Resolver oleada',false],['Resolver tramo',true]]) {
     const button=document.createElement('button');button.textContent=text;button.onclick=()=>resolve(all);panel.append(button);
   }
+  const panela=document.createElement('button');panela.textContent='Equipar panela';panela.onclick=()=>scene()?.panela?.equip();panel.append(panela);
+  const superButton=document.createElement('button');superButton.textContent='Cargar super';superButton.onclick=()=>{const p=scene()?.superPower;if(p){p.charge=SUPER.hits;p.showCharge();}};panel.append(superButton);
   const hide=document.createElement('button');hide.textContent='Ocultar pruebas';hide.onclick=()=>panel.remove();panel.append(hide);
   document.body.append(panel);
 }

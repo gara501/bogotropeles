@@ -45,6 +45,7 @@ export class OrbitingBooks {
       this.shock.push(ring);
     }
     if(s.add.circle)this.shock.push(s.add.circle(x,y-b.flightHeight,30,b.shock.flash,.9).setDepth(y+5));
+    s.fx?.burst(x,y-b.flightHeight,y+6,{colors:[0xffffff,0xffd27a,0xd98a3d],glowColor:b.shock.flash,glowSize:110,n:16,speed:[2,6],light:{color:0xffd27a,radius:150,intensity:.85,ms:280}});
   }
   destroyShock(){for(const part of this.shock)part.destroy();this.shock=[];}
   placeBooks() {

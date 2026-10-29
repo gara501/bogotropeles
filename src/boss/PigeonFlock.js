@@ -16,6 +16,7 @@ export class PigeonFlock {
   launch(owner, config) {
     const s = this.scene, player = s.player, dir = Math.sign(player.x - owner.x) || owner.facing || 1;
     const damage = Math.max(1, Math.round(config.damage * (s.level?.damage ?? 1)));
+    if(config.birds>0)s.sfx?.play('pigeonFlight');
     for (let i = 0; i < config.birds; i++) {
       // Drop targets: one aimed at where the player is now, the rest `spread` px before/after it along the flight line.
       const targets = Array.from({ length: config.drops }, (_, k) => k === 0 ? player.x + rand(-28, 28)
@@ -82,6 +83,7 @@ export class PigeonFlock {
     const s = this.scene, p = s.player;
     if (this.ring?.owner !== owner) {
       this.stopShield();
+      s.sfx?.play('pigeonFlight');
       this.ring = { owner, age: 0, sprites: Array.from({ length: c.birds }, () =>
         s.add.sprite(owner.x, owner.y, PIGEON_FLIGHT.key, 0).setScale(c.scale ?? .36)) };
     }

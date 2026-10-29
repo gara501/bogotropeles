@@ -30,20 +30,20 @@ test('record preserves the best score and character across runs; malformed or un
   const blocked={getItem(){throw Error('blocked');},setItem(){throw Error('blocked');}};
   assert.equal(saveRecord(500,'TELEPERFORMAN',blocked).character,'TELEPERFORMAN');
 });
-test('all seven music choices are existing OGG tracks and random selection avoids an immediate repeat',()=>{
-  assert.equal(MUSIC_TRACKS.length,7);
-  MUSIC_TRACKS.forEach((track,i)=>assert.ok(existsSync(new URL(`../public/assets/music${i+1}.ogg`,import.meta.url))));
-  assert.ok(MUSIC_TRACKS.every(t=>t.url.endsWith('.ogg')));
-  const results=new Set();for(let i=0;i<7;i++)results.add(chooseMusic(null,()=>i/7).key);assert.equal(results.size,7);
+test('all ten music choices reference existing audio files and random selection avoids an immediate repeat',()=>{
+  assert.equal(MUSIC_TRACKS.length,10);
+  MUSIC_TRACKS.forEach((track,i)=>assert.ok(existsSync(new URL(`../public/assets/music${i+1}.${i<7?'ogg':'mp3'}`,import.meta.url))));
+  assert.ok(MUSIC_TRACKS.slice(7).every(t=>t.url.endsWith('.mp3')));
+  const results=new Set();for(let i=0;i<10;i++)results.add(chooseMusic(null,()=>i/10).key);assert.equal(results.size,10);
   for(const track of MUSIC_TRACKS)for(const random of [0,.5,.999])assert.notEqual(chooseMusic(track.key,()=>random).key,track.key);
 });
 
-test('only 3 continues per game; a new game restores them',async()=>{
+test('five continues per game; a new game restores them',async()=>{
   const {MAX_CONTINUES}=await import('../src/game/RunState.js');
-  const run=new RunState();assert.equal(MAX_CONTINUES,3);
-  for(let i=0;i<3;i++){assert.equal(run.canContinue,true);assert.equal(run.continue(),true);}
+  const run=new RunState();assert.equal(MAX_CONTINUES,5);
+  for(let i=0;i<5;i++){assert.equal(run.canContinue,true);assert.equal(run.continuesLeft,5-i);assert.equal(run.continue(),true);}
   assert.equal(run.canContinue,false);assert.equal(run.continuesLeft,0);run.lives=0;assert.equal(run.continue(),false);assert.equal(run.lives,0);
-  run.reset();assert.equal(run.continuesLeft,3);
+  run.reset();assert.equal(run.continuesLeft,5);
 });
 
 test('local ranking keeps the top 10 with clean 3-letter initials',async()=>{

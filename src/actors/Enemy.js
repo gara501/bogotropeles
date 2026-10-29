@@ -1,3 +1,4 @@
+import {SUPER} from '../game/SuperPower.js';
 import {ARCADE,toFrames} from '../data/arcade.js';
 import {chooseFruitThrow} from '../projectiles/fruitLob.js';
 import {PolleroController} from '../game/Poultry.js';
@@ -39,11 +40,15 @@ transitions.reversa=['hurt','recover','approach'];
 ENEMY_STATES.push('jugoFight');
 for(const next of Object.values(transitions))next.push('jugoFight');
 transitions.jugoFight=['hurt','recover','approach','evade'];
+ENEMY_STATES.push('superDown');
+for(const next of Object.values(transitions))next.push('superDown');
+transitions.superDown=['approach','hurt','down'];
 export class Enemy {
   constructor(runtime,actor){this.runtime=runtime;this.scene=runtime.scene;this.actor=actor;this.state='approach';this.age=0;this.clock=0;this.ready=Math.round((ARCADE.ai.initialCooldown+(actor.slot??(actor.index??0)%ARCADE.ai.spawnSlots)*ARCADE.ai.spawnStagger)/this.scene.level.pressure);this.action=null;this.stage=0;}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid enemy transition: ${this.state} → ${state}`);if(this.state==='grabbed' && state!=='grabbed')this.endStruggle();if(this.state==='heal' && state!=='heal'){this.healAura?.destroy();this.healAura=null;this.actor.sprite.clearTint?.();}this.state=state;this.age=0;if(['circle','approach','recover','hurt'].includes(state))this.runtime.combat.tokens.release(this.actor);}
   pose(name,pose){const a=this.actor;if(a.config.papero && this.papero?.hasSack===false){if(name==='walk')name='emptyWalk';if(name==='idle'){name='emptyIdle';if(pose===a.config.idle)pose=a.config.animations.emptyIdle[0];}}const art=a.config.animations[name];if(pose===undefined)pose=art?.[Math.floor(this.age/ARCADE.animation.walkFramesPerPose)%art.length]??a.config.idle;a.sprite.stop().setFrame(pose+(a.config.frameOffset??0));return pose;} // frameOffset: sheet row of a minion variant
   hurt(attack=null){
+    if(attack?.super && this.actor.hp>0){this.superKnockdown();return;}
     if(this.actor.config.ringFighter){(this.ringFighter??=new RingFighter(this)).hurt();return;}
     if(this.actor.config.reversa){(this.reversa??=new ReversaController(this)).hurt(attack??{});return;}
     if(this.actor.config.jugo){(this.jugo??=new JugoController(this)).hurt(attack);return;}
@@ -75,6 +80,30 @@ export class Enemy {
     const ev=this.actor.config.evade;if(!ev || this.actor.hp<=0)return; // bosses with their own evade rule
     this.recentHits=(this.recentHits??[]).filter(frame=>this.clock-frame<=toFrames(ev.window));this.recentHits.push(this.clock);
     if(this.recentHits.length>=ev.hits){this.recentHits=[];this.startEvade();}
+  }
+  superKnockdown(){
+    const a=this.actor;
+    this.action?.leap?.cancel();this.jugo?.cancel();this.ortencio?.interrupt();this.sackSpin?.clear();
+    this.pacho?.reset();this.brayatan?.cancel();this.papero?.cancel();this.pollero?.interrupt();this.shieldPhase?.interrupt();
+    this.healAura?.destroy();this.healAura=null;this.endStruggle();this.bossEscape=null;this.evade=null;
+    if(a.pigeonShielded){a.pigeonShielded=false;this.scene.flock?.stopShield();}
+    this.action=null;a.pending=null;a.z=0;a.crossing=false;a.tell.setVisible(false);this.runtime.combat.tokens.release(a);
+    a.invulnerableUntil=this.scene.combatTime+(SUPER.fall+SUPER.lie+SUPER.getup)*ARCADE.clock.stepMs;
+    this.superAge=0;this.transition('superDown');
+    if(this.reversa)this.reversa.set(this.reversa.phase===2?'open':'fall');
+  }
+  stepSuperDown(){
+    if(this.runtime.combat.frozen(this.actor))return;
+    const a=this.actor,age=++this.superAge,poses=a.config.animations.defeat??a.config.animations.hurt;
+    this.clock++;
+    if(this.reversa?.phase===2)this.reversa.render();
+    else if(age<SUPER.fall){a.z=Math.sin(age/SUPER.fall*Math.PI)*16;this.pose('defeat',poses[Math.min(poses.length-1,Math.floor(age/SUPER.fall*poses.length))]);}
+    else if(age<SUPER.fall+SUPER.lie){a.z=0;this.pose('defeat',poses.at(-1));}
+    else this.pose('idle',a.config.idle);
+    if(age>=SUPER.fall+SUPER.lie+SUPER.getup){
+      a.z=0;a.invulnerableUntil=0;this.ready=this.clock+30;this.transition('approach');
+      if(this.reversa)this.reversa.set(this.reversa.phase===2?'cabIdle':'idle');
+    }
   }
   /** Corner rule (regular enemies): counts hits taken near a screen side; on the `hits`-th one it leaps out. */
   cornerHit(){
@@ -262,6 +291,7 @@ export class Enemy {
   }
   step(){
     const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){combat.tokens.release(a);this.jugo?.destroy();this.ortencio?.destroy();this.sackSpin?.clear();this.endStruggle();return;}
+    if(this.state==='superDown'){this.stepSuperDown();return;}
     if(a.config.ringFighter){(this.ringFighter??=new RingFighter(this)).step();return;}
     if(a.config.reversa){(this.reversa??=new ReversaController(this)).step();return;}
     if(a.arriving)return;

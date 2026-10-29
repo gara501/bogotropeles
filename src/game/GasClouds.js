@@ -31,6 +31,7 @@ export class GasClouds {
       const age=now-cloud.born,left=cloud.until-now;
       if(left<=0){cloud.sprite.destroy();return false;}
       this.size(cloud,age);cloud.sprite.setAlpha?.(Math.min(.9,left/cloud.ms*1.6));
+      s.fx?.lamp(cloud,cloud.x,cloud.y-24,{color:0xb6ff7a,radius:cloud.radius*.9,intensity:.22*Math.min(1,left/cloud.ms*2)});
       if(s.health>0 && now>=cloud.hitAt+cloud.every && this.inside(cloud,p) && s.hitPlayer(cloud.damage,null,cloud.owner))cloud.hitAt=now;
       return true;
     });

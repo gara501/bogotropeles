@@ -1,3 +1,4 @@
+import yulitzaDefeatUrl from './enemies/enemy_12_defeat.png?url';
 import {AGENTE_PARE} from './agentePare.js';
 import walkerUrl from './enemies/enemy_1.png?url';
 import {MOTORATA} from './motorata.js';
@@ -79,15 +80,16 @@ export const enemies = {
   estibador:{...PAPERO,name:'ESTIBADOR',papero:false,minion:true,height:115,hp:90,speed:160,range:70,damage:7,idle:20,animations:{idle:[20],walk:[16,17,18,19],attack:[20,21,22,23],hurt:[28,29],defeat:[30,31]}},
   // enemy_12.png (4×6): guard · run · machete slash · leaping slash · crouch/hop · lunges. The fastest fighter in the game:
   // a 2-slash machete combo and, when the player swings at her up close, a lightning hop to the other side of the player.
-  // No hurt/defeat rows in the sheet: the crouch poses stand in for them.
-  yulitza:{name:'YULITZA',url:yulitzaUrl,rows:[4,4,4,4,4,4],height:116,speed:360,hp:375,range:115,damage:8,idle:0,aggressive:true,
-    frameRects:[[18,12,221,244],[282,14,210,242],[531,12,206,244],[782,12,202,244],[15,276,235,228],[270,277,228,230],[526,277,229,231],[779,278,218,231],[22,508,215,270],[284,529,207,247],[519,553,273,222],[775,583,240,192],[19,841,224,199],[305,807,198,233],[557,773,220,253],[797,799,212,241],[13,1105,229,177],[275,1077,207,205],[530,1046,198,189],[786,1108,221,174],[15,1332,227,190],[271,1317,235,205],[521,1280,246,232],[788,1359,220,159]].map(([x,y,width,height])=>({x,y,width,height})),
-    isolateFrames:true,keepDetachedFrames:[10,14], // the cyan machete trails
-    frameAnchors:{0:150,1:397,2:642,3:892,4:152,5:392,6:647,7:905,8:134,9:388,10:658,11:898,12:159,13:422,14:642,15:908,16:124,17:376,18:645,19:895,20:137,21:373,22:654,23:890},
+  // Dedicated knockout sheet is appended below the original 24 movement/combat poses.
+  yulitza:{name:'YULITZA',url:yulitzaUrl,appendUrls:[yulitzaDefeatUrl],rows:[4,4,4,4,4,4,3,3],height:116,speed:360,hp:375,range:115,damage:8,idle:0,aggressive:true,
+    frameRects:[[18,12,221,244],[282,14,210,242],[531,12,206,244],[782,12,202,244],[15,276,235,228],[270,277,228,230],[526,277,229,231],[779,278,218,231],[22,508,215,270],[284,529,207,247],[519,553,273,222],[775,583,240,192],[19,841,224,199],[305,807,198,233],[557,773,220,253],[797,799,212,241],[13,1105,229,177],[275,1077,207,205],[530,1046,198,189],[786,1108,221,174],[15,1332,227,190],[271,1317,235,205],[521,1280,246,232],[788,1359,220,159],...[ [19,132,444,405],[538,145,446,391],[1041,234,393,342],[12,756,480,232],[484,758,515,221],[1004,762,517,221] ].map(([x,y,w,h])=>[x,y+1536,w,h])].map(([x,y,width,height])=>({x,y,width,height})),
+    isolateFrames:true,keepDetachedFrames:[10,14,24,25,26,28,29], // trails and the dropped machete
+    frameAnchors:{0:150,1:397,2:642,3:892,4:152,5:392,6:647,7:905,8:134,9:388,10:658,11:898,12:159,13:422,14:642,15:908,16:124,17:376,18:645,19:895,20:137,21:373,22:654,23:890,24:310,25:790,26:1270,27:260,28:745,29:1270},
+    frameScales:Object.fromEntries(Array.from({length:6},(_,i)=>[24+i,244/405])),
     combo:{stages:2,windup:300,interval:220,recovery:420,cooldown:1300,hitFrames:[2,2],ranges:[115,135],confirmFirst:false,followThrough:true},
     // Dodge: when the player starts a strike within `range`, `chance` of hopping over to the player's other side.
     dodge:{range:150,chance:.55,cooldown:1400,distance:130,height:58,duration:300,poses:[16,18,18,19]},
-    animations:{walk:sequence(4,7),attack:sequence(8,11),attack1:sequence(8,11),attack2:sequence(12,15),hurt:[17],defeat:[16,16]}},
+    animations:{walk:sequence(4,7),attack:sequence(8,11),attack1:sequence(8,11),attack2:sequence(12,15),hurt:[17],defeat:[24,25,26,27,28,29]}},
   // Level 5 boss (enemy_boss_5.png, 4×7): idle · walk · tear-gas launcher · shield bash · hurt · defeat · gas art.
   // The shield covers his front: hits from the front only do `frontDamage` and don't stagger him, so the player
   // has to get behind him. He turns around slowly (`turnMs`) and only attacks forward.

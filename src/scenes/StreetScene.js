@@ -1,3 +1,8 @@
+import {SuperPower} from '../game/SuperPower.js';
+import {preloadSuperPlayer,prepareSuperPlayer} from '../data/superPlayers.js';
+import {Panela} from '../game/Panela.js';
+import {handItemFor} from '../game/panelaRules.js';
+import {preloadPanela,preparePanela,preloadPanelaPlayer,preparePanelaPlayer} from '../data/panela.js';
 import {TAXI_RUSH_ATLAS} from '../data/taxis.js';
 import Phaser from 'phaser';
 import { characters } from '../data/characters.js';
@@ -79,10 +84,10 @@ function evictActors(scene, wanted) {
   const spent = scene.game?.spentSources;
   for (const [key, actor] of Object.entries(ACTOR_SHEETS)) {
     if (wanted.has(key)) continue;
-    for (const name of [key, `${key}-struggle`, `${key}-vuvuzela`]) if (scene.textures.exists(name)) scene.textures.remove(name);
+    for (const name of [key, `${key}-struggle`, `${key}-vuvuzela`, `${key}-panela`, `${key}-super`]) if (scene.textures.exists(name)) scene.textures.remove(name);
     // Animations keep references to the old frames: drop them so registerAnimations rebuilds them on the next load.
     for (const state of Object.keys(actor.animations ?? {})) scene.anims.remove(`${key}-${state}`);
-    const raws = [`${key}-source`, `${key}-struggle-source`, `${key}-vuvuzela-source`, ...(actor.appendUrls ?? []).map((_, i) => `${key}-append-${i}`)];
+    const raws = [`${key}-source`, `${key}-struggle-source`, `${key}-vuvuzela-source`, `${key}-panela-source`, `${key}-super-source`, ...(actor.appendUrls ?? []).map((_, i) => `${key}-append-${i}`)];
     for (const name of raws) spent?.delete(name);
   }
 }
@@ -104,6 +109,7 @@ export class StreetScene extends Phaser.Scene {
     if(this.isChivaBonus)this.level={...this.level,name:'BONUS · LA CHIVA',total:0,boss:null,enemies:[],crossingEnemies:[],
       top:400,bottom:500,props:null,rain:null,traffic:null,groundPigeons:null};
     if(this.isRingBonus){this.bonusReturnLevel=data.returnLevel??6;this.level={...this.level,name:'BONUS · EL RING',key:RING_BACKGROUND.key,url:RING_BACKGROUND.url,layers:null,total:0,boss:null,enemies:RING_ORDER,crossingEnemies:[],mode:'ring',top:330,bottom:450,hp:1,speed:1,damage:1,pressure:1,props:null,rain:null,traffic:null,groundPigeons:null,potatoSupplies:false};}
+    this.handItemKind=handItemFor(this.level);this.vuvuzela=null;this.panela=null;this.superPower=null;
     this.isCycling=this.level.mode==='cycling' && !this.isChivaBonus && !this.isRingBonus;this.cycling=null;
     if(this.game)this.game.lastMusicKey=this.level.music.key;
     this.floor = { ...FLOOR, top: this.level.top, bottom: this.level.bottom??FLOOR.bottom };
@@ -161,8 +167,11 @@ export class StreetScene extends Phaser.Scene {
     for(const key of Object.keys(CYCLING_ASSETS))if(this.textures.exists(key))this.textures.remove(key);
     if(!this.isRingBonus && this.textures.exists(RING_BACKGROUND.key))this.textures.remove(RING_BACKGROUND.key);
     if(this.isChivaBonus)preloadChivaBonus(this);
-    preloadVuvuzelaPlayer(this);
-    if(!this.textures.exists(VUVUZELA_TEXTURE))this.load.image(VUVUZELA_TEXTURE,vuvuzelaUrl);
+    if(this.handItemKind)preloadSuperPlayer(this);
+    if(this.handItemKind==='vuvuzela'){
+      preloadVuvuzelaPlayer(this);
+      if(!this.textures.exists(VUVUZELA_TEXTURE))this.load.image(VUVUZELA_TEXTURE,vuvuzelaUrl);
+    }else if(this.handItemKind==='panela'){preloadPanela(this);preloadPanelaPlayer(this);}
     if(this.level?.groundPigeons && !this.textures.exists(GROUND_PIGEON.key))this.load.spritesheet(GROUND_PIGEON.key,groundPigeonUrl,{frameWidth:GROUND_PIGEON.frameWidth,frameHeight:GROUND_PIGEON.frameHeight});
     preloadPickups(this);preloadProps(this);preloadPacho(this);
     if(this.cameras?.main?.setZoom)fitArcadeCamera(this);
@@ -194,8 +203,9 @@ export class StreetScene extends Phaser.Scene {
   create() {
     if(this.isCycling){this.cycling=new CyclingStage(this);this.cycling.create();return;}
     if(this.isChivaBonus)prepareChivaBonus(this);
-    prepareVuvuzelaPlayer(this);
-    prepareVuvuzela(this);
+    if(this.handItemKind)prepareSuperPlayer(this);
+    if(this.handItemKind==='vuvuzela'){prepareVuvuzelaPlayer(this);prepareVuvuzela(this);}
+    else if(this.handItemKind==='panela'){preparePanela(this);preparePanelaPlayer(this);}
     preparePickups(this);prepareProps(this);preparePacho(this);
     prepareCutout(this,'juggling-club','juggling-club-source',JUGGLING_CLUB_RECT);
     prepareCutout(this,'frutatiana-orange','frutatiana-fruit-source',{x:102,y:89,width:664,height:722});
@@ -225,8 +235,11 @@ export class StreetScene extends Phaser.Scene {
     this.arcade=new ArcadeRuntime(this);
     this.waves = new WaveDirector(this);
     this.energyPickups=new EnergyPickups(this);
-    this.vuvuzela=new Vuvuzela(this);
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,H,J,K,L,SHIFT,SPACE,P,R,ENTER,UP,DOWN,LEFT,RIGHT');
+    this.energyPickups.prepare();
+    if(this.handItemKind==='vuvuzela')this.vuvuzela=new Vuvuzela(this);
+    else if(this.handItemKind==='panela')this.panela=new Panela(this);
+    if(this.handItemKind)this.superPower=new SuperPower(this);
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,H,J,K,L,Q,SHIFT,SPACE,P,R,ENTER,UP,DOWN,LEFT,RIGHT');
     this.input.keyboard.addCapture(['SPACE', 'UP', 'DOWN', 'LEFT', 'RIGHT']);
     this.playerName=this.add.text(26, 22, `${String(Object.keys(characters).indexOf(this.characterKey) + 1).padStart(2, '0')} / ${this.character.name}`, { fontFamily: FONT, fontSize: '15px', color: '#e8edce', fontStyle: 'bold' }).setDepth(1000);
     this.healthBack=this.add.rectangle(26, 51, 204, 12, 0x14282c).setOrigin(0).setDepth(1000);
@@ -255,7 +268,7 @@ export class StreetScene extends Phaser.Scene {
     ]).setDepth(2000).setVisible(false);
     this.music = new LevelMusic(this, this.level.music.key);
     this.sfx = new SoundEffects(this.sound,this.cache.audio);
-    if(this.isRingBonus){this.energyPickups.destroy();this.energyPickups=null;this.vuvuzela.destroy();this.vuvuzela=null;this.ringBonus=new RingBonus(this);}
+    if(this.isRingBonus){this.energyPickups.destroy();this.energyPickups=null;this.vuvuzela?.destroy();this.vuvuzela=null;this.panela?.destroy();this.panela=null;this.ringBonus=new RingBonus(this);}
     if(this.isChivaBonus){
       this.energyPickups.destroy();this.chivaBonus=new ChivaBonus(this);this.energyPickups=this.chivaBonus;
       this.player.x=245;this.player.y=450;this.invulnerableUntil=0;
@@ -289,7 +302,7 @@ export class StreetScene extends Phaser.Scene {
       this.motorcycles?.destroy();this.motorcycles=null;
       this.energyPickups?.destroy();this.energyPickups=null;
       this.chivaBonus=null;this.ringBonus?.destroy();this.ringBonus=null;
-      this.vuvuzela?.destroy();this.vuvuzela=null;
+      this.vuvuzela?.destroy();this.vuvuzela=null;this.panela?.destroy();this.panela=null;this.superPower?.destroy();this.superPower=null;
       this.arcade?.destroy();this.arcade=null;
       this.music?.destroy(); this.music = null;
       this.sfx?.destroy();this.sfx=null;
@@ -401,13 +414,17 @@ export class StreetScene extends Phaser.Scene {
   ensureCharacter(key, done) {
     if(this.isCycling)return done(); // All five bicycle sheets are prepared together.
     if (!characters[key]) return done();
-    if(this.textures.exists(key) && this.textures.exists(`${key}-vuvuzela`))return done();
+    if(this.textures.exists(key) && (!this.handItemKind || (this.textures.exists(`${key}-${this.handItemKind}`) && this.textures.exists(`${key}-super`))))return done();
     this.wanted.add(key);
+    if(this.handItemKind)preloadSuperPlayer(this,key);
     loadActor(this, key, characters[key]);
-    preloadVuvuzelaPlayer(this,key);
+    if(this.handItemKind==='vuvuzela')preloadVuvuzelaPlayer(this,key);
+    else if(this.handItemKind==='panela')preloadPanelaPlayer(this,key);
     this.load.once('complete', () => {
       prepareActor(this, key, characters[key]);
-      prepareVuvuzelaPlayer(this,key);
+      if(this.handItemKind)prepareSuperPlayer(this,key);
+      if(this.handItemKind==='vuvuzela')prepareVuvuzelaPlayer(this,key);
+      else if(this.handItemKind==='panela')preparePanelaPlayer(this,key);
       if (key === 'office') prepareCutout(this, IPHONE.texture, 'office-source', IPHONE.sourceRect);
       releaseSources(this);
       done();
@@ -430,7 +447,7 @@ export class StreetScene extends Phaser.Scene {
     if(key==='office')this.iphone=new IPhoneSpecial(this);
     if(key==='student'){prepareBookTextures(this);this.books=new OrbitingBooks(this);}
     if(this.arcade)for(const special of [this.iphone,this.books])if(special)fitArcadeText(special.label);
-    this.controlsLabel?.setText(this.game.touchControls?.mobile?.()?'JOYSTICK MOVER · PUÑO · PATADA · ESPECIAL −10 ENERGÍA · SALTO · Ⅱ PAUSA':`H PUÑO · J PATADA · K ${this.character.specialLabel}${key==='student'?' · L PATADA BAJA':''} · SHIFT DASH · ESPACIO SALTO · P PAUSA · R REINICIAR`);
+    this.controlsLabel?.setText(this.game.touchControls?.mobile?.()?'JOYSTICK MOVER · PUÑO · PATADA · ESPECIAL −10 ENERGÍA · SALTO · Ⅱ PAUSA':`H PUÑO · J PATADA · K ${this.character.specialLabel}${key==='student'?' · L PATADA BAJA':''} · Q SUPER · SHIFT DASH · ESPACIO SALTO · P PAUSA · R REINICIAR`);
     this.input.keyboard.resetKeys();this.placeFighter(this.player);
     if(this.finished && this.health>0)this.play(this.player,'victory',1000);else this.idle(this.player);
     return true;
@@ -440,7 +457,7 @@ export class StreetScene extends Phaser.Scene {
     if(this.deathHandled)return;
     this.arcade?.player?.captor?.cancel();
     this.deathHandled=true;this.run.loseLife();this.updateRunStatus();
-    this.vuvuzela?.clearHeld();
+    this.vuvuzela?.clearHeld();this.panela?.clearHeld();this.panela?.clearFlights();
     this.iphone?.clear();this.books?.clear();this.playerAttack=null;this.comboVictim=null;
     this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     this.enemies.forEach(e=>{e.pending=null;e.tell.setVisible(false);e.sprite.anims.pause();});
@@ -485,7 +502,7 @@ export class StreetScene extends Phaser.Scene {
     if(this.arcade){this.arcade.player.transition('walk');this.arcade.clearInput();this.arcade.combat.tokens.clear();}
     this.projectiles.forEach(p=>p.sprite.destroy());this.projectiles=[];this.flock?.clear();this.sprayBarrage?.clear();
     this.iphone?.clear();this.books?.clear();this.music?.setPaused(true);
-    this.sfx?.stop();
+    this.sfx?.stop();this.panela?.clearFlights();if(this.superPower?.active)this.superPower.reset();
     for(const enemy of this.enemies) {
       this.tweens.killTweensOf(enemy.sprite);
       enemy.sprite.setVisible(false);enemy.shadow.setVisible(false);
@@ -581,7 +598,7 @@ export class StreetScene extends Phaser.Scene {
 
   hitEnemy(enemy, attack) {
     if(this.ringBonus?.locked && enemy.config.ringFighter)return;
-    if(enemy.sackSpinning || enemy.hp<=0 || this.combatTime<(enemy.invulnerableUntil??0)){ // e.g. a boss mid-evade
+    if(enemy.hp<=0 || (!attack.super && (enemy.sackSpinning || this.combatTime<(enemy.invulnerableUntil??0)))){ // e.g. a boss mid-evade
       if((enemy.pigeonShielded || enemy.sackSpinning) && this.add?.text && this.combatTime>=(enemy.immuneLabelAt??0)){ // show why the attack is blocked
         enemy.immuneLabelAt=this.combatTime+600;
         const label=this.add.text(enemy.x,enemy.y-enemy.config.height-26,'¡INVENCIBLE!',{fontFamily:FONT,fontSize:'12px',color:'#ffe37a',stroke:'#142127',strokeThickness:3}).setOrigin(.5).setDepth(951);
@@ -590,15 +607,16 @@ export class StreetScene extends Phaser.Scene {
       return;
     }
     const reversa=this.arcade?.enemies.get(enemy)?.reversa;
-    if(reversa){const factor=reversa.damageFactor(this.player);if(!factor)return;attack={...attack,damage:Math.max(1,Math.round(attack.damage*factor)),knockback:0,reversaChip:factor<=.12};reversa.hitFeedback(this.player,Math.min(enemy.hp,attack.damage),factor);}
+    if(reversa && !attack.super){const factor=reversa.damageFactor(this.player);if(!factor)return;attack={...attack,damage:Math.max(1,Math.round(attack.damage*factor)),knockback:0,reversaChip:factor<=.12};reversa.hitFeedback(this.player,Math.min(enemy.hp,attack.damage),factor);}
     this.lastHit={enemy,at:this.combatTime};
     enemy.jitterUntil=this.combatTime+(attack.finisher?200:120); // the hit body shudders for a moment
-    if(enemy.config.shield && this.shieldBlocks(enemy,attack)) {
+    if(!attack.super && enemy.config.shield && this.shieldBlocks(enemy,attack)) {
       const damage=Math.max(1,Math.round(attack.damage*enemy.config.shield.frontDamage));
       if(enemy.hp>damage){this.blockHit(enemy,damage);return;}
       attack={...attack,damage}; // the chip damage finishes him off: fall through to the normal defeat
     }
-    enemy.hp = Math.max(0, enemy.hp - attack.damage);
+    const hpBefore=enemy.hp;enemy.hp = Math.max(0, enemy.hp - attack.damage);
+    if(enemy.hp<hpBefore)this.superPower?.onHit(attack);
     const bossHurt=BOSS_SOUNDS[enemy.key]?.hurt??ENEMY_HURT_SOUNDS[enemy.key];
     if(bossHurt && enemy.hp>0 && this.combatTime>=(enemy.gruntReady??0)){enemy.gruntReady=this.combatTime+BOSS_HURT_COOLDOWN;this.sfx?.play(bossHurt);}
     if(attack.radialKnockback) {
@@ -662,7 +680,7 @@ export class StreetScene extends Phaser.Scene {
 
   /** Blocked: chip damage only, no stagger or knockback; the attacker bounces off the shield. */
   blockHit(enemy,damage) {
-    enemy.hp-=damage;enemy.healthBar.width=42*enemy.hp/enemy.config.hp;
+    enemy.hp-=damage;if(damage>0)this.superPower?.onHit({});enemy.healthBar.width=42*enemy.hp/enemy.config.hp;
     this.arcade?.enemyPhase(enemy);
     this.sfx?.play('metalCrack');
     const facing=enemy.facing??(enemy.sprite.flipX?-1:1);
@@ -679,6 +697,7 @@ export class StreetScene extends Phaser.Scene {
     if ((this.combatTime < this.invulnerableUntil && !followup) || this.health <= 0 || this.paused || this.finished || this.cinematic) return false;
     this.comboVictim=combo;
     this.health = Math.max(0, this.health - damage);
+    if(damage>0)this.superPower?.reset();
     if(this.health===0 && this.ringBonus)this.ringBonus.knockout();
     if(this.health===0){this.books?.clear();this.comboVictim=null;}
     this.healthBar.width = this.health * 2;
@@ -743,6 +762,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   throwProjectile(enemy, facing, config, damage) {
+    if(config.texture==='paloma')this.sfx?.play('pigeonFlight');
     // Released where the drawn object is in the throw pose (ball, pigeon…); faces its direction of travel.
     const x = enemy.x + facing * (config.offset ?? 70);
     const sprite = this.add.image(x, enemy.y - (config.lift ?? 70), config.texture,config.taximeter?'0':undefined).setDisplaySize(config.width, config.height).setDepth(enemy.y + 1);
@@ -1056,9 +1076,9 @@ export class StreetScene extends Phaser.Scene {
 
   arcadeInput(){
     const k=this.keys,touch=this.game.touchControls?.input;
-    const pressed=key=>{const t=touch?.justDown(key);return Phaser.Input.Keyboard.JustDown(k[key])||Boolean(t);};
+    const pressed=key=>{const t=touch?.justDown(key);return (k[key]?Phaser.Input.Keyboard.JustDown(k[key]):false)||Boolean(t);};
     const actions=[];
-    for(const [key,type] of [['H','punch'],['J','kick'],['K',this.character.special],['L','lowKick']])if(pressed(key))actions.push(type);
+    for(const [key,type] of [['H','punch'],['J','kick'],['K',this.character.special],['L','lowKick'],['Q','super']])if(pressed(key))actions.push(type);
     const result={actions,restart:pressed('R'),enter:pressed('ENTER'),pause:pressed('P'),jump:pressed('SPACE'),dash:pressed('SHIFT'),
       dx:Number(k.D.isDown||k.RIGHT.isDown)-Number(k.A.isDown||k.LEFT.isDown)||touch?.x||0,
       dy:Number(k.S.isDown||k.DOWN.isDown)-Number(k.W.isDown||k.UP.isDown)||touch?.y||0};

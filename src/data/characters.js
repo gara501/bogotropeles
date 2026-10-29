@@ -48,7 +48,7 @@ export const characters = {
   },
   student: {
     name: 'UNIVERSITARIA', texture: 'student', url: studentUrl, rows:[4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4],
-    height: 99, speed: ARCADE.player.speeds.student, walkRate: 13, color: 0xd6ed64, idle: 4, jump: 9,
+    height: 93, speed: ARCADE.player.speeds.student, walkRate: 13, color: 0xd6ed64, idle: 4, jump: 9,
     special:'books', specialLabel:'LIBROS', cleanFringes:true, isolateFrames:true, trimFrames:true,
     // Never animate frame 18: its embedded books would duplicate the orbit.
     frameRects:PLAYER_ATLASES.student,

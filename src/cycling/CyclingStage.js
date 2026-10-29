@@ -130,7 +130,7 @@ export class CyclingStage{
     if(this.run.done && s.health>0)this.finish();
   }
   render(){
-    const s=this.scene,t=this.run.elapsed,phase=Math.floor(t/(this.run.dashing?60:115))%4;
+    const s=this.scene,t=this.run.elapsed,phase=Math.floor(this.run.roadOffset/72)%4;
     // Tile positions use source-texture pixels; obstacles use world pixels.
     this.background.tilePositionX=this.run.roadOffset/this.background.tileScaleX;
     const pose=s.finished?7:t<this.flashUntil?6:phase;
@@ -138,7 +138,7 @@ export class CyclingStage{
       .setAlpha(t<this.run.invulnerableUntil && Math.floor(t/90)%2?.45:1);
     s.player.shadow.setPosition(CYCLING.playerX,this.run.y-2).setDepth(this.run.y-1);
     this.banner.setVisible(t<2500);this.tip.setVisible(t<3500);this.progress.width=420*this.run.progress;
-    this.distance.setText(`RECORRIDO ${Math.floor(this.run.progress*100)}% · ${Math.floor(this.run.distance)} m`);this.time.setText(`${Math.ceil(this.run.remainingMs/1000)} s`);
+    this.distance.setText(`${Math.floor(this.run.progress*100)}% · ${Math.floor(this.run.distance)} m · ${Math.round(this.run.travelSpeed/CYCLING.pixelsPerMeter*3.6)} km/h`);this.time.setText(`${Math.ceil(this.run.remainingMs/1000)} s`);
     this.guardianWarning?.setVisible(this.run.obstacles.some(o=>o.kind==='guardian' && !o.passed && t-o.born<2000));
     const dash=this.run.dashing?`DASH ${(this.run.dashRemaining/1000).toFixed(1)} s`:this.run.dashCooldown>0?`RECARGA ${(this.run.dashCooldown/1000).toFixed(1)} s`:'SHIFT · DASH LISTO';
     s.dashStatus.setText(`${this.run.difficulty.label} · ${dash}`);

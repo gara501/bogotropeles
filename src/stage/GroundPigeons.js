@@ -61,6 +61,7 @@ export class GroundPigeons {
         .setFrame(Math.floor((now-group.since)/70)%PIGEON_FLIGHT.frames).setFlipX(group.target.x<b.x);
       if(now-group.since<c.tell)return;
       group.state='flight';group.since=now;
+      s.sfx?.play('pigeonFlight');
     }
     const t=clamp((now-group.since)/c.flight,0,1);
     group.birds.forEach((b,i)=>{
