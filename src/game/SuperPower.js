@@ -65,5 +65,11 @@ export class SuperPower {
     }
   }
   reset(){this.charge=0;this.active=false;this.held.setVisible(false);this.fx.clear();this.scene.fx?.clearSuper?.(this);this.scene.player.sprite.setVisible(true);this.showCharge();}
-  destroy(){this.reset();this.held.destroy();this.label.destroy();this.bar.destroy();this.fx.destroy();}
+  destroy(){
+    // Phaser may have destroyed Text canvases before the scene's shutdown hook.
+    // Release state/effects without rewriting the HUD through reset().
+    this.charge=0;this.active=false;this.scene.fx?.clearSuper?.(this);
+    this.scene.game?.touchControls?.setSuperReady?.(false);this.scene.player.sprite.setVisible(true);
+    this.held.destroy();this.label.destroy();this.bar.destroy();this.fx.destroy();
+  }
 }

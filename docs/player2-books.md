@@ -72,10 +72,10 @@ Se eliminan al preparar el atlas los residuos casi puros rojo/azul/cian/amarillo
 magenta, conservando los tonos menos saturados de jeans, piel, cabello y suéter.
 El PNG original se conserva. Esto no constituye un repintado completo: quedan
 algunos bordes grises o contaminados que requieren revisión artística manual.
-En reproducción, las poses de carrera 0/2 y 1/3 son muy parecidas y no ofrecen
-una alternancia de piernas inequívoca. La reproducción usa los cuatro cuadros
-existentes a 13 fps y refleja correctamente ambos sentidos; queda pendiente una
-zancada contraria dibujada con claridad.
+Las poses originales 0/2 y 1/3 repetían casi la misma zancada. Se reemplazó
+la locomoción por un ciclo de ocho cuadros generado con PixelLab, con piernas
+alternadas y cadencia de 15 poses por segundo. Véase [player2-walk.md](player2-walk.md)
+para la procedencia, el atlas y la vista animada.
 
 ## Archivos y verificación
 

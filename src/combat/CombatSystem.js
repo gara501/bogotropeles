@@ -1,4 +1,6 @@
 import {ARCADE} from '../data/arcade.js';
+// Combo trail colours by chain stage: cool cyan → gold → hot orange.
+const COMBO_COLORS=[[0x7eeaff,0xffffff],[0x7eeaff,0xffffff],[0xffe14d,0xffffff],[0xffb347,0xffe14d],[0xff6a3d,0xffd36b]];
 export class AttackTokens {
   constructor(limit=ARCADE.ai.tokens){this.limit=limit;this.owners=new Set();}
   acquire(actor){if(this.owners.has(actor))return true;if(this.owners.size>=this.limit)return false;this.owners.add(actor);return true;}
@@ -23,14 +25,14 @@ export class CombatSystem {
   }
   frozen(actor){return this.frame<=(this.stops.get(actor)??-1);}
   impact(attacker,victim,attack){
-    const n=attack.finisher?ARCADE.feedback.finisherHitstop:ARCADE.feedback.hitstop;
+    const n=attack.finisher?ARCADE.feedback.finisherHitstop:(attack.damage??0)>=ARCADE.feedback.heavyDamage?ARCADE.feedback.heavyHitstop:ARCADE.feedback.hitstop;
     for(const actor of [attacker,victim])if(actor){this.stops.set(actor,Math.max(this.stops.get(actor)??0,this.frame+n));actor.sprite?.anims?.pause();}
     victim?.sprite?.setTintFill?.(0xffffff);this.flashes.set(victim,this.frame+ARCADE.feedback.flash);
     const f=ARCADE.feedback,s=this.scene,byPlayer=attacker && attacker===s.player;
     if(byPlayer && attack.finisher)s.cameras?.main.shake(f.finisherShake.ms,f.finisherShake.strength);else s.cameras?.main.shake(f.shakeMs,f.shakeStrength);
     if(!byPlayer){const graphic=this.acquire();if(!graphic)return;this.impacts.push({graphic,x:((attacker?.x??victim.x)+victim.x)/2,y:victim.y-(victim.config?.height??0)/2,until:this.frame+f.impact});return;}
     // The player's hits: sparks by strike type at the contact point (kicks land lower), plus a rebound on finishers.
-    const kick=/kick|stomp/i.test(attack.type??''),kind=attack.finisher?'finisher':kick?'kick':'punch',life=f.sparks[kind];
+    const kick=/kick|stomp|slide/i.test(attack.type??''),kind=attack.finisher?'finisher':kick?'kick':'punch',life=f.sparks[kind];
     const facing=attack.facing||Math.sign(victim.x-attacker.x)||1,height=victim.config?.height??100;
     const x=victim.x-facing*24,y=victim.y-height*(kick?.42:.62);
     // Pooled sprite particles + a light when FX are on; the old redrawn-Graphics burst remains as the fallback.
@@ -64,6 +66,8 @@ export class CombatSystem {
     for(const [actor,until] of this.stops)if(frame>until){actor.sprite?.anims?.resume();this.stops.delete(actor);}
     this.impacts=this.impacts.filter(p=>{
       if(frame>p.until){this.release(p.graphic);return false;}
+      if(p.rush){this.drawComboRush(p,frame);return true;}
+      if(p.comboEffect){this.drawComboEffect(p,frame);return true;}
       if(p.splash){this.drawSplash(p,frame);return true;}
       if(p.wave){this.drawWave(p,frame);return true;}
       if(p.quake){this.drawQuake(p,frame);return true;}
@@ -73,6 +77,64 @@ export class CombatSystem {
     });
   }
   push(actor,attack){actor.x=Math.max(this.scene.floor.left,Math.min(this.scene.floor.right,actor.x+attack.facing*(attack.finisher?ARCADE.attack.finisherKnockback:ARCADE.attack.knockback)));}
+  comboRush(actor,facing,speed){
+    const graphic=this.acquire();if(!graphic)return;
+    this.impacts.push({graphic,rush:true,x:actor.x,y:actor.y-(actor.z??0),facing,height:actor.config?.height??110,speed,born:this.frame,until:this.frame+14,life:14});
+    // The chain speeds up: a trail of sparks behind the fighter (hotter colours the longer the chain) and an afterimage.
+    const s=this.scene,stage=Math.round((speed-1)/.18),height=actor.config?.height??110,colors=COMBO_COLORS[Math.min(COMBO_COLORS.length-1,stage)];
+    s.fx?.sparks?.(actor.x-facing*14,actor.y-height*.5,actor.y+3,{angle:facing>0?Math.PI:0,spread:1.1,n:6+stage*3,speed:[2,4+stage],life:[160,300],size:2+Math.min(2,stage),colors,ay:0,drag:.08,stretch:.9});
+    s.fx?.sparks?.(actor.x,actor.y-2,actor.y+3,{angle:-Math.PI/2+(facing>0?-1:1)*.9,spread:.8,n:4,speed:[1.5,3],life:[180,320],size:3,colors:[0xd8c6a6,0x9a8a78],ay:.1});
+    const sprite=actor.sprite;
+    if(sprite && s.add?.image && sprite.texture?.key){
+      const ghost=s.add.image(sprite.x-facing*10,sprite.y,sprite.texture.key,sprite.frame?.name).setOrigin(sprite.originX,sprite.originY)
+        .setScale(sprite.scaleX,sprite.scaleY).setFlipX(sprite.flipX).setDepth(sprite.depth-1).setAlpha(.55).setTintFill?.(colors[0]);
+      if(ghost)s.tweens?.add?.({targets:ghost,alpha:0,x:ghost.x-facing*26,duration:200,onComplete:()=>ghost.destroy()});
+    }
+  }
+  /** Last strike of a combo route: it must not feel like a normal hit. Longer freeze, flash, a ring of sparks and
+   * a short slow motion on long chains. Purely visual: no text. */
+  comboFinish(actor,target,attack,notation){
+    const s=this.scene,length=attack.path?.length??3,f=ARCADE.feedback,height=target.config?.height??110;
+    const freeze=f.comboFinishHitstop+Math.max(0,length-3)*2;
+    for(const a of [actor,target])if(a)this.stops.set(a,Math.max(this.stops.get(a)??0,this.frame+freeze));
+    const x=target.x-(attack.facing||1)*16,y=target.y-height*.55;
+    s.cameras?.main?.shake?.(140+length*20,.006+length*.001);s.cameras?.main?.flash?.(90,255,236,170);
+    s.fx?.burst?.(x,y,target.y+120,{colors:[0xffffff,0xffe14d,0xff8a3d],n:26+length*4,speed:[3,8],life:[260,480],size:3,glowColor:0xffd36b,glowSize:110,light:{color:0xffc94d,radius:170,intensity:1,ms:320}});
+    const graphic=this.acquire();if(graphic)this.impacts.push({graphic,kind:'finisher',facing:attack.facing||1,x,y,born:this.frame,until:this.frame+f.sparks.finisher+6,life:f.sparks.finisher+6,seed:(target.x*7+this.frame*13)%360});
+    if(length>=4 && s.time?.delayedCall && !s.impactText?.finaleActive){ // long chains: a breath of slow motion on the last blow
+      s.timeScale=.45;s.time.delayedCall(170,()=>{if(!s.impactText?.finaleActive)s.timeScale=1;});
+    }
+  }
+  drawComboRush(p,frame){
+    const t=Math.min(1,(frame-p.born)/p.life),g=p.graphic.clear().setDepth(p.y+2),alpha=(1-t)*.85;
+    const length=30+(p.speed-1)*70;
+    for(let i=0;i<6;i++){
+      const y=p.y-p.height*(.18+i*.13),x=p.x-p.facing*(16+i%3*7+t*26),end=x-p.facing*length*(.7+i%2*.3);
+      g.lineStyle(5,0x153448,alpha*.65).lineBetween(x,y,end,y);
+      g.lineStyle(i%2?2:3,i%2?0xffffff:0x7eeaff,alpha).lineBetween(x,y,end,y);
+    }
+  }
+  comboEffect(actor,attack){
+    const graphic=this.acquire();if(!graphic)return;
+    const sweep=attack.comboEffect==='sweep',life=sweep?22:26;
+    this.impacts.push({graphic,comboEffect:attack.comboEffect,x:actor.x+attack.facing*(sweep?55:80),y:actor.y-(sweep?8:80),floor:actor.y,facing:attack.facing,born:this.frame,until:this.frame+life,life});
+    this.scene.fx?.flash?.(actor.x+attack.facing*70,actor.y-65,{color:sweep?0x8deaff:0xffb347,radius:140,intensity:.9,ms:260});
+  }
+  drawComboEffect(p,frame){
+    const t=Math.min(1,(frame-p.born)/p.life),g=p.graphic.clear().setDepth(p.floor+100),alpha=1-t;
+    if(p.comboEffect==='sweep'){
+      for(let i=0;i<3;i++)g.lineStyle(7-i*2,i?0xc4f5ff:0x48cfff,alpha).strokeEllipse(p.x+p.facing*t*35,p.y-i*3,35+t*120-i*8,10+t*20);
+      for(let i=0;i<8;i++)g.fillStyle(0xdaf7ff,alpha).fillRect(p.x+p.facing*(i*8+t*40),p.y-Math.sin(t*Math.PI)*(i%3+1)*8,4,4);
+      return;
+    }
+    const r=12+t*65;
+    for(let i=0;i<12;i++){
+      const a=i*Math.PI/6,inner=r*.45,outer=r*(i%2?1:1.35);
+      g.fillStyle(i%2?0xffa52e:0xffe776,alpha).fillTriangle(p.x+Math.cos(a-.12)*inner,p.y+Math.sin(a-.12)*inner,p.x+Math.cos(a)*outer,p.y+Math.sin(a)*outer,p.x+Math.cos(a+.12)*inner,p.y+Math.sin(a+.12)*inner);
+    }
+    g.lineStyle(5,0xffd46b,alpha).strokeCircle(p.x,p.y,r);
+    g.fillStyle(t<.15?0xffffff:0xffedac,alpha).fillCircle(p.x,p.y,Math.max(0,22*(1-t)));
+  }
   /** Mop special: a soapy wave that rolls along the floor ahead, with droplets and foam bubbles. */
   splash(actor,facing,range){
     const graphic=this.acquire();if(!graphic)return;

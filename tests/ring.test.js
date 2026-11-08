@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {RingRound,RING_ORDER,RING_BONUS,shouldStartRingBonus} from '../src/bonus/ringRules.js';
+import {RingRound,RING_ORDER,RING_BONUS,shouldStartRingBonus,shouldStartSecretRing} from '../src/bonus/ringRules.js';
 import {RingBonus} from '../src/bonus/RingBonus.js';
 import {RingFighter} from '../src/actors/RingFighter.js';
 class V {constructor(x=0,y=0){this.x=x;this.y=y;}destroy(){this.destroyed=true;}setText(t){this.text=t;return this;}setPosition(x,y){this.x=x;this.y=y;return this;}}
@@ -14,8 +14,13 @@ function setup(kind='cristiano'){
  const step=(n=1)=>{for(let i=0;i<n;i++){s.combatTime+=1000/60;c.step();}};
  return {s,a,m,c,step,hits,shots,sounds,runtime};
 }
-test('ring follows playable level six exactly once, independently of the chiva',()=>{
- const run={chivaBonusPlayed:true,ringBonusPlayed:false};assert.equal(shouldStartRingBonus(6,run),true);for(const i of [3,5,7])assert.equal(shouldStartRingBonus(i,run),false);run.ringBonusPlayed=true;assert.equal(shouldStartRingBonus(6,run),false);
+test('the ring is a secret: only after winning Zona Rosa with no continues, once, and never between levels',()=>{
+ const run={chivaBonusPlayed:true,ringBonusPlayed:false,continuesUsed:0};
+ assert.equal(shouldStartSecretRing({won:true,last:true},run),true);
+ assert.equal(shouldStartSecretRing({won:true,last:false},run),false);assert.equal(shouldStartSecretRing({won:true,last:true,bonus:true},run),false);
+ assert.equal(shouldStartSecretRing({won:true,last:true},{...run,continuesUsed:1}),false,'one continue closes the secret');
+ assert.equal(shouldStartSecretRing({won:true,last:true},{...run,ringBonusPlayed:true}),false);
+ assert.equal(RING_BONUS.afterLevel,11);for(let i=0;i<=12;i++)assert.equal(shouldStartRingBonus(i,run),false);for(const i of [3,5,6,7,9])assert.equal(shouldStartRingBonus(i,run),false);run.ringBonusPlayed=true;assert.equal(shouldStartRingBonus(RING_BONUS.afterLevel+1,run),false);
 });
 test('ring uses one two-minute clock, strict ordering and exactly 10,000 for all four',()=>{
  const r=new RingRound();assert.equal(r.defeat(RING_ORDER[0]),false);r.step(3000);assert.equal(r.remainingMs,120000);

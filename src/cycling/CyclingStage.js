@@ -90,9 +90,9 @@ export class CyclingStage{
     s.finished=true;s.addScore(CYCLING.finishPoints);s.music?.stop();s.sfx?.play('wave');
     s.player.sprite.setFrame(7).setAlpha(1);
     this.renderDash(7);
-    s.victoryRemaining=1200;s.pendingResult={won:true,last:false,cycling:true,score:s.run.score,character:s.character.name};
+    s.victoryRemaining=1200;s.pendingResult={won:true,last:false,cycling:true,collectible:s.levelCollectible()?.id??null,score:s.run.score,character:s.character.name};
     s.game.events.emit('level-clear',s.levelIndex);s.game.events.emit('level-victory');
-    s.showOverlay('¡CICLOVÍA COMPLETADA!','+1500 PUNTOS · SIGUE LA PLAZA DE BOLÍVAR');
+    s.showOverlay('¡CICLOVÍA COMPLETADA!','+1500 PUNTOS · SIGUE LA BATALLA DE AURA');
   }
   update(delta){
     const s=this.scene,k=s.keys,touch=s.game.touchControls?.input;

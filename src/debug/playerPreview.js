@@ -1,6 +1,7 @@
 // Opt-in development controls exercise the real scene and Phaser animations.
 // This module is never imported by production builds.
 export function installPlayerPreview(game,restart,character='office') {
+  let comboPreview=null;
   const panel=document.createElement('div');panel.id='player-preview-controls';
   panel.style.cssText='position:fixed;right:12px;top:85px;z-index:10;display:flex;flex-wrap:wrap;gap:5px;max-width:330px;padding:8px;background:#142127f5;border:1px solid #d6ed64';
   const scene=()=>game.scene.isActive('Street')?game.scene.getScene('Street'):null;
@@ -24,7 +25,17 @@ export function installPlayerPreview(game,restart,character='office') {
   if(character==='gymbro')add('Pisotón',s=>{stop(s);s.startAttack('stomp');});
   if(character!=='student')add('Enemigos cerca',s=>{stop(s);s.player.x=400;s.player.y=450;s.enemies.forEach((enemy,index)=>{enemy.x=400+(index?-62:62);enemy.y=450;});});
   add('Detener',stop);add('Puño',s=>{stop(s);s.startAttack('punch');});
-  add('Patada',s=>{stop(s);s.startAttack('kick');});add('Dash',s=>{stop(s);s.startDash(s.facing,0);});
+  add('Vuvuzela',s=>{stop(s);s.vuvuzela.equip();});
+  add('Patada',s=>{stop(s);s.arcade.player.request('kick');});add('Dash',s=>{stop(s);s.startDash(s.facing,0);});
+  for(const [label,inputs] of [
+    ['PPP',['punch','punch','punch']],['PPP + KK',['punch','punch','punch','kick','kick']],
+    ['KKK',['kick','kick','kick']],['KKK + ↓K',['kick','kick','kick','lowKick']],
+    ['PP + KK + ↑P',['punch','punch','kick','kick','upperPunch']],
+  ])add(`Combo ${label}`,s=>{
+    stop(s);s.paused=false;s.arcade.player.reset();s.arcade.clearInput();
+    comboPreview={inputs,index:0};s.arcade.player.request(inputs[0]);
+  });
+  add('Continuar animación',s=>{comboPreview=null;s.paused=false;});
   add('Daño',s=>{stop(s);s.invulnerableUntil=0;s.hitPlayer(10);});
   add('Probar caneca',s=>{stop(s);s.energyPickups.destroy();s.energyPickups.rolled.add(s.waves.arena);s.health=50;s.healthBar.width=100;s.facing=1;s.energyPickups.spawn(s.player.x+65,s.player.y);});
   add('Derrota',s=>{stop(s);s.invulnerableUntil=0;s.respawnProtectedUntil=0;s.hitPlayer(100);});
@@ -32,7 +43,12 @@ export function installPlayerPreview(game,restart,character='office') {
   add('Reiniciar prueba',()=>restart());
   const status=document.createElement('output');status.style.cssText='width:100%;font:10px monospace;color:#e8edce';panel.append(status);
   const update=()=>{const s=scene();if(!s?.arcade)return;const p=s.arcade.player,a=s.player;
-    status.textContent=`${p.state} · ${p.action?.displayedFrame.phase??'—'} · combo ${(p.action?.data.stage??0)+1} · tokens ${s.arcade.combat.tokens.owners.size}/2 · energía ${s.health} · frame ${s.arcade.frame} · x ${a.x.toFixed(1)} y ${a.y.toFixed(1)} z ${(a.z??0).toFixed(1)} · ${game.canvas.width}×${game.canvas.height}`;
+    if(comboPreview && p.action){
+      const clip=comboPreview,data=p.action.data,frame=data.frames[p.action.index];
+      if(data.stage===clip.index && clip.index<clip.inputs.length-1 && frame?.cancel){clip.index++;p.request(clip.inputs[clip.index]);}
+      else if(data.stage===clip.inputs.length-1 && frame?.phase==='active' && p.action.wasActive){s.paused=true;a.sprite.setAlpha(1);comboPreview=null;}
+    }
+    status.textContent=`${p.state} · sprite ${a.sprite.frame.name}/${a.sprite.visible} · ${p.action?.displayedFrame.phase??'—'} · combo ${(p.action?.data.stage??0)+1} ×${(p.action?.data.comboSpeed??1).toFixed(2)} · tokens ${s.arcade.combat.tokens.owners.size}/2 · energía ${s.health} · frame ${s.arcade.frame} · x ${a.x.toFixed(1)} y ${a.y.toFixed(1)} z ${(a.z??0).toFixed(1)} · ${game.canvas.width}×${game.canvas.height}`;
   };
   game.events.on('poststep',update);game.events.once('destroy',()=>game.events.off('poststep',update));
   add('Hitboxes',s=>{s.arcade.debugBoxes=!s.arcade.debugBoxes;});

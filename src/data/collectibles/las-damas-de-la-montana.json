@@ -1,0 +1,15 @@
+{
+  "provider": "PixelLab",
+  "tool": "image_to_pixelart",
+  "job_id": "de15a68e-378b-497b-b294-43d0ca13aa92",
+  "asset_id": "c07a6951-809d-5dea-886d-54bea6c3d84e",
+  "width": 512,
+  "height": 288,
+  "faithful": false,
+  "init_image_strength": 0,
+  "text_guidance_scale": 9,
+  "seed": 69315,
+  "reference": "ejemplos/laloma.jpg",
+  "reference_preparation": "Top-aligned 16:9 crop preserving all three faces, fitted to 512x288 JPEG as generation input only",
+  "output": "las-damas-de-la-montana.png"
+}

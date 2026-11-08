@@ -1,5 +1,6 @@
-// Level indexes start at zero: after the new level 3 (Plaza de Bolívar), before La Candelaria.
-export const CHIVA_BONUS={afterLevel:2,seconds:30,hitsRequired:50,perfectPoints:5000,pointsPerHit:100,countdownMs:3000};
+import {campaignIndexForCombat} from '../data/campaign.js';
+// "Destruye la chiva": right after Calles del centro, before the Ciclovía.
+export const CHIVA_BONUS={afterLevel:campaignIndexForCombat(5),seconds:30,hitsRequired:50,perfectPoints:5000,pointsPerHit:100,countdownMs:3000};
 export const shouldStartChivaBonus=(nextLevel,run)=>nextLevel===CHIVA_BONUS.afterLevel+1 && !run.chivaBonusPlayed;
 
 /** One attempt, one mutually exclusive reward. Time and hits stop at the first outcome. */

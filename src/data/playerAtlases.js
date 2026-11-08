@@ -15,18 +15,8 @@ export const PLAYER_ATLASES={
     [85,1087,116,143],[320,1088,136,141],[555,1096,117,134],[832,1084,118,147],
     [30,1225,191,116],[292,1234,182,96],[517,1248,220,65],[769,1263,233,62],
     [72,1342,123,180],[315,1337,132,185],[568,1313,130,209],[836,1326,130,196],
-    [139,1541,308,258],
-    [633,1541,313,258],
-    [1141,1541,284,258],
-    [1618,1542,286,257],
-    [136,1795,296,259],
-    [697,1799,251,255],
-    [1200,1799,256,255],
-    [1618,1799,290,255],
-    [193,2049,253,252],
-    [631,2052,298,249],
-    [1099,2048,408,252],
-    [1604,2054,367,243]
+    // Clean separated grab cells: full head, common hip pivot and foot baseline.
+    ...Array.from({length:12},(_,i)=>[(i%4)*512,1536+Math.floor(i/4)*288,512,288])
   ],
   "office": [
     [83,2,128,153],
@@ -103,7 +93,25 @@ export const PLAYER_ATLASES={
     [1065,3213,128,180],
     [55,3464,129,184],
     [273,3462,179,171],
-    [540,3467,160,182]
+    [540,3467,160,182],
+    // player_1_run_clean.png: 10 run poses (128x128 cells), after main (1705) + grab (941) + walk (1024).
+    [0,3670,128,128],
+    [128,3670,128,128],
+    [256,3670,128,128],
+    [384,3670,128,128],
+    [512,3670,128,128],
+    [640,3670,128,128],
+    [768,3670,128,128],
+    [896,3670,128,128],
+    [1024,3670,128,128],
+    [1152,3670,128,128],
+    // Six native-scale slide poses, fixed 320px cells and hip x=160.
+    [0,3798,320,320],
+    [320,3798,320,320],
+    [640,3798,320,320],
+    [960,3798,320,320],
+    [1280,3798,320,320],
+    [1600,3798,320,320]
   ],
   "student": [
     [17,11,212,178],
@@ -213,18 +221,8 @@ export const PLAYER_ATLASES={
     [366,2233,369,264],
     [752,2264,367,237],
     [1178,2194,236,311],
-    [35,2577,307,320],
-    [395,2577,312,320],
-    [762,2579,278,318],
-    [1123,2577,282,320],
-    [40,2926,287,326],
-    [436,2915,243,338],
-    [833,2918,228,335],
-    [1122,2926,291,326],
-    [34,3279,284,301],
-    [394,3271,280,309],
-    [691,3275,397,305],
-    [1073,3269,354,311],
+    // Guard-derived grab art: native anatomy, twelve separate cells.
+    ...Array.from({length:12},(_,i)=>[(i%4)*362,2534+Math.floor(i/4)*362,362,362]),
     // player_3_walking.png, after main (1448), combo (1086) and grab (1086).
     [94,3667,64,170],
     [351,3669,63,168],
@@ -296,4 +294,19 @@ export const PLAYER_ATLASES={
     [1171,2229,348,303]
   ]
 };
+// Dash + K slide strips (player_N_slide.png: 6 equal cells), stacked under each character's last appended sheet.
+const SLIDE_STRIPS={student:{y:1851+1024+200,cell:320,height:320},teleperforman:{y:1448+1086+1086+1280+256,cell:320,height:320},magolita:{y:1536+864+256,cell:320,height:320},
+  gymbro:{y:1536+1024+256,cell:320,height:320}}; // gymbro: shoulder charge
+for(const [key,{y,cell,height}] of Object.entries(SLIDE_STRIPS))PLAYER_ATLASES[key].push(...Array.from({length:6},(_,i)=>[i*cell,y,cell,height]));
+// PixelLab alternating gait: frames 58-65; source strip lies before the slide.
+PLAYER_ATLASES.student.push(...Array.from({length:8},(_,i)=>[i*224,1851+1024,224,200]));
+// Eight-frame PixelLab strips precede each finisher in the source stack.
+for(const [key,y] of Object.entries({teleperforman:1448+1086+1086+1280,magolita:1536+864,gymbro:1536+1024}))
+  PLAYER_ATLASES[key].push(...Array.from({length:8},(_,i)=>[i*256,y,256,256]));
+// Magolita's four leg kicks follow main + grab + walk + slide, frames 65..80.
+PLAYER_ATLASES.magolita.push(...Array.from({length:16},(_,i)=>[(i%4)*256,2976+Math.floor(i/4)*192,256,192]));
+// Maca Demia: three kicks, air dash and rebound, frames 66..85.
+PLAYER_ATLASES.student.push(...Array.from({length:20},(_,i)=>[(i%4)*384,3395+Math.floor(i/4)*256,384,256]));
+// Gymbro's independent jump, spin, seated impact and recovery, frames 58..69.
+PLAYER_ATLASES.gymbro.push(...Array.from({length:12},(_,i)=>[(i%4)*256,3136+Math.floor(i/4)*256,256,256]));
 for(const [key,rects] of Object.entries(PLAYER_ATLASES))PLAYER_ATLASES[key]=rects.map(([x,y,width,height])=>({x,y,width,height}));

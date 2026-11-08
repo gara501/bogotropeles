@@ -5,7 +5,7 @@ import {ARCADE} from '../data/arcade.js';
  * changua (all energy); otherwise a TuLlave card (+1000 points, C.moneyChance) or a pandebono (+25 energy).
  * `cans` holds every container, whatever its kind (specials and combat target that list). */
 export class EnergyPickups {
-  constructor(scene,random=Math.random){this.scene=scene;this.random=random;this.rolled=new Set();this.cans=[];this.items=[];this.drops=0;}
+  constructor(scene,random=Math.random){this.scene=scene;this.random=random;this.rolled=new Set();this.cans=[];this.items=[];this.drops=0;this.lifeDrops=0;}
   /** Place the finite route before it is seen; arena unlocks never create visible objects. */
   prepare(){
     const s=this.scene,count=s.stage?.layout?.arenas??1;
@@ -56,7 +56,16 @@ export class EnergyPickups {
     }
   }
   /** Drops a pickup; without `kind`, every C.fullEvery-th drop is the full refill. */
-  drop(x,y,kind=++this.drops%C.fullEvery===0?'full':this.random()<C.moneyChance?'money':'energy'){
+  canDropLife(){return this.scene.run?.isLastContinue===true && this.scene.run.lives>0 && this.lifeDrops<C.lifeMaxPerLevel;}
+  drop(x,y,kind){
+    if(kind===undefined){
+      this.drops++;
+      kind=this.canDropLife() && this.random()<C.lifeChance?'life':this.drops%C.fullEvery===0?'full':this.random()<C.moneyChance?'money':'energy';
+    }
+    if(kind==='life'){
+      if(!this.canDropLife())return null;
+      this.lifeDrops++;
+    }
     const def=ITEMS[kind];
     const sprite=this.scene.add.image(x,y,def.texture).setOrigin(.5,1).setDisplaySize(def.width,def.height).setDepth(y);
     const item={x,y,kind,sprite};this.items.push(item);return item;
@@ -78,9 +87,17 @@ export class EnergyPickups {
       // Energy items wait while energy is full; the card can always be picked up.
       if((def.heal && s.health>=C.maxEnergy) || (p.z??0)>C.pickupZ || Math.abs(p.x-item.x)>C.pickupX || Math.abs(p.y-item.y)>=C.pickupY)return true;
       if(def.heal){s.health=Math.min(C.maxEnergy,s.health+def.heal);s.healthBar.width=s.health*2;}
+      if(def.lives){s.run.addLife();s.updateRunStatus?.();this.lifePopup(item.x,item.y);}
       if(def.score){s.addScore?.(def.score);this.scorePopup(item.x,item.y,def.score);}
       s.iphone?.updateHud();s.books?.updateHud();s.sfx?.play('item');item.sprite.destroy();return false;
     });
+  }
+  /** Extra-life feedback is separate from score rewards. */
+  lifePopup(x,y){
+    const s=this.scene;if(!s.add?.text)return;
+    const label=s.add.text(x,y-40,'+1 VIDA',{fontFamily:"'Barlow Condensed', 'Arial Narrow', Arial, sans-serif",fontSize:'22px',fontStyle:'bold',
+      color:'#ffe08a',stroke:'#14101c',strokeThickness:3}).setOrigin(.5).setDepth(952);
+    s.tweens?.add?.({targets:label,y:label.y-30,alpha:0,duration:1000,onComplete:()=>label.destroy()});
   }
   /** "+1000" rising over a picked-up card. */
   scorePopup(x,y,points){
@@ -89,5 +106,5 @@ export class EnergyPickups {
       color:'#d6ed64',stroke:'#14282c',strokeThickness:3}).setOrigin(.5).setDepth(952);
     s.tweens?.add?.({targets:label,y:label.y-30,alpha:0,duration:800,onComplete:()=>label.destroy()});
   }
-  destroy(){for(const object of [...this.cans,...this.items])object.sprite.destroy();this.cans=[];this.items=[];this.rolled.clear();this.drops=0;}
+  destroy(){for(const object of [...this.cans,...this.items])object.sprite.destroy();this.cans=[];this.items=[];this.rolled.clear();this.drops=0;this.lifeDrops=0;}
 }

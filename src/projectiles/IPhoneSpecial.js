@@ -110,7 +110,7 @@ export class IPhoneSpecial {
   updateHud() {
     const remaining=Math.max(0,this.scene.specialReadyAt-this.scene.combatTime);
     const feedback=this.scene.combatTime<this.feedbackUntil;
-    this.label.setText(!canSpendSpecialEnergy(this.scene)?'K / IPHONE SIN ENERGÍA':remaining?`K / IPHONE ${feedback?'ESPERA ':''}${(remaining/1000).toFixed(1)} s`:'K / IPHONE LISTO · -10 ENERGÍA');
+    this.label.setText(!canSpendSpecialEnergy(this.scene)?'K / IPHONE SIN VIDA':remaining?`K / IPHONE ${feedback?'ESPERA ':''}${(remaining/1000).toFixed(1)} s`:'K / IPHONE LISTO · −10 VIDA');
     const color=feedback?'#ffcf69':remaining?'#aebeb1':'#d6ed64';
     if(color!==this.labelColor){this.labelColor=color;this.label.setColor(color);}
   }

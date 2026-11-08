@@ -1,0 +1,15 @@
+{
+  "provider": "PixelLab",
+  "tool": "image_to_pixelart",
+  "job_id": "881fdf5b-ff3b-40e1-b48c-b378b0fe2fbf",
+  "asset_id": "a62b2f99-7934-5e1a-b0b7-972be0a86fc1",
+  "width": 512,
+  "height": 288,
+  "faithful": false,
+  "init_image_strength": 0,
+  "text_guidance_scale": 9,
+  "seed": 69315,
+  "reference": "ejemplos/2x1.jpg",
+  "reference_preparation": "Photo cropped to composition and fitted to 512x288 JPEG as generation input only",
+  "output": "el-2x1.png"
+}

@@ -1,0 +1,50 @@
+{
+  "generator": "built-in image_gen",
+  "references": [
+    "ejemplos/granestacion.jpg",
+    "ejemplos/aura2.jpg"
+  ],
+  "prompts": "output/imagegen/aura-stage-jobs.json",
+  "background": [
+    1536,
+    864
+  ],
+  "crowd": {
+    "runtimeCell": [
+      192,
+      256
+    ],
+    "referenceHeight": 200,
+    "baseline": 240,
+    "count": 8
+  },
+  "fighters": {
+    "players": {
+      "runtimeCell": [
+        256,
+        512
+      ],
+      "baseline": 450,
+      "referenceHeight": 280
+    },
+    "entranceWalk": {
+      "runtimeCell": [
+        224,
+        256
+      ],
+      "baseline": 240,
+      "referenceHeight": 184,
+      "frames": 8
+    },
+    "rival": {
+      "runtimeCell": [
+        256,
+        512
+      ],
+      "referenceHeight": 280,
+      "baseline": 450,
+      "anchor": "red shorts center"
+    }
+  },
+  "rival": "El Gordo del Aura"
+}

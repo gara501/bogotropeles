@@ -2,7 +2,8 @@ import lechonaUrl from './NPC/item_bg_1.png?url';
 import merengonUrl from './NPC/item_bg_2.png?url';
 import passengersUrl from './NPC/item_bg_3.png?url';
 import stationUrl from './NPC/npc_estacion.png?url';
-import chorroUrl from './NPC/npc_chorro.png?url';
+import chorroUrl from './NPC/npc_chorro_foto.png?url';
+import plazaUrl from './NPC/npc_plaza_fotos.png?url';
 import samberUrl from './NPC/npc_samber.png?url';
 import gomelosUrl from './NPC/npc_gomelos.png?url';
 import politicosUrl from './NPC/npc_politicos.png?url';
@@ -14,6 +15,7 @@ import {PALOMOJAO_PROPS,PALOMOJAO_PROP_SOURCE} from './palomojao.js';
 // item_bg_1 lechonería cart · item_bg_2 Merengón Bogotano Renault 4 · item_bg_3 12 Transmilleno passengers (3×4).
 const SOURCES={'prop-lechona-source':lechonaUrl,'prop-merengon-source':merengonUrl,'prop-passengers-source':passengersUrl,'prop-station-source':stationUrl,'prop-chorro-source':chorroUrl,'prop-samber-source':samberUrl,'prop-gomelos-source':gomelosUrl,'prop-politicos-source':politicosUrl};
 SOURCES[PALOMOJAO_PROP_SOURCE.key]=PALOMOJAO_PROP_SOURCE.url;
+SOURCES['prop-plaza-source']=plazaUrl;
 // Eight people, two poses each. Tight alpha bounds keep neighbouring hands and shoes out of the cutouts.
 const GOMELOS=[[83,7,182,337],[358,75,199,269],[632,26,188,318],[901,87,199,257],
   [81,361,195,322],[376,402,160,281],[642,361,175,321],[914,358,165,325],
@@ -22,9 +24,9 @@ const GOMELOS=[[83,7,182,337],[358,75,199,269],[632,26,188,318],[901,87,199,257]
 // npc_samber.png (4×4): people on the downtown streets (level 6), standing, sitting or crouching.
 const SAMBER=[[66,8,173,358],[393,26,186,340],[748,11,152,355],[1085,13,153,353],[46,394,240,203],[391,400,239,190],[733,398,209,208],[1085,377,164,232],
   [65,641,215,215],[413,601,168,297],[707,658,279,201],[1103,595,149,293],[48,868,171,321],[355,960,284,210],[739,874,207,311],[1108,889,147,305]];
-// npc_chorro.png (4×4): young people hanging out at the Chorro de Quevedo (some sitting on the floor).
-const CHORRO=[[38,20,279,251],[379,57,227,216],[664,28,255,260],[982,44,216,226],[82,282,174,353],[384,288,180,345],[687,300,209,331],[1003,293,169,339],
-  [69,645,149,328],[388,643,153,336],[722,642,133,331],[1002,639,192,330],[58,978,177,293],[353,1030,249,236],[649,1026,231,222],[1001,975,183,291]];
+// Photo-based spectators and striped performer; eight independent figures with tight foot anchors.
+const CHORRO=[[23,93,209,379],[311,92,146,380],[581,104,117,368],[835,169,121,303],
+  [58,604,140,380],[307,611,154,373],[568,612,144,372],[839,680,114,304]];
 // npc_estacion.png (4×4): pedestrians at the level 1 station. walk: native facing (1 right, -1 left) and speed in px/s
 // for the ones drawn mid-stride; the rest wait in place.
 const STATION=[[[89,18,162,305]],[[432,18,128,305]],[[752,31,114,294]],[[1072,11,142,313]],
@@ -45,10 +47,17 @@ export const PROPS={
 };
 export const PASSENGERS=PASSENGER_RECTS.map((_,i)=>`passenger${i}`);
 Object.assign(PROPS,Object.fromEntries(PALOMOJAO_PROPS.map(prop=>[`palomojao-${prop.id}`,{...prop,noFlip:true}])));
-// One scale for all of them (standing figures ≈ 340 px → 104 on screen), so the sitting ones stay proportionally low.
+// Shared adult scale preserves the two children's smaller proportions.
 Object.assign(PROPS,Object.fromEntries(CHORRO.map((rect,i)=>[`chorro${i}`,{texture:`prop-chorro-${i}`,source:'prop-chorro-source',rect,
-  scale:104/340,tint:0xd8d8d8,shadow:.5}])));
+  scale:104/380,shadow:.5,noFlip:true}])));
 export const CHORRO_NPCS=CHORRO.map((_,i)=>`chorro${i}`);
+// Three Plaza de Bolivar photos: ice cream vendor, snack vendor with umbrella,
+// photographer, tourist couple and four fair visitors. Carts and people share a ground anchor.
+const PLAZA=[[16,286,224,194],[272,220,224,260],[546,32,187,448],[787,32,218,448],
+  [35,544,186,448],[300,544,168,448],[556,544,168,448],[784,608,224,384]];
+Object.assign(PROPS,Object.fromEntries(PLAZA.map((rect,i)=>[`plaza${i}`,{
+  texture:`prop-plaza-${i}`,source:'prop-plaza-source',rect,height:i===0?100:i===1?140:104,shadow:.5,noFlip:true}])));
+export const PLAZA_NPCS=PLAZA.map((_,i)=>`plaza${i}`);
 Object.assign(PROPS,Object.fromEntries(SAMBER.map((rect,i)=>[`samber${i}`,{texture:`prop-samber-${i}`,source:'prop-samber-source',rect,
   scale:106/355,tint:0xd8d8d8,shadow:.5}])));
 export const SAMBER_NPCS=SAMBER.map((_,i)=>`samber${i}`);

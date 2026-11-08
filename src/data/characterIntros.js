@@ -6,9 +6,9 @@
 export const characterIntros = {
   office: {
     player: 1,
-    name: 'JUANPIS GOMELO',
+    name: 'GOMELORD',
     description: 'Chapinero. Nunca había bajado del carro. Pelea con el iPhone, que es lo único en lo que confía.',
-    text: 'Juanpis pidió el Uber con la misma fe con la que pide el desayuno: que alguien más resuelva. Le cancelaron tres veces, el de InDriver le escribió «ya casi» y se esfumó, y el iPhone quedó en 1 %. Por primera vez tiene que bajar de Chapinero y cruzar Bogotá caminando: huecos, charcos que parecen lagunas y gente que no se impresiona cuando suelta «¿tú no sabes quién soy yo?». El celular es lo único que le queda. Hoy hasta eso lo va a tener que lanzar.',
+    text: 'Gomelord pidió el Uber con la misma fe con la que pide el desayuno: que alguien más resuelva. Le cancelaron tres veces, el de InDriver le escribió «ya casi» y se esfumó, y el iPhone quedó en 1 %. Por primera vez tiene que bajar de Chapinero y cruzar Bogotá caminando: huecos, charcos que parecen lagunas y gente que no se impresiona cuando suelta «¿tú no sabes quién soy yo?». El celular es lo único que le queda. Hoy hasta eso lo va a tener que lanzar.',
     ending: {
       nameSide: 'right',
       text: 'Llegó a la Zona Rosa con los tenis color arequipe y el pelo hecho un chicharrón. Nadie le creyó que había cruzado el centro a pata. Pagó la empanada con la tarjeta, le salió error, y por primera vez dijo «qué pena» sin que se lo dictaran. Ahora presume que le encanta caminar. Mentira. Solo si hay andén parejo y una panadería a la vuelta.',
@@ -16,13 +16,13 @@ export const characterIntros = {
   },
   student: {
     player: 2,
-    name: 'JUANA UNIVERSITARIA',
+    name: 'MACA DEMIA',
     description: 'Bosa. Parcial a primera hora. Pelea con los apuntes: si los suelta, pierde el semestre.',
     nameSide: 'right',
-    text: 'El profesor fue clarito: «Cinco minutos tarde y no entra, y no me vengan con el cuento del tráfico». Juana salió de Bosa con hora y media de ventaja, el tinto en un vaso que quema y los apuntes en una carpeta que ya conoce la lluvia. El SITP no paró. El alimentador sí paró, pero en la estación que no era. Entre la 26, La Candelaria y un parcial que no perdona, va a abrirse paso con lo único que no puede perder: los libros. Fotocopiados, subrayados y más bravos de lo que parecen.',
+    text: 'El profesor fue clarito: «Cinco minutos tarde y no entra, y no me vengan con el cuento del tráfico». Maca Demia salió de Bosa con hora y media de ventaja, el tinto en un vaso que quema y los apuntes en una carpeta que ya conoce la lluvia. El SITP no paró. El alimentador sí paró, pero en la estación que no era. Entre la 26, La Candelaria y un parcial que no perdona, va a abrirse paso con lo único que no puede perder: los libros. Fotocopiados, subrayados y más bravos de lo que parecen.',
     ending: {
       nameSide: 'right',
-      text: 'Llegó al salón con el corazón en la boca y una media empapada. El profesor ya tenía la mano en la puerta. Juana no rogó: entró, se sentó y abrió el cuaderno como si el resto de Bogotá hubiera sido el calentamiento. Sacó tres punto ocho. Al salir, el SITP otra vez no paró. Esta vez ni le importó. Ya había ganado el examen que no estaba en el programa.',
+      text: 'Llegó al salón con el corazón en la boca y una media empapada. El profesor ya tenía la mano en la puerta. Maca Demia no rogó: entró, se sentó y abrió el cuaderno como si el resto de Bogotá hubiera sido el calentamiento. Sacó tres punto ocho. Al salir, el SITP otra vez no paró. Esta vez ni le importó. Ya había ganado el examen que no estaba en el programa.',
     },
   },
   teleperforman: {

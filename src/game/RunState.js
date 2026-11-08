@@ -1,13 +1,22 @@
 // Arcade rule: at most MAX_CONTINUES continues per game; after that, losing the last life is game over.
 export const MAX_CONTINUES=5;
+import {difficultyFor,DEFAULT_DIFFICULTY} from '../data/difficulty.js';
 export class RunState {
-  constructor(){this.reset();}
-  reset(){this.level=0;this.lives=3;this.score=0;this.levelStartScore=0;this.continuesUsed=0;this.chivaBonusPlayed=false;this.ringBonusPlayed=false;}
+  constructor(){this.difficulty=DEFAULT_DIFFICULTY;this.reset();}
+  get livesPerCredit(){return difficultyFor(this.difficulty).lives;}
+  /** Choosing a difficulty before the run starts also sets its lives. */
+  setDifficulty(id){this.difficulty=difficultyFor(id).id;if(!this.started)this.lives=this.livesPerCredit;}
+  get started(){return this.score>0 || this.deaths>0 || this.level>0 || this.continuesUsed>0;}
+  /** Survival runs: one life, no continues. */
+  startSurvival(lives){this.reset();this.mode='survival';this.lives=lives;}
+  reset(){this.mode='story';this.level=0;this.lives=this.livesPerCredit??3;this.deaths=0;this.score=0;this.levelStartScore=0;this.continuesUsed=0;this.chivaBonusPlayed=false;this.ringBonusPlayed=false;}
   award(points){this.score+=points;return this.score;}
-  loseLife(){this.lives=Math.max(0,this.lives-1);return this.lives;}
+  loseLife(){if(this.lives>0)this.deaths++;this.lives=Math.max(0,this.lives-1);return this.lives;}
+  addLife(){return ++this.lives;}
+  get isLastContinue(){return this.continuesUsed===MAX_CONTINUES;}
   get continuesLeft(){return Math.max(0,MAX_CONTINUES-this.continuesUsed);}
-  get canContinue(){return this.continuesLeft>0;}
-  continue(){if(!this.canContinue)return false;this.continuesUsed++;this.lives=3;return true;}
+  get canContinue(){return this.mode!=='survival' && this.continuesLeft>0;}
+  continue(){if(!this.canContinue)return false;this.continuesUsed++;this.lives=this.livesPerCredit;return true;}
   advance(level){this.level=level;this.levelStartScore=this.score;}
 }
 

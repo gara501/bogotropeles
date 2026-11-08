@@ -1,0 +1,67 @@
+[
+  {
+    "name": "office",
+    "id": "5b9bbbf5-b22d-4a21-a267-dd5cb54f0b13",
+    "count": 8
+  },
+  {
+    "name": "student",
+    "id": "df5bb16f-5abb-45ee-bec8-9cdb25ca6727",
+    "count": 8
+  },
+  {
+    "name": "teleperforman",
+    "id": "1e1325ee-32b8-4243-b866-18b28329b334",
+    "count": 8
+  },
+  {
+    "name": "gymbro",
+    "id": "0505161c-4a3d-48ea-acfe-5a73dee50f86",
+    "count": 8
+  },
+  {
+    "name": "magolita",
+    "id": "1219115b-5080-4654-9f72-0f389a228062",
+    "count": 8
+  },
+  {
+    "name": "hiker-0",
+    "id": "e36b0734-93e7-4dd4-8f12-c4ecd00f48df",
+    "count": 4
+  },
+  {
+    "name": "hiker-1",
+    "id": "2d48ec4e-d263-412e-a16a-fec650e387ad",
+    "count": 4
+  },
+  {
+    "name": "hiker-2",
+    "id": "c5b6b09d-e74c-4fc9-bf61-5524fc0ca292",
+    "count": 4
+  },
+  {
+    "name": "hiker-3",
+    "id": "885e7f72-0ed2-4f9b-9b57-641922f0e2fd",
+    "count": 4
+  },
+  {
+    "name": "hiker-4",
+    "id": "5a2c2580-2a41-46b7-a078-923846eddeda",
+    "count": 4
+  },
+  {
+    "name": "hiker-5",
+    "id": "e579162c-7d07-43d5-b4fd-24ecc01929c3",
+    "count": 4
+  },
+  {
+    "name": "hiker-6",
+    "id": "dc520656-d7a6-47e0-93f3-396a00e22b38",
+    "count": 4
+  },
+  {
+    "name": "hiker-7",
+    "id": "e82d48da-f200-4241-b4fe-326ab0e73341",
+    "count": 4
+  }
+]

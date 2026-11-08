@@ -1,0 +1,26 @@
+{
+  "tool": "PixelLab animate_image_pixminimax",
+  "seed": 71428,
+  "jobs": [
+    {
+      "character": "magolita",
+      "id": "6e3a86cc-be19-4758-b902-91effca33ca4"
+    },
+    {
+      "character": "office",
+      "id": "57aca5a1-51de-4e7c-bb25-262c9e088a36"
+    },
+    {
+      "character": "student",
+      "id": "67b99f8e-119d-40bf-944c-f83ad275d6b8"
+    },
+    {
+      "character": "teleperforman",
+      "id": "ccba7e43-868a-421d-b661-bd9257e98dd3"
+    },
+    {
+      "character": "gymbro",
+      "id": "8ba9006e-3a36-4b8a-8e76-7f015a49b5c1"
+    }
+  ]
+}

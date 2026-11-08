@@ -25,6 +25,17 @@ test('sack and shoulder warnings give 90 and 60 frames; a missed charge exposes 
  const e=setup();e.ready();e.s.player.x=440;e.c.start('slam');e.step(89);assert.deepEqual(e.hits,[]);e.step();assert.deepEqual(e.hits,[28]);
  e.c.start('charge');const x=e.a.x;e.step(60);assert.equal(e.a.x,x);e.s.player.y=390;e.step(45);assert.equal(e.c.mode,'crash');assert.equal(e.hits.length,1);
 });
+
+test('Don Reversa on foot already escapes three repeated hits and becomes vulnerable again on landing',()=>{
+ const e=setup();e.ready();e.s.player.x=e.a.x-55;e.s.player.y=e.a.y;
+ for(let hit=0;hit<3;hit++){e.c.hurt();if(hit<2)e.step(8);}
+ assert.equal(e.c.mode,'escape');const from={x:e.a.x,y:e.a.y};
+ assert.ok(e.a.invulnerableUntil>e.s.combatTime);
+ e.c.hurt();assert.equal(e.c.mode,'escape','further hits cannot restart the escape');
+ e.step(38);assert.equal(e.c.mode,'idle');assert.equal(e.a.z,0);
+ assert.ok(Math.abs(e.a.x-from.x)>100);assert.ok(Math.abs(e.a.y-from.y)>=20);
+ assert.equal(e.a.invulnerableUntil,0);
+});
 test('interrupting coffee prevents healing and creates a puddle that trips the boss too; whistle summons only after its windup',()=>{
  const e=setup();e.ready();e.a.hp=2500;e.c.start('coffee');e.step(80);e.c.hurt();assert.equal(e.a.hp,2500);assert.equal(e.r.potatoes.patches.length,1);
  e.r.potatoes.update();assert.equal(e.c.mode,'fall');e.c.start('whistle');e.step(49);assert.equal(e.summons.length,0);e.c.hurt();e.step(2);assert.equal(e.summons.length,0);

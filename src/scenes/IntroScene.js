@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import introJuegoUrl from './intro_juego.png?url';
+import introJuegoUrl from './intro_juego_v2.png?url';
 import introBossUrl from './intro_boss.png?url';
 import storyUrl from './intro_1.png?url';
 import { levels } from '../data/levels.js';
@@ -37,8 +37,9 @@ export class IntroScene extends Phaser.Scene {
     const backgrounds=isLevel && !level.url && level.layers?.length?level.layers.map(layer=>layer.key):[texture];
     for(const key of backgrounds){
       const bg=this.add.image(480,270,key),scale=(this.bossCard?Math.min:Math.max)(960/bg.width,540/bg.height);
-      bg.setScale(scale).setAlpha(0);
-      this.tweens.add({targets:bg,alpha:1,duration:450});
+      bg.setScale(scale).setAlpha(this.nextData.hardCut?1:0);
+      if(isLevel && level.night)bg.setTint?.(...level.night.tint); // the level card previews the night grade
+      if(!this.nextData.hardCut)this.tweens.add({targets:bg,alpha:1,duration:450});
     }
     if(this.bossCard && this.sound && this.cache?.audio){
       this.introSfx=new SoundEffects(this.sound,this.cache.audio);
@@ -72,10 +73,10 @@ export class IntroScene extends Phaser.Scene {
         lineSpacing:8,wordWrap:{width:800,useAdvancedWrap:true}}).setOrigin(.5);
     } else if(!this.bossCard)this.add.rectangle(480,490,960,100,0x05080a,.8);
     if(this.bossCard)this.add.rectangle(480,520,960,40,0x05080a,.8);
-    const caption=isLevel?(level.mode==='cycling'?'PEDALEO AUTOMÁTICO · ↑ ↓ ESQUIVAR · LLEGA A LA META':level.mode==='crossing'?'DERROTA A LOS PEATONES · ESQUIVA LAS MOTOS':`${level.total} ENEMIGOS · OLEADAS DE DOS Y TRES`)
+    const caption=isLevel?(level.mode==='monserrate'?'CARRERA AUTOMÁTICA · ← → ESQUIVAR · SUBE SIN CHOCAR':level.mode==='aura'?'RETA AL GORDO DEL AURA · EMOTES 1–5 · SIGUE EL PULSO':level.mode==='cycling'?'PEDALEO AUTOMÁTICO · ↑ ↓ ESQUIVAR · LLEGA A LA META':level.mode==='crossing'?'DERROTA A LOS PEATONES · ESQUIVA LAS MOTOS':`${level.total} ENEMIGOS · OLEADAS DE DOS Y TRES`)
       :this.kind==='boss'?'DORMILÓN · EL ÚLTIMO TRÁMITE DE LA NOCHE':'A LOS TRAQUES POR BOGOTÁ.';
-    if(this.kind!=='story' && !isCredits && !this.bossCard)this.add.text(480,467,caption,{...style,fontSize:'16px'}).setOrigin(.5);
-    const prompt=this.add.text(480,510,'',{...style,fontSize:'12px',color:'#d6ed64'}).setOrigin(.5);
+    if(this.kind!=='story' && !isCredits && !this.bossCard)this.add.text(480,this.kind==='game'?492:467,caption,{...style,fontSize:'16px'}).setOrigin(.5);
+    const prompt=this.add.text(480,this.kind==='game'?524:510,'',{...style,fontSize:'12px',color:'#d6ed64'}).setOrigin(.5);
     if(this.children)for(const object of this.children.list)if(object.type==='Text')fitArcadeText(object);
     this.skip=(event)=>{
       if(this.done)return;this.done=true;

@@ -16,6 +16,6 @@ export const JUGGLER={name:'MALABARISTA',url,rows:[4,4,4,4,4],height:112,speed:2
   juggler:{hopRange:100,hopDistance:155,hopFrames:20,hopCooldown:150,height:48},
   attackFrames:{startup:16,active:3,recovery:30,cooldown:72},
   throw:{minRange:175,maxRange:620,windup:500,active:7,recovery:540,cooldown:1800,
-    speed:440,damage:18,texture:'juggling-club',width:43,height:9,lift:68,offset:58,spin:13,hitFrame:2,keepAway:true},
+    speed:660,damage:18,texture:'juggling-club',width:43,height:9,lift:68,offset:58,spin:0,hitFrame:2,keepAway:true},
   animations:{idle:[0,1,2,3],walk:[4,5,6,7],attack:[8,10,11],throw:[8,9,10,11],hurt:[12,13],defeat:[14,15],jump:[16,17,16],struggle:[18,19]},
 };

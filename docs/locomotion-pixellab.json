@@ -1,0 +1,92 @@
+[
+  {
+    "character": "teleperforman",
+    "tool": "PixelLab animate_image",
+    "job_id": "d4526ff3-9ed5-4f7c-bb5f-4c43a42b13ce",
+    "asset_id": "53048566-8615-55f9-a2dc-cf581eb02e24",
+    "seed": 20833,
+    "reference": "src/data/players/player_3.png",
+    "output": "src/data/players/player_3_walk.png",
+    "canvas": [
+      256,
+      256
+    ],
+    "frames": 8,
+    "selected_generated_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "atlas_frames": [
+      93,
+      100
+    ],
+    "poses_per_second": 15,
+    "prompt": "Seamless looping full locomotion cycle IN PLACE facing RIGHT, side view. Complete exactly one full gait cycle across these 8 frames: one leg leads, feet pass underneath the hips, opposite leg leads, feet pass again, and return seamlessly to the starting pose. Clearly alternate both legs and opposite arm swings. Fixed camera, fixed body scale, stationary hip axis centered on canvas. Consistent ground baseline, minimal head bob, transparent background. Preserve the EXACT character identity, body build, clothing, proportions, face, palette, outlines and rendering style in the supplied image. No turning, no attacks, no equipment added, no effects, no shadow, no travel across canvas. Natural brisk purposeful walking with heel contact and toe push-off, relaxed alternating bent arms. Preserve brown hair and beard, gray call-center headset, lavender long-sleeve office shirt, black necktie, charcoal trousers and black shoes. Tie and headset remain attached, very subtle secondary motion."
+  },
+  {
+    "character": "magolita",
+    "tool": "PixelLab animate_image",
+    "job_id": "df9e8b95-5a62-4514-a863-4223b3916113",
+    "asset_id": "0ce224ba-ee59-5ffe-95c8-f8238045e7c4",
+    "seed": 20835,
+    "reference": "src/data/players/player_5.png",
+    "output": "src/data/players/player_5_walk.png",
+    "canvas": [
+      256,
+      256
+    ],
+    "frames": 8,
+    "selected_generated_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "atlas_frames": [
+      57,
+      64
+    ],
+    "poses_per_second": 15,
+    "prompt": "Seamless 8-frame brisk WALK loop IN PLACE facing RIGHT, side view. One full gait: left leg leads, feet pass under hips, right leg leads, feet pass again, return to starting pose. Clearly alternate legs with heel contacts and toe push-offs, opposite bent-arm swings, compact sturdy weight shifts. Preserve exact stocky middle-aged woman, face, dark brown bun, blue short-sleeve work shirt, pale blue tied apron, dark blue trousers, purple gloves, black work shoes. Empty hands. Subtle apron sway, fixed bun. Preserve reference style, colors, outline, body build and scale. Fixed camera, stationary centered hip axis, consistent ground baseline, minimal head bob, transparent background. No turning, no attacks, no props, no effects, no shadow, no travel across canvas."
+  },
+  {
+    "character": "gymbro",
+    "tool": "PixelLab animate_image_pixminimax",
+    "job_id": "832b7fa6-ad62-4d60-a451-cd291d81f308",
+    "asset_id": "bce07ad4-6b79-58dd-bcff-410ae4a0e28c",
+    "seed": 30834,
+    "reference": "src/data/players/player_4.png",
+    "output": "src/data/players/player_4_run.png",
+    "canvas": [
+      256,
+      256
+    ],
+    "frames": 8,
+    "selected_generated_indices": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "atlas_frames": [
+      50,
+      57
+    ],
+    "poses_per_second": 20,
+    "prompt": "A seamless looping athletic sprint IN PLACE to the right. The muscular runner leans his torso forward 20 degrees, pumps both arms vigorously with elbows bent 90 degrees, alternately drives each knee high in front and kicks each heel up behind toward his buttocks. Include a clear flight phase with BOTH FEET OFF THE GROUND between alternating foot strikes. Compact bent-leg silhouettes, quick energetic foot turnover. Exactly one complete running cycle across 8 frames, finish matching the first running pose for a seamless loop. Fixed camera and body position. Preserve character identity, muscular volume, charcoal tank top, grey sweatpants, black wristbands, black shoes with white soles, beard, colors and pixel art style. Transparent background, no shadows or effects."
+  }
+]

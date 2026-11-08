@@ -1,5 +1,7 @@
 import { CAMPAIGN } from './campaign.js';
 import cyclingBackground from '../scenes/ciclovia/background.png?url';
+import monserrateBackground from '../scenes/monserrate/game/background-v2.png?url';
+import auraBackground from '../scenes/aura/background.png?url';
 const backgrounds = import.meta.glob('../scenes/level_*.png', {
   eager: true, query: '?url', import: 'default',
 });
@@ -10,7 +12,7 @@ const asset = (art, file) => ({ key: `${art.folder}-${file}`,
   url: artFiles[`../scenes/${art.folder}/game/${file}.png`] ?? artFiles[`../scenes/${art.folder}/${file}.png`] });
 
 export const levels = CAMPAIGN.map((level, index) => {
-  const base = { ...level, key: `level-${index + 1}`, url: level.mode==='cycling'?cyclingBackground:level.art?.background?asset(level.art,level.art.background).url:backgrounds[`../scenes/level_${(level.combatIndex??index) + 1}.png`] };
+  const base = { ...level, key: `level-${index + 1}`, url: level.mode==='monserrate'?monserrateBackground:level.mode==='cycling'?cyclingBackground:level.mode==='aura'?auraBackground:level.art?.background?asset(level.art,level.art.background).url:backgrounds[`../scenes/level_${(level.combatIndex??index) + 1}.png`] };
   if (!level.art) return base;
   return {
     ...base,

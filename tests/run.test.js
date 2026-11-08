@@ -4,6 +4,15 @@ import {RunState,ContinueCountdown,saveRecord} from '../src/game/RunState.js';
 import {MUSIC_TRACKS,chooseMusic} from '../src/audio/musicTracks.js';
 import {existsSync} from 'node:fs';
 
+test('life coin eligibility starts after spending the final continue; adding a life does not change health or credits',()=>{
+  const run=new RunState();
+  while(run.continuesLeft>1){assert.equal(run.isLastContinue,false);run.continue();}
+  assert.equal(run.continuesLeft,1);assert.equal(run.isLastContinue,false);
+  run.continue();assert.equal(run.isLastContinue,true);
+  run.lives=1;assert.equal(run.addLife(),2);assert.equal(run.continuesLeft,0);
+  run.reset();assert.equal(run.isLastContinue,false);assert.equal(run.lives,3);
+});
+
 test('three lives persist across levels, continuing preserves points and a new game clears progress',()=>{
   const run=new RunState();assert.equal(run.lives,3);
   run.award(100);run.loseLife();run.advance(3);assert.equal(run.lives,2);assert.equal(run.score,100);

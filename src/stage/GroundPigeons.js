@@ -52,6 +52,7 @@ export class GroundPigeons {
       group.birds.forEach((b,i)=>b.sprite.setFrame(Math.floor(now/240+i)%GROUND_PIGEON.frames).setFlipX(b.flip));
       if(Math.abs(p.x-group.x)<=c.radius && Math.abs(p.y-group.y)<=c.depth){
         group.state='alert';group.since=now;group.target={x:p.x,y:p.y};
+        s.sfx?.play('pigeonFlight');
         for(const b of group.birds)b.sprite.setTexture(PIGEON_FLIGHT.key,0).setOrigin(.5,.5);
       }
       return;
@@ -61,7 +62,6 @@ export class GroundPigeons {
         .setFrame(Math.floor((now-group.since)/70)%PIGEON_FLIGHT.frames).setFlipX(group.target.x<b.x);
       if(now-group.since<c.tell)return;
       group.state='flight';group.since=now;
-      s.sfx?.play('pigeonFlight');
     }
     const t=clamp((now-group.since)/c.flight,0,1);
     group.birds.forEach((b,i)=>{

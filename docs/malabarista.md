@@ -3,15 +3,16 @@
 ## Malabarista
 - Nuevo enemigo en los niveles 2, 3, 5, 6 y 7; conserva los totales de las oleadas.
 - 110 HP base, velocidad 220, daño cuerpo a cuerpo 5 y alcance 65.
-- Lanza ráfagas de tres pinos con daño 18 por impacto (antes del escalado de nivel), alcance de 175 a 620 y aviso de 500 ms. Apunta a la posición del jugador al iniciar la ráfaga; permite esquivar cambiando de carril o saltando.
+- Lanza un solo cono/pino por ataque, en línea recta horizontal desde su carril, sin giro ni dispersión. Velocidad 660 px/s (antes 440; aumento del 50 %), daño 18 por impacto (antes del escalado de nivel), alcance de 175 a 620 y aviso de 500 ms. Permite esquivar cambiando de carril o saltando.
 - Busca distancia de 270. A menos de 100 salta y cambia de carril; si está contra una pared, cruza sobre el jugador. El salto tiene cooldown de 150 frames, por lo que puede agarrarse durante recuperación o aturdimiento.
 - Hoja propia de 20 poses: malabares, carrera, lanzamiento, daño, caída, salto y forcejeo. No requiere animaciones nuevas de los jugadores.
 - Assets: `src/data/enemies/malabarista.png`, `src/data/UI/juggling_club.png`.
 - Prueba local de desarrollo: `?enemyTest=malabarista&character=gymbro`.
 
-## Siete jefes de campaña
+## Escape de jefes de campaña
 - Regla común en ambos bordes del área actual, incluyendo escenarios con scroll.
 - Tras dos impactos dentro de 1400 ms junto a un borde, salta hacia el interior y cruza al atacante.
+- En el centro también escapan ante cuatro impactos cercanos en 1800 ms o 1100 ms de presión sostenida durante aturdimiento; incluye a Jugo. La protección al aterrizar tras este escape es de 450 ms. Ver `boss-pressure.md`.
 - También detecta 900 ms de presión cercana sin segundo impacto: cubre escudos y pausas de impacto que antes perpetuaban el encierro.
 - Evasión de 600 ms, protección de aterrizaje de 180 ms, cooldown de 900 ms después del salto.
 - La trayectoria avanza por tiempo de combate antes de hitstop/controladores especiales. Pausar el juego conserva la pausa.

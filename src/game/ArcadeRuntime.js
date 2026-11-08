@@ -1,8 +1,10 @@
+import {directionalStrike} from '../data/comboRoutes.js';
 import {ARCADE} from '../data/arcade.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {FixedClock} from './FixedClock.js';
 import {Player} from '../actors/Player.js';
 import {Enemy} from '../actors/Enemy.js';
+import {updateEnemyDeaths,renderEnemyDeath} from '../actors/EnemyDeath.js';
 import {CombatSystem} from '../combat/CombatSystem.js';
 import {Diablitos} from './Diablitos.js';
 import {Poultry} from './Poultry.js';
@@ -23,12 +25,13 @@ export class ArcadeRuntime {
     }
     if(s.paused || s.finished || s.cinematic || s.health<=0)return;
     this.input={dx:input.dx,dy:input.dy};this.edges.jump ||= input.jump;this.edges.dash ||= input.dash;
-    for(const action of input.actions){this.player.request(action);if(['punch','kick','lowKick',s.character.special].includes(action))s.boss?.status.shake();}
+    for(const action of input.actions){this.player.request(directionalStrike(action,input.dy));if(['punch','kick','lowKick',s.character.special].includes(action))s.boss?.status.shake();}
   }
-  update(delta){if(this.destroyed || this.scene.paused || this.scene.cinematic){this.clock.clear();return;}this.clock.advance(delta,frame=>this.step(frame));}
+  update(delta){if(this.destroyed || this.scene.paused || this.scene.cinematic){this.clock.clear();return;}this.clock.advance(delta*(this.scene.timeScale??1),frame=>this.step(frame));} // timeScale < 1: boss finale slow motion
   step(frame){
     if(this.destroyed)return;
     const s=this.scene;this.frame=frame;
+    updateEnemyDeaths(s,ARCADE.clock.stepMs);
     if(s.health<=0 && !s.gameOver){
       s.handleDeath();this.player.transition('knockdown');this.combat.clear();this.clearInput();
       if(s.waitingContinue || s.gameOver)return;
@@ -59,10 +62,10 @@ export class ArcadeRuntime {
     s.stage?.update(frame); // moves the camera and the floor span before enemies use it
     s.energyPickups?.update(frame);
     if(!s.chivaBonus)s.vuvuzela?.update(frame);
-    s.panela?.update(frame);s.superPower?.update();
+    s.panela?.update(frame);s.superPower?.update();s.combo?.update();
     s.motorcycles?.update();
     for(const actor of s.enemies){
-      if(actor.hp<=0){this.combat.tokens.release(actor);continue;}
+      if(actor.hp<=0){this.combat.tokens.release(actor);renderEnemyDeath(s,actor);continue;}
       const previous={x:actor.x,y:actor.y};
       if(actor.crossing)s.updateCrossing(actor,1/ARCADE.clock.fps);
       else {

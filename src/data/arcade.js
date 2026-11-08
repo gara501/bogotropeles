@@ -4,15 +4,18 @@ export const ARCADE={
   clock:{fps:60,stepMs:1000/60,maxCatchUp:6},
   movement:{depthRatio:.6,deadZone:.16},
   // comboLinkFrames: after a combo strike ends, the next input of the chain still links within this window.
-  input:{bufferFrames:8,comboCancelFrames:6,comboLinkFrames:20},
+  // Combos are forgiving: a press up to `bufferFrames` before the cancel window still links (12 + 6 frames ≈ 0.3 s
+  // of slack), and a strike that already ended still links within `comboLinkFrames`. Steady mashing in rhythm works.
+  input:{bufferFrames:12,comboCancelFrames:6,comboLinkFrames:28},
   body:{halfWidth:18,halfDepth:8,lane:24,backReach:10,airborneAvoidHeight:25,projectileAvoidHeight:35},
   hazards:{motoHalfWidth:28,motoSpeed:450},
-  jump:{frames:39,height:72},dash:{frames:11,cooldown:51,speed:650,invulnerable:17},
+  jump:{frames:39,height:72},dash:{frames:14,cooldown:54,speed:650,invulnerable:17,attackGrace:8,slideSpeed:520},
   player:{speeds:{office:205,student:290,teleperforman:220,gymbro:180,magolita:205},specialLifeCost:10,hurtFrames:12,knockdownFrames:45,wakeInvulnerable:30,hitInvulnerable:24,respawnInvulnerable:180},
   attack:{knockback:8,finisherKnockback:24,stun:20},
   // sparks: frames the player's hit sparks last (punch: short yellow star · kick: long white/orange burst · finisher: bigger, with a ring).
   // recoil: px the player rebounds after a finisher lands. finisherShake: stronger screen shake on finishers.
-  feedback:{hitstop:3,finisherHitstop:5,flash:3,impact:3,impactRadius:12,shakeMs:45,shakeStrength:.0015,
+  // heavyHitstop: hits of `heavyDamage`+ freeze a frame longer than ordinary ones.
+  feedback:{hitstop:3,heavyHitstop:4,heavyDamage:40,comboFinishHitstop:8,finisherHitstop:5,flash:3,impact:3,impactRadius:12,shakeMs:45,shakeStrength:.0015,
     sparks:{punch:7,kick:9,finisher:12},recoil:7,finisherShake:{ms:90,strength:.004}},
   ai:{tokens:2,comboStages:3,depthRatio:.55,windup:29,active:3,recovery:29,cooldown:126,rangedCooldown:168,
     circleX:45,circleY:22,alignY:10,circleSpeed:.7,initialCooldown:60,spawnSlots:3,spawnStagger:18,hurtCooldown:30,chargeHalfWidth:40},
@@ -26,6 +29,10 @@ export const ARCADE={
   // character's own punch (knee) and kick (throw). Knocked-down enemies lie still (invulnerable) and then get up.
   grab:{struggleFramesPerPose:6,reach:58,depth:14,touchFrames:4,hold:46,holdFrames:110,kneeTotal:16,kneeHit:6,maxKnees:3,kneeDamage:.7,
     throwTotal:26,throwRelease:10,throwFrames:32,throwDistance:230,throwHeight:72,throwDamage:1.3,collideDamage:30},
+  // Parry (U): `active` frames that catch a melee strike or a straight projectile; a miss leaves `recovery` frames open.
+  // Success: `hitstop` freeze, the attacker staggers for `stunFrames` (bosses only bounce off), the player is safe for
+  // `invulnerable` frames and may cancel `successRecovery` into any action; hits within `counterMs` deal ×`counterDamage`.
+  parry:{active:10,recovery:18,successRecovery:16,stunFrames:54,hitstop:8,invulnerable:22,counterMs:900,counterDamage:1.5,push:18},
   // fall: frames in the air (sliding back along an arc of `arc` px); lie: frames on the floor; getup: frames standing up.
   knockdown:{fall:18,lie:42,getup:14,knockback:30,arc:22},
   cornerEscape:{hits:2,window:1500,edge:110,land:190,duration:620,height:95,getupRange:170},
@@ -37,7 +44,7 @@ export const ARCADE={
     fan:{speed:150,attackFrames:{startup:20,recovery:20,cooldown:66}},
   },
   // Final Fight style HUD; timeLimit: seconds per arena/boss (0 hides TIME and disables the countdown).
-  hud:{enabled:true,timeLimit:99},
+  hud:{enabled:true,timeLimit:99,controlsHintMs:8000},
   flow:{victoryFrames:60,resultDelayFrames:66,blinkPeriod:6,blinkVisible:3,blinkAlpha:.25},
 };
 export const toFrames=ms=>Math.max(1,Math.round(ms/ARCADE.clock.stepMs));

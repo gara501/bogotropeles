@@ -1,5 +1,7 @@
 export const BOSS_CORNER={edge:120,hits:2,windowMs:1400,pinMs:900,pressureRange:180,depth:48,
   durationMs:600,height:64,landingGuardMs:180,cooldownMs:900};
+// A full combo may connect, but repeated interruptions cannot lock a boss anywhere in the arena.
+export const BOSS_PRESSURE={hits:4,windowMs:1800,pinMs:1100,pressureRange:170,depth:48,landingGuardMs:450};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const nearBossCorner=(actor,floor)=>actor.x>=floor.left && actor.x<=floor.right
   && Math.min(actor.x-floor.left,floor.right-actor.x)<=BOSS_CORNER.edge;

@@ -1,0 +1,89 @@
+{
+  "stage": "Monserrate · Ascenso",
+  "art": "AI generated with image_gen from user Monserrate photo and existing player identity references; rear-view motion with PixelLab PixMiniMax",
+  "frameSize": [
+    192,
+    256
+  ],
+  "bodyHeight": 208,
+  "baseline": 240,
+  "players": [
+    "office",
+    "student",
+    "teleperforman",
+    "gymbro",
+    "magolita"
+  ],
+  "playerFrames": 8,
+  "npcVariants": 8,
+  "npcFrames": 4,
+  "campaignLevel": 5,
+  "scenery": {
+    "background": "background-v2.png",
+    "foliage": "foliage.png",
+    "sourceTool": "image_gen",
+    "foliageFrames": 6,
+    "foliageCell": [
+      256,
+      384
+    ],
+    "instances": 40,
+    "motion": "distance-based perspective projection and gradual background approach",
+    "hud": "two lateral panels, central sanctuary corridor unobstructed"
+  },
+  "trail": {
+    "projection": "shared curved world centreline; contact plane stays anchored",
+    "sections": [
+      "bosque",
+      "escalinata rocosa",
+      "velas",
+      "santuario"
+    ],
+    "vendorInstances": 9,
+    "vendorVariants": 4,
+    "vendorRole": "stationary roadside ambience; no collision",
+    "vendors": [
+      192,
+      256
+    ],
+    "rockVariants": 4,
+    "rocks": [
+      256,
+      384
+    ],
+    "roughStone": [
+      256,
+      128
+    ],
+    "sourceTool": "image_gen",
+    "references": [
+      "ejemplos/sendero.jpg",
+      "ejemplos/velas.webp",
+      "ejemplos/monserrate2.jpg"
+    ]
+  },
+  "kneelers": {
+    "variants": 4,
+    "frames": 8,
+    "frameSize": [
+      192,
+      256
+    ],
+    "bodyHeight": 136,
+    "baseline": 240,
+    "worldSpeed": 0.28,
+    "standingWalkerSpeed": 1.2,
+    "reference": "ejemplos/rodillas.jpg",
+    "tools": [
+      "image_gen",
+      "PixelLab PixMiniMax"
+    ],
+    "jobs": "kneeler-jobs.json"
+  },
+  "runnerPace": {
+    "startSpeed": 17,
+    "endSpeed": 28,
+    "spawnDistance": 90,
+    "lastWaveIntervalMs": 700
+  }
+}

@@ -11,3 +11,8 @@ ejemplos/
 preview.png
 enemies-preview.png
 walk_preview.gif
+
+# Supabase keys (local)
+.env
+.env.*
+!.env.example

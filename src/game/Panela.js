@@ -1,4 +1,5 @@
 import {ARCADE} from '../data/arcade.js';
+import {PANELA_RUN,armedRunTexture} from '../data/armedRun.js';
 import {viewLeft} from '../stage/scroll.js';
 import {PANELA,panelaAttack,panelaTouches} from './panelaRules.js';
 
@@ -75,9 +76,12 @@ export class Panela {
       && (this.remaining || throwing) && (model.state==='walk' || throwing) && s.textures.exists(key);
     p.sprite.setVisible(!armed);this.held.setVisible(Boolean(armed));if(!armed)return;
     const walking=s.arcade.input?.dx || s.arcade.input?.dy;
-    const pose=throwing?action.displayedFrame.weaponPose:walking?1+Math.floor(model.age/ARCADE.animation.walkFramesPerPose)%4:0;
-    const scale=s.character.height/s.textures.get(key).referenceHeight;
-    this.held.setTexture(key,pose).setScale(scale).setFlipX(s.facing<0).setAlpha(p.sprite.alpha)
+    const runArt=PANELA_RUN[s.characterKey],runKey=armedRunTexture(s.characterKey,'panela');
+    const run=Boolean(runArt && walking && !throwing && s.textures.exists(runKey));
+    const cadence=s.character.walkFramesPerPose??ARCADE.animation.walkFramesPerPose;
+    const pose=throwing?action.displayedFrame.weaponPose:run?runArt.order[Math.floor(model.age/cadence)%runArt.order.length]:walking?1+Math.floor(model.age/ARCADE.animation.walkFramesPerPose)%4:0;
+    const scale=s.character.height/s.textures.get(run?s.characterKey:key).referenceHeight;
+    this.held.setTexture(run?runKey:key,pose).setScale(scale).setFlipX(s.facing<0).setAlpha(p.sprite.alpha)
       .setPosition(p.sprite.x,p.y-(p.z??0)+4*scale).setDepth(p.y);
   }
   destroy(){this.clearHeld();this.clearFlights();for(const item of this.items){item.graphic.destroy();item.sprite.destroy();}this.items=[];this.held.destroy();this.label.destroy();}

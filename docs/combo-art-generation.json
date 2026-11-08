@@ -1,0 +1,55 @@
+{
+  "tool": "image_gen built-in",
+  "assets": {
+    "office": {
+      "source": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-d0b14027-373a-4be8-93b8-1f9b2aa28a81.png",
+      "prompt": "Create a production pixel-art beat-em-up sprite sheet using the reference ONLY for the character identity, outfit, palette and pixel style. Transparent background. EXACT layout 4 columns by 8 rows, 32 separate full-body poses, evenly spaced equal cells, no text no grid lines. Every character faces RIGHT in side/three-quarter view. Fixed camera, consistent anatomy, body scale and ground line across each row. Each row is a four-frame attack: windup, anticipation, full extension CONTACT, recovery. Row 1 quick lead jab. Row 2 opposite-arm cross punch with torso twist. Row 3 heavy barehand hook punch. Row 4 quick front kick. Row 5 turning roundhouse kick. Row 6 high finishing kick. Row 7 crouching low sweeping kick, one hand planted on floor and leg fully extended along floor at contact; NO slide or forward dive. Row 8 crouch then explosive UPWARD UPPERCUT holding OBJECT in striking hand, visibly raising the object from waist to above head at contact. Do not draw explosions or trails; effects are separate in engine. Keep full silhouette and all props safely inside each cell. 1024x2048 portrait sheet. REFERENCE CHARACTER: Gomelo: black hair, beard, sunglasses, navy blazer white shirt gray trousers white sneakers. Elegant precise boxing and kicks. OBJECT = a silver smartphone firmly held in fist.",
+      "file": "src\\data\\players\\office_combos_v1.png",
+      "cellSize": [
+        256,
+        256
+      ],
+      "frames": 32
+    },
+    "student": {
+      "source": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-e6c6d354-d164-444a-b858-a52d3f8b1a35.png",
+      "prompt": "Create a production pixel-art beat-em-up sprite sheet using the reference ONLY for the character identity, outfit, palette and pixel style. Transparent background. EXACT layout 4 columns by 8 rows, 32 separate full-body poses, evenly spaced equal cells, no text no grid lines. Every character faces RIGHT in side/three-quarter view. Fixed camera, consistent anatomy, body scale and ground line across each row. Each row is a four-frame attack: windup, anticipation, full extension CONTACT, recovery. Row 1 quick lead jab. Row 2 opposite-arm cross punch with torso twist. Row 3 heavy barehand hook punch. Row 4 quick front kick. Row 5 turning roundhouse kick. Row 6 high finishing kick. Row 7 crouching low sweeping kick, one hand planted on floor and leg fully extended along floor at contact; NO slide or forward dive. Row 8 crouch then explosive UPWARD UPPERCUT holding OBJECT in striking hand, visibly raising the object from waist to above head at contact. Do not draw explosions or trails; effects are separate in engine. Keep full silhouette and all props safely inside each cell. 1024x2048 portrait sheet. REFERENCE CHARACTER: Universitaria: young woman, long flowing brown hair, cream and brown sweater, blue jeans white sneakers. Agile flowing martial arts. OBJECT = a thick red hardcover book firmly in her hand.",
+      "file": "src\\data\\players\\student_combos_v1.png",
+      "cellSize": [
+        256,
+        256
+      ],
+      "frames": 32
+    },
+    "teleperforman": {
+      "source": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-a4c170e6-b215-4f5f-9c37-3b9dad648102.png",
+      "prompt": "Create a production pixel-art beat-em-up sprite sheet using the reference ONLY for the character identity, outfit, palette and pixel style. Transparent background. EXACT layout 4 columns by 8 rows, 32 separate full-body poses, evenly spaced equal cells, no text no grid lines. Every character faces RIGHT in side/three-quarter view. Fixed camera, consistent anatomy, body scale and ground line across each row. Each row is a four-frame attack: windup, anticipation, full extension CONTACT, recovery. Row 1 quick lead jab. Row 2 opposite-arm cross punch with torso twist. Row 3 heavy barehand hook punch. Row 4 quick front kick. Row 5 turning roundhouse kick. Row 6 high finishing kick. Row 7 crouching low sweeping kick, one hand planted on floor and leg fully extended along floor at contact; NO slide or forward dive. Row 8 crouch then explosive UPWARD UPPERCUT holding OBJECT in striking hand, visibly raising the object from waist to above head at contact. Do not draw explosions or trails; effects are separate in engine. Keep full silhouette and all props safely inside each cell. 1024x2048 portrait sheet. REFERENCE CHARACTER: Teleperforman: brown haired bearded office man wearing headset, lavender shirt black tie charcoal trousers black shoes. Tense office worker attacks. OBJECT = a clearly recognizable desktop PC monitor with dark bezel and cyan display, lifted in striking hand.",
+      "file": "src\\data\\players\\teleperforman_combos_v1.png",
+      "cellSize": [
+        256,
+        256
+      ],
+      "frames": 32
+    },
+    "gymbro": {
+      "source": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-20e8caff-4a4c-4883-8bf9-e705bd257a07.png",
+      "prompt": "Create a production pixel-art beat-em-up sprite sheet using the reference ONLY for the character identity, outfit, palette and pixel style. Transparent background. EXACT layout 4 columns by 8 rows, 32 separate full-body poses, evenly spaced equal cells, no text no grid lines. Every character faces RIGHT in side/three-quarter view. Fixed camera, consistent anatomy, body scale and ground line across each row. Each row is a four-frame attack: windup, anticipation, full extension CONTACT, recovery. Row 1 quick lead jab. Row 2 opposite-arm cross punch with torso twist. Row 3 heavy barehand hook punch. Row 4 quick front kick. Row 5 turning roundhouse kick. Row 6 high finishing kick. Row 7 crouching low sweeping kick, one hand planted on floor and leg fully extended along floor at contact; NO slide or forward dive. Row 8 crouch then explosive UPWARD UPPERCUT holding OBJECT in striking hand, visibly raising the object from waist to above head at contact. Do not draw explosions or trails; effects are separate in engine. Keep full silhouette and all props safely inside each cell. 1024x2048 portrait sheet. REFERENCE CHARACTER: Gymbro: broad muscular black-haired bearded man black tank top gray sweatpants black sneakers wristbands. Powerful heavyweight boxing and kicks. OBJECT = heavy metallic dumbbell with two dark weight ends and silver handle.",
+      "file": "src\\data\\players\\gymbro_combos_v1.png",
+      "cellSize": [
+        256,
+        256
+      ],
+      "frames": 32
+    },
+    "magolita": {
+      "source": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-c1141c26-cf78-45de-9e95-2cb3ae389153.png",
+      "prompt": "Create a production pixel-art beat-em-up sprite sheet using the reference ONLY for the character identity, outfit, palette and pixel style. Transparent background. EXACT layout 4 columns by 8 rows, 32 separate full-body poses, evenly spaced equal cells, no text no grid lines. Every character faces RIGHT in side/three-quarter view. Fixed camera, consistent anatomy, body scale and ground line across each row. Each row is a four-frame attack: windup, anticipation, full extension CONTACT, recovery. Row 1 quick lead jab. Row 2 opposite-arm cross punch with torso twist. Row 3 heavy barehand hook punch. Row 4 quick front kick. Row 5 turning roundhouse kick. Row 6 high finishing kick. Row 7 crouching low sweeping kick, one hand planted on floor and leg fully extended along floor at contact; NO slide or forward dive. Row 8 crouch then explosive UPWARD UPPERCUT holding OBJECT in striking hand, visibly raising the object from waist to above head at contact. Do not draw explosions or trails; effects are separate in engine. Keep full silhouette and all props safely inside each cell. 1024x2048 portrait sheet. REFERENCE CHARACTER: Magolita: stocky woman brown hair tied in bun blue cleaning uniform light blue apron purple gloves dark pants black work shoes. Sturdy grounded attacks. Punches are bare gloved fists without other props. OBJECT = short handled cleaning scrub brush with white bristles and yellow handle.",
+      "file": "src\\data\\players\\magolita_combos_v1.png",
+      "cellSize": [
+        256,
+        256
+      ],
+      "frames": 32
+    }
+  }
+}

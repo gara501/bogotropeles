@@ -1,0 +1,15 @@
+{
+  "provider": "PixelLab",
+  "tool": "image_to_pixelart",
+  "job_id": "55eca3b3-44cf-4808-9264-56317dc69960",
+  "asset_id": "8247c9ce-85c8-58f4-9353-0ee6e0f22f30",
+  "width": 512,
+  "height": 288,
+  "faithful": false,
+  "init_image_strength": 0,
+  "text_guidance_scale": 9,
+  "seed": 69315,
+  "reference": "ejemplos/boda.webp",
+  "reference_preparation": "Photo cropped to composition and fitted to 512x288 JPEG as generation input only",
+  "output": "boda-en-transmilleno.png"
+}

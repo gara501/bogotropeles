@@ -8,7 +8,7 @@ function fixture(){
     setOrigin(){return this;},setStrokeStyle(){return this;},setScrollFactor(){return this;},setDepth(){return this;},
     setCrop(){return this;},setScale(){return this;},setPosition(){return this;},
     setVisible(value){this.visible=value;return this;},setText(value){this.text=value;return this;},
-    setColor(){return this;},destroy(){this.destroyed=true;},
+    setColor(){return this;},setAlpha(){return this;},setFillStyle(){return this;},destroy(){this.destroyed=true;},
   });
   const enemy={key:'palomera',hp:100,config:{name:'PALOMERA',hp:100,idle:0}};
   const scene={combatTime:1000,enemies:[enemy],lastHit:null,miniBoss:null,boss:null,
@@ -50,4 +50,23 @@ test('killing a regular target switches to a living boss, then a fresh hit rebui
   enemy.hp=100;scene.lastHit={enemy,at:1000};hud.update();
   assert.equal(hud.enemyName.text,'PALOMERA');assert.equal(hud.enemyFace.visible,true);
   assert.equal(hud.enemyBar.yellow.width,220);
+});
+
+test('ability chips share one pattern: ready, recharging and unaffordable specials, held item and touch labels',()=>{
+  const {scene,hud}=fixture();
+  scene.character={...scene.character,special:'iphone',specialLabel:'IPHONE'};scene.specialReadyAt=0;
+  hud.update();
+  assert.equal(hud.name.text,'GOMELO ×3','lives read as ×N');
+  assert.deepEqual([hud.chips.dash.key.text,hud.chips.dash.label.text],['SHIFT','DASH']);
+  assert.deepEqual([hud.chips.special.key.text,hud.chips.special.label.text],['K','IPHONE −10 VIDA']);
+  assert.equal(hud.chips.special.sig.endsWith('ready'),true);assert.equal(hud.chips.item.bg.visible,false);
+  scene.specialReadyAt=scene.combatTime+1500;hud.update();
+  assert.equal(hud.chips.special.label.text,'IPHONE 1.5 s');assert.equal(hud.chips.special.sig.endsWith('cooldown'),true);
+  scene.health=10;hud.update();assert.equal(hud.chips.special.label.text,'IPHONE · SIN VIDA');assert.equal(hud.chips.special.sig.endsWith('blocked'),true);
+  scene.health=100;scene.vuvuzela={remaining:7};scene.superPower={charge:4,ready:false};hud.update();
+  assert.equal(hud.chips.item.label.text,'VUVUZELA 7/10 · J SOLTAR');assert.equal(hud.chips.item.bg.visible,true);
+  assert.equal(hud.chips.super.label.text,'SÚPER 4/20');
+  scene.game={touchControls:{mobile:()=>true}};hud.update();
+  assert.equal(hud.chips.item.key.text,'PUÑO');assert.equal(hud.chips.item.label.text,'VUVUZELA 7/10 · PATADA SOLTAR');
+  assert.equal(hud.chips.special.key.text,'✦');assert.equal(hud.chips.dash.key.text,'»');
 });

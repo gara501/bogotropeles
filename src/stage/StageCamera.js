@@ -6,21 +6,25 @@ import {StageProps} from './StageProps.js';
 import {StageRain} from './StageRain.js';
 import {GroundPigeons} from './GroundPigeons.js';
 import {Fx} from '../fx/Fx.js';
+import {StageHazards} from './StageHazards.js';
+import {NightMode} from './NightMode.js';
 
 /** Owns the camera scroll, the walkable floor span, the parallax layers and the GO → prompt. */
 export class StageCamera {
   constructor(scene) {
     this.scene=scene;this.camera=scene.cameras.main;this.layout=stageLayout(scene.level);this.scrollX=0;this.time=0;
     // Created first: rain, hits and specials all reach it through scene.fx. Safe no-op on scenes without canvas textures.
-    this.fx=scene.fx=new Fx(scene,{lights:scene.level.lights,ambient:scene.level.ambient});
+    this.fx=scene.fx=new Fx(scene,{lights:scene.level.lights,ambient:scene.level.ambient??scene.level.night?.ambient});
     this.background=new ParallaxBackground(scene,scene.level.layers??[{key:scene.level.key,factor:1}],this.layout.width);
     this.go=scene.add.text(ARCADE.screen.width-36,250,'GO →',{fontFamily:"'IBM Plex Mono', monospace",fontSize:'30px',color:'#ffcf69',fontStyle:'bold',stroke:'#142127',strokeThickness:6})
       .setOrigin(1,.5).setScrollFactor(0).setDepth(1000).setVisible(false);
+    this.night=scene.level.night?new NightMode(scene,scene.level.night,this.background):null;
     this.traffic=scene.level.traffic?new AmbientTraffic(scene,scene.level.traffic,this.background):null;
     this.props=new StageProps(scene,scene.level.props,this.layout.width);
     this.rain=scene.level.rain?new StageRain(scene,scene.level.rain):null;
     this.pigeons=scene.level.groundPigeons?new GroundPigeons(scene,scene.level.groundPigeons,this.layout.width):null;
     this.apply(0);
+    this.hazards=scene.hazards=scene.level.hazards && !scene.enemyTest?new StageHazards(scene,scene.level.hazards,this.layout):null;
   }
   get wavesPerArena(){return this.layout.perArena;}
   get width(){return this.layout.width;}
@@ -38,11 +42,13 @@ export class StageCamera {
       }else this.apply(stepScroll(this.scrollX,nextScroll({scrollX:this.scrollX,playerX:s.player.x,limit:this.limit})));
     }
     this.background.update(this.scrollX,this.time);
+    this.night?.update(ARCADE.clock.stepMs);
     this.traffic?.update(this.scrollX);
     this.props?.update(ARCADE.clock.stepMs);
     this.rain?.update(ARCADE.clock.stepMs/1000);
     this.fx?.update(ARCADE.clock.stepMs);
     this.pigeons?.update();
+    this.hazards?.update();
     const waiting=Boolean(s.waves?.awaitingAdvance) && !s.finished && s.health>0;
     this.go.setVisible(waiting && frame%40<26);
   }
@@ -57,5 +63,5 @@ export class StageCamera {
     const p=this.scene.player,{left,right}=this.scene.floor;
     if(p){p.x=Math.max(left,Math.min(right,p.x<left?left+135:p.x));this.scene.placeFighter?.(p,p.z??0);}
   }
-  destroy(){this.background.destroy();this.traffic?.destroy();this.props?.destroy();this.rain?.destroy();this.pigeons?.destroy();this.fx?.destroy();if(this.scene.fx===this.fx)this.scene.fx=null;this.go.destroy();}
+  destroy(){this.night?.destroy();this.background.destroy();this.traffic?.destroy();this.props?.destroy();this.rain?.destroy();this.pigeons?.destroy();this.hazards?.destroy();if(this.scene.hazards===this.hazards)this.scene.hazards=null;this.fx?.destroy();if(this.scene.fx===this.fx)this.scene.fx=null;this.go.destroy();}
 }

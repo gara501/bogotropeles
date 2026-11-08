@@ -1,0 +1,15 @@
+{
+  "provider": "PixelLab",
+  "tool": "image_to_pixelart",
+  "job_id": "d3216dec-85b8-4f8a-b3f1-16a9941751ce",
+  "asset_id": "e35854e1-1805-5bc0-8834-3be69eb30035",
+  "reference": "ejemplos/peñalosa.avif",
+  "reference_preparation": "Resized to 512x288 JPEG as generation input only",
+  "output": "pena-lisa-pixellab.png",
+  "width": 512,
+  "height": 288,
+  "faithful": false,
+  "init_image_strength": 0,
+  "text_guidance_scale": 9,
+  "seed": 69315
+}

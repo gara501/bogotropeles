@@ -1,5 +1,6 @@
 import {waveSize} from '../data/campaign.js';
 import {TaxiRush} from '../stage/TaxiRush.js';
+import {waveCount} from '../game/Survival.js';
 
 // With a StageCamera (s.stage) waves are grouped into arenas: the camera stays locked
 // while an arena has enemies; once its waves are cleared the player must walk to the
@@ -7,7 +8,7 @@ import {TaxiRush} from '../stage/TaxiRush.js';
 // loop) the original single-screen behaviour is preserved.
 export class WaveDirector {
   constructor(scene){this.scene=scene;this.spawned=0;this.wave=0;this.nextAt=0;this.waiting=false;this.arena=0;this.arenaWave=0;}
-  get cleared(){return this.spawned===this.scene.level.total && this.scene.defeated===this.scene.level.total;}
+  get cleared(){return this.spawned===this.scene.level.total && this.scene.defeated===this.scene.level.total && !(this.scene.enemies??[]).some(e=>e.hp>0 && e.reinforcement);}
   get awaitingAdvance(){
     const s=this.scene;
     return !s.taxiRush?.active && Boolean(s.stage) && this.spawned<s.level.total && s.enemies.every(e=>e.hp<=0) && !s.stage.reached(this.arena);
@@ -28,7 +29,8 @@ export class WaveDirector {
     // First wave: immediate. Same arena: normal gap. Arriving at a new arena: half gap.
     if(!this.waiting){const delay=!this.spawned?0:this.arenaWave?s.level.gap:s.level.gap/2;this.nextAt=s.combatTime+delay;this.waiting=true;}
     if(s.combatTime<this.nextAt)return;
-    const count=waveSize(this.wave,s.level.total-this.spawned);
+    s.survival?.onWave(this.wave);
+    const count=s.survival?Math.min(waveCount(this.wave),s.level.total-this.spawned):waveSize(this.wave,s.level.total-this.spawned);
     for(let i=0;i<count;i++) {
       const index=this.spawned++,key=s.level.enemies[index%s.level.enemies.length];
       s.spawnEnemy(key,index,i,count,this.wave);

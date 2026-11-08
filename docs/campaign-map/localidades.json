@@ -1,0 +1,116 @@
+{
+  "status": "distribución de niveles aprobada por el usuario; borrador visual no integrado al juego",
+  "campaignSource": "src/data/campaign.js:CAMPAIGN",
+  "orientation": "esquema del usuario: norte a la izquierda",
+  "colors": {
+    "Santa Fe": "#20B6D2",
+    "La Candelaria": "#FFC347",
+    "Teusaquillo": "#67CC68",
+    "Los Mártires": "#B283EF",
+    "Fontibón": "#EE7754",
+    "Chapinero": "#EE6AA2"
+  },
+  "stages": [
+    {
+      "level": 1,
+      "name": "Transmilleno · Exterior",
+      "locality": "Santa Fe",
+      "status": "ubicación de diseño aprobada por el usuario",
+      "note": "No hay una estación real definida en el escenario; se propone el sector centro."
+    },
+    {
+      "level": 2,
+      "name": "Transmilleno · Estación",
+      "locality": "Santa Fe",
+      "status": "ubicación de diseño aprobada por el usuario",
+      "note": "Mismo sector propuesto para el exterior."
+    },
+    {
+      "level": 3,
+      "name": "Monserrate · Ascenso",
+      "locality": "Santa Fe",
+      "status": "verificada",
+      "source": "https://santafe.gobiernobogota.gov.co/content/upz-barrios-y-veredas"
+    },
+    {
+      "level": 4,
+      "name": "La Candelaria",
+      "locality": "La Candelaria",
+      "status": "verificada",
+      "source": "https://www.educacionbogota.edu.co/direcciones_locales/quienes-somos-lacandelaria"
+    },
+    {
+      "level": 5,
+      "name": "Chorro de Quevedo",
+      "locality": "La Candelaria",
+      "status": "verificada",
+      "source": "https://geoportal.jbb.gov.co/DocumentacionTecnica/arboles_patrimoniales/Chorro_de_Quevedo.pdf"
+    },
+    {
+      "level": 6,
+      "name": "Plaza de Bolívar",
+      "locality": "La Candelaria",
+      "status": "verificada",
+      "source": "https://www.educacionbogota.edu.co/direcciones_locales/quienes-somos-lacandelaria"
+    },
+    {
+      "level": 7,
+      "name": "Calles del centro",
+      "locality": "Santa Fe",
+      "status": "ubicación de diseño aprobada por el usuario",
+      "note": "Se interpreta como San Bernardo por el arte y los NPC samber; el centro también abarca otras localidades.",
+      "source": "https://santafe.gobiernobogota.gov.co/content/upz-barrios-y-veredas"
+    },
+    {
+      "level": 8,
+      "name": "Ciclovía",
+      "locality": "Teusaquillo",
+      "status": "ubicación de diseño aprobada por el usuario",
+      "note": "Escenario genérico; la Ciclovía recorre varias localidades. Se propone Teusaquillo como sede del nivel."
+    },
+    {
+      "level": 9,
+      "name": "Plaza de Palomojao",
+      "locality": "Los Mártires",
+      "status": "inspiración verificada",
+      "note": "Nombre ficticio inspirado en la Plaza de Paloquemao, según arte y documentación del proyecto.",
+      "source": "https://jbb.gov.co/cronica-de-punto-critico-de-basuras-a-un-espacio-florecido-la-historia-de-la-jardinera-de-paloquemao/"
+    },
+    {
+      "level": 10,
+      "name": "El Dorado",
+      "locality": "Fontibón",
+      "status": "verificada para el entorno de terminal representado",
+      "note": "Se ubica la terminal y acceso de calle 26, no la totalidad del recinto aeroportuario que se extiende hacia Engativá/Funza.",
+      "source": "https://www.alcaldiabogota.gov.co/sisjur/normas/Norma1.jsp?dt=S&i=32452"
+    },
+    {
+      "level": 11,
+      "name": "Gran Estación · Batalla de aura",
+      "locality": "Teusaquillo",
+      "status": "verificada",
+      "source": "https://teusaquillo.gobiernobogota.gov.co/milocalidad/sitios-interes"
+    },
+    {
+      "level": 12,
+      "name": "Zona Rosa",
+      "locality": "Chapinero",
+      "status": "verificada",
+      "source": "https://chapinero.gobiernobogota.gov.co/milocalidad/sitios-destacados-la-localidad"
+    }
+  ],
+  "bonus": [
+    {
+      "name": "Destruye la chiva",
+      "afterLevel": 7,
+      "locality": "Santa Fe",
+      "status": "hereda la ubicación aprobada de Calles del centro"
+    },
+    {
+      "name": "El ring de los traques",
+      "afterLevel": 12,
+      "locality": "Chapinero",
+      "status": "propuesta; bonus secreto, sin dirección real definida"
+    }
+  ]
+}

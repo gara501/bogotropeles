@@ -17,7 +17,7 @@ function fixture(){
   const s={characterKey:'office',character:{height:106,idle:0,texture:'office',special:'special',animations:{punch:[0,1,2]},
     attacks:{punch:{damage:30,range:80,duration:210,hitAt:90}}},
     player:{x:200,y:450,z:0,sprite:make()},floor:{left:65,right:895,top:400,bottom:500},facing:1,health:100,combatTime:0,enemies:[],
-    add:{image:make,text:make,graphics:make},textures:{exists:()=>true,get:()=>({referenceHeight:300})},
+    add:{image:make,text:make,graphics:make},textures:{exists:key=>!key.endsWith('-run'),get:()=>({referenceHeight:300})},
     sfx:{play:n=>sounds.push(n)},hitEnemy(e,a){e.hp-=a.damage;},specialReadyAt:0,
   };
   s.arcade={scene:s,frame:0,input:{dx:0,dy:0},combat:{impact(){},touches:()=>true}};
@@ -94,4 +94,28 @@ test('shutdown disposes pickups, armed body, label, shots and fragments',()=>{
   const {item,launch,visuals}=fixture();item.spawn(600,450);launch();item.destroy();
   assert.equal(item.items.length,0);assert.equal(item.shots.length,0);
   assert.ok(visuals.slice(1).every(v=>v.destroyed));
+});
+
+test('Gomelo runs with panela through ten alternating poses at the unarmed cadence, in both directions',()=>{
+  const {s,item,model}=fixture();s.character={...s.character,walkFramesPerPose:3};
+  const heights={office:153,'office-panela':318,'office-panela-run':107};
+  s.textures={exists:key=>key in heights,get:key=>({referenceHeight:heights[key]})};
+  item.equip();
+  for(const facing of [1,-1]){
+    s.facing=facing;s.arcade.input={dx:facing,dy:0};const poses=[];
+    for(let i=0;i<=10;i++){
+      model.age=i*3;item.render();poses.push(item.held.frame);
+      assert.equal(item.held.key,'office-panela-run');assert.equal(item.held.scale,106/153);
+      assert.equal(item.held.flipX,facing<0);assert.equal(s.player.sprite.visible,false);
+    }
+    assert.deepEqual(poses,[0,1,2,3,4,5,6,7,8,9,0]);
+  }
+  s.arcade.input={dx:0,dy:1};model.age=9;item.render();assert.equal(item.held.key,'office-panela-run');
+  assert.equal(item.held.frame,3,'depth movement also animates the legs');
+  s.arcade.input={dx:0,dy:0};item.render();assert.equal(item.held.key,'office-panela');assert.equal(item.held.frame,0);
+  const standing=318*item.held.scale,running=107*1.45*106/153;
+  assert.ok(Math.abs(standing-running)<3,'ready and running bodies have matching apparent height');
+  s.arcade.input.dx=1;model.begin('punch');model.action.displayedFrame=model.action.data.frames.find(f=>f.phase==='active');item.render();
+  assert.equal(item.held.key,'office-panela');assert.equal(item.held.frame,7,'throwing cannot accidentally play running art');
+  model.transition('hurt');item.render();assert.equal(item.held.visible,false);assert.equal(s.player.sprite.visible,true);
 });

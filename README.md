@@ -227,3 +227,75 @@ Partículas e iluminación comparten un solo atlas generado por código (sin ass
 - Calidad manual: `?fx=high|low|off` en la URL (fija la calidad y desactiva el ajuste automático). En móviles empieza en `low`.
 - Luces estáticas por nivel: `lights:[{x,y,color,radius,intensity,factor,flicker}]` y `ambient:0xRRGGBB` en el registro del nivel.
 - Sin textura canvas (tests, escenas simuladas) todo es no-op y el combate usa el dibujo anterior con `Graphics`.
+
+## Parry, combo y peligros de la calle
+
+**Parry (U, botón ◈ en táctil).** Abre una ventana de 10 frames: si un golpe cuerpo a cuerpo llega dentro, se anula, suena el choque metálico y el atacante queda `¡ATURDIDO!` 54 frames. Los golpes en los 900 ms siguientes hacen ×1,5 (`¡CONTRA!`) y el parry exitoso se cancela al instante en cualquier ataque, dash u otro parry. También desvía cuchillos y proyectiles rectos. Fallarlo deja 18 frames vulnerables sin dash. Los jefes no se aturden: rebotas. Vehículos, gas, manchas y cargas sin atacante no se pueden parar. Ajustes en `ARCADE.parry` (`src/data/arcade.js`).
+
+**Medidor de combo** (`src/game/ComboMeter.js`). Cuenta golpes seguidos sin recibir daño; se corta tras 2,2 s sin golpear o al recibir un golpe. Rangos: 5 ×1,5 ¡BIEN!, 10 ×2 ¡BACANO!, 20 ×3 ¡BERRACO!, 35 ×4 ¡ÉPICO, PARCERO!. El multiplicador se aplica a los enemigos normales derrotados (no a jefes). Si la cadena de 10+ termina sin que te peguen, paga 10 puntos por golpe. Un parry suma 2.
+
+**Peligros de la calle** (`src/stage/StageHazards.js`, reglas en `hazardRules.js`, por nivel en `LEVEL_HAZARDS` de `src/data/campaign.js`):
+- *Alcantarilla sin tapa*: nadie la pisa caminando. Un enemigo lanzado o derribado que cae en ella sale de la pelea (`¡AL CAÑO!`, +200 × combo). Si el jugador cae derribado encima, recibe 18 de daño y queda en el borde. Los jefes no caen.
+- *Hueco*: frena al que camina y quita 35 extra al cuerpo que cae encima (8 al jugador).
+- *Taxi*: solo durante las peleas de tramo (nunca con jefe). Avisa 1,1 s con una franja y cruza un carril, arrollando también a los enemigos. Atrae enemigos al carril.
+Niveles: Transmilleno exterior, La Candelaria, Calles del centro (con taxi) y Zona Rosa (con taxi). Pruebas: `tests/combo-meter.test.js`, `tests/hazards.test.js` y los tests `parry:` de `tests/campaign.test.js`.
+
+## Intro en cómic y mapa de Bogotá
+
+**Intro en cómic** (`src/scenes/ComicIntroScene.js`, datos en `src/data/comicIntro.js`). Va después de la portada: al pulsar una tecla en la portada empieza un cómic en movimiento de unos 26 s, con paneos, cortes diagonales, las cinco tarjetas de `player_N_intro.png` y textos que se escriben solos. Termina en la selección de personaje. ENTER, cualquier tecla o un toque lo saltan. Las viñetas van en `src/scenes/comic/` con los nombres de `prompts/intro/intro-prompts.md`; mientras falte alguna se ve una viñeta provisional con su nombre. Textos, tiempos y movimientos de cámara se ajustan en `COMIC_PANELS`.
+
+**Mapa entre niveles** (`src/scenes/MapScene.js`, datos en `src/data/worldMap.js`). Antes de cada tarjeta de nivel, la ficha del personaje viaja por Bogotá desde el tramo superado hasta el siguiente, con ruta punteada, marcadores (superado, actual, bloqueado y anillo rojo si hay jefe) y el nombre del jefe. En el centro la cámara hace zoom. La primera tecla salta el viaje y la segunda continúa. El mapa es `src/scenes/map/map.png` (o `bogota_map.png`). Una hoja opcional `map_markers.png` reemplaza los marcadores dibujados (ver `prompts/mapa/mapa-prompts.md`). Las posiciones de cada tramo están medidas sobre los íconos del mapa en `MAP_STOPS` (fracciones 0–1 de la imagen). Con arte final, la escena no tapa el logo ni la lista «Ruta de niveles».
+
+## Impacto, paletas y gamepad
+
+**Impacto** (`src/fx/ImpactText.js`). Cada golpe muestra su daño. Los golpes fuertes (remate, derribo, 28+ de daño o especiales) sacan una onomatopeya de cómic (¡PUM!, ¡ZAS!, ¡BOOM!…) y el golpe que derrota a un enemigo saca ¡K.O.!. Los golpes de 40+ congelan un cuadro más (`ARCADE.feedback.heavyHitstop`). El último golpe a cualquier jefe pone el juego a 25 % de velocidad por 1,1 s, con zoom leve, destello y un ¡K.O.! en pantalla (`IMPACT.finale`).
+
+**Paletas** (`src/data/palettes.js`, selector en `src/ui/PalettePicker.js`). En la selección, ↑ ↓ o los botones COLOR cambian el tono del personaje, con vista previa en el retrato. Se guarda en localStorage por personaje. ORIGINAL y NOCHE están libres; NEÓN se desbloquea al ganar Calles del centro y DORADO al terminar la campaña. El tinte se mantiene a través de los destellos de golpe.
+
+**Gamepad** (`src/input/GamepadBridge.js`, mapeo estándar). En juego: stick/cruceta mover, A salto (y continuar), X puño, Y patada, B especial, LB parry, RB dash, LT patada baja, RT súper, Start pausa. En menús, intros y ventanas: cruceta/stick navega, A confirma y B vuelve. Funciona en combate, ciclovía, Monserrate y la batalla de aura.
+
+## Zona Rosa de noche y dificultad
+
+**Noche** (`src/data/night.js`, `src/stage/NightMode.js`). Zona Rosa se juega de noche: el panorama del Andino se oscurece con un degradado (cielo azul noche, calle más clara) y lleva luces aditivas fijadas a la imagen (luna, Monserrate, letrero ANDINO, faroles y sus charcos de luz, vitrinas, ventanales y neón rosado y cian que parpadea). Los luchadores no se oscurecen, para que se lean bien. La tarjeta del nivel muestra el mismo tono. Otro nivel se vuelve nocturno agregándole `night` con su capa y sus luces.
+
+**Dificultad** (`src/data/difficulty.js`, selector en `src/ui/DifficultyPicker.js`). En la selección: FÁCIL (5 vidas, rivales más blandos y lentos, puntos ×0,75), NORMAL (la de siempre) y HORA PICO (rivales más duros, rápidos y seguidos, puntos ×1,25). Se cambia con clic, con la tecla D o con Y en el gamepad, y se recuerda. Multiplica la escalera de cada nivel (vida, velocidad, daño, presión y pausa entre oleadas, jefes incluidos). Solo se puede elegir antes de empezar la partida.
+
+## Menú principal, selección y supervivencia
+
+**Menú principal** (`src/ui/MainMenu.js`, estilo Streets of Rage 4). Después de la portada aparece una columna de opciones sobre el arte: HISTORIA (o CONTINUAR HISTORIA), ELEGIR NIVEL (los tramos a los que ya llegaste; todos en desarrollo, con los bonus), SUPERVIVENCIA (con tu récord), DIFICULTAD (se elige antes de empezar una historia), RANKING, MIS TARJETAS, CONTROLES, SONIDO y VER INTRO. ↑ ↓ mueve, ← → cambia valores, ENTER/A elige, ESC/B vuelve. El progreso para ELEGIR NIVEL se guarda en `street-bogota-progress-v1`.
+
+**Selección de personaje** (`src/ui/SelectScreen.js`). Panel alto con la ilustración del personaje y su sprite del juego al frente (con la paleta elegida), barra «P1 ── NOMBRE», descripción y colores, y la tira de retratos abajo. Al confirmar se ve la pose de victoria. ← → cambia de personaje, ↑ ↓ de color, ENTER/A confirma, ESC/B cancela.
+
+**Supervivencia** (`src/game/Survival.js`). Trancón infinito en una pantalla de Calles del centro, con sus alcantarillas y el taxi. Las oleadas crecen de 2 a 6 rivales mezclados y cada una endurece la calle hasta un tope. Cada 5 oleadas recuperas 30 de vida y cada oleada paga un bono. Una vida, sin continuar. Al caer se guarda el récord (oleada y puntos, `street-bogota-survival-v1`). La dificultad elegida también se aplica.
+
+## Pantalla COMBOS y sensación de combo
+
+**COMBOS** (`src/ui/CombosScreen.js`, en el menú principal). Lista las cinco rutas en letra grande (PPP · PPP + KK · KKK · KKK + ABAJO K · PP + KK + ARRIBA P) con sus botones de teclado (H/J) y de gamepad (X/Y). El remate se ve resaltado. A la derecha, el personaje elegido hace el combo en bucle: los botones se encienden al ritmo de cada golpe, los primeros golpes van a ritmo normal y el remate sale rápido («REMATE ×1.6») y termina con «¡COMBO!». ↑ ↓ cambia de combo, ← → de personaje, ESC/B vuelve. La pantalla CONTROLES ya no lista los combos: remite a esta.
+
+**Sensación en el juego (cadencia de artes marciales).** Los golpes que abren un combo salen a velocidad normal. El golpe que **completa** una ruta (el 3.º puño de PPP, la última patada de PPP + KK o KKK, la barrida, el gancho) sale ×1,6 más rápido, pega ×1,25 y conserva todo su recorrido, con estela de partículas e imagen fantasma. Al conectar congela un instante más, con destello, anillo de chispas y luz, y en rutas de 4 o más golpes un respiro de cámara lenta, sin textos en pantalla. Los jefes reciben el combo completo y luego saltan lejos en vez de quedar derribados una y otra vez. Para que sea fácil, el siguiente botón se acepta hasta 12 cuadros antes de la ventana y hasta 28 después del golpe.
+
+## Monserrate más rápido y retador
+
+- Velocidad: de 79 a 130 km/h (antes 61–101); el dash da ×1,3. Las oleadas salen más seguido y desde más lejos (120 m) para que se alcancen a leer.
+- **Salto** (`ESPACIO`, `↑`/`W`, botón táctil SALTO, botón A del control): 0,6 s en el aire, sin doble salto y con menos giro en el aire. Pasa por encima de huecos, troncos y peregrinos arrodillados; los caminantes de pie siguen golpeando. El dash queda solo en `SHIFT`.
+- **Escalones rotos** (`TRAIL_JUMPS` en `MonserrateTrail.js`): 7 huecos de todo el ancho. Si caes, pierdes 25 de vida, frenas y sales al otro lado.
+- **Troncos caídos**: algunos ocupan todo el camino (hay que saltar) y otros dejan un carril libre (saltas o esquivas). Si chocas, pierdes 18 de vida.
+- Los caminantes nunca coinciden con un hueco o un tronco, y estos nunca quedan junto a un puesto de velas.
+- El aviso **¡HUECO! / ¡TRONCO! ¡SALTA!** aparece 2,2 s antes. Las líneas de velocidad crecen con la rapidez.
+- Saltar un obstáculo da +50 puntos. Caer en un hueco cuenta como choque y hace perder la tarjeta coleccionable.
+
+## Avance guardado en la nube (Supabase)
+
+1. Ejecuta `supabase/ranking.sql` (si no lo has hecho) y luego `supabase/progress.sql` en Supabase → SQL Editor → Run. Este último crea la tabla `sbog_saves` y las RPC `sbog_load_progress` y `sbog_save_progress`, con la misma seguridad del ranking: las tablas están cerradas y la propiedad se prueba con el secret del navegador.
+2. Usa el mismo `.env` (`VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`).
+
+Qué se guarda (`src/game/Progress.js`, un "slot" por cosa):
+- **Niveles**: un nivel solo se desbloquea en ELEGIR NIVEL cuando pasas el anterior (antes bastaba con llegar a él).
+- **Tarjetas** coleccionables, **colores** desbloqueados (y el color elegido por personaje), **récord de supervivencia**.
+
+Cómo funciona:
+- Al abrir el juego se descarga el avance y se mezcla con el local. Cada desbloqueo se sube 1,5 s después. Si falla la conexión, se reintenta solo.
+- La mezcla nunca quita desbloqueos: toma el nivel máximo, la unión de tarjetas y colores, y la mejor oleada.
+- El usuario es el mismo del ranking. Se elige en **MI CUENTA** (menú principal) o al registrar un puntaje.
+- **MI CUENTA** muestra el *código de recuperación*. Con usuario y código, el avance se recupera en otro equipo o navegador.
+- Para guardar algo nuevo más adelante, agrega un slot en `createProgressSlots()` o usa `registerSlot()` con `read`, `write` y `merge`. No hay que tocar Supabase: el documento es jsonb y se conservan las llaves que una versión vieja no conoce.

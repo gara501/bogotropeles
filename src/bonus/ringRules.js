@@ -1,6 +1,9 @@
-export const RING_BONUS={afterLevel:5,seconds:120,points:10000,countdownMs:3000,gapMs:900};
+import {campaignIndexForCombat} from '../data/campaign.js';
+// Secret: "El ring de los traques" only opens after clearing Zona Rosa (the last level) without using a continue.
+export const RING_BONUS={afterLevel:campaignIndexForCombat(6),seconds:120,points:10000,countdownMs:3000,gapMs:900};
 export const RING_ORDER=['cristiano_violencia','piernas_locas','brincolas_rataquieta','minilaja'];
-export const shouldStartRingBonus=(nextLevel,run)=>nextLevel===RING_BONUS.afterLevel+1 && !run.ringBonusPlayed;
+export const shouldStartRingBonus=()=>false; // never between levels any more
+export const shouldStartSecretRing=(result,run)=>Boolean(result?.won && result.last && !result.bonus) && run.continuesUsed===0 && !run.ringBonusPlayed;
 
 /** One shared clock and one reward; a kill at the deadline never counts. */
 export class RingRound {

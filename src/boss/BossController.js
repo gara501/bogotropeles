@@ -106,6 +106,7 @@ export class BossController {
     this.actor.sprite.setTint(0xffcdb6);this.hurtFlashUntil=now+120;
     this.scene.arcade?.combat.impact(this.scene.player,this.actor,attack);
     if(!this.hp){this.defeat();return;}
+    if(attack.path && attack.finisher){this.comboKnockdown();return;}
     const next=phaseFor(this.hp);
     if(next!==this.phase) {
       this.phase=next;this.state='transition';this.until=now+BOSS.transition;this.attack=null;this.guardUntil=0;
@@ -121,7 +122,7 @@ export class BossController {
     }
   }
   defeat() {
-    this.scene.addScore?.(2000);
+    this.scene.addScore?.(2000);this.scene.impactText?.finale();
     enemyDeathSound(this.scene);
     this.dead=true;this.state='defeat';this.until=this.scene.combatTime+1300;this.attack=null;
     this.stopEffects();this.actor.shadow.setVisible(false);this.actor.sprite.clearTint();
@@ -129,6 +130,11 @@ export class BossController {
   }
   stopEffects() {this.hazards.clear();this.weather.clear();this.status.clear();this.guardUntil=0;this.guard.setVisible(false);this.stopAudio();}
   finish() {if(this.ended)return;this.ended=true;this.stopEffects();this.scene.idle(this.actor);}
+  comboKnockdown(){
+    if(this.dead || this.ended)return;
+    this.stopEffects();this.attack=null;this.phase=phaseFor(this.hp);this.state='superDown';
+    this.superAt=this.scene.combatTime;this.until=this.superAt+1400;
+  }
   superHit(){
     if(this.dead || this.ended)return;
     this.hp=Math.floor(this.hp/2);this.bar.width=336*this.hp/BOSS.hp;

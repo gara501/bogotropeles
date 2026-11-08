@@ -1,0 +1,15 @@
+{
+  "provider": "PixelLab",
+  "tool": "image_to_pixelart",
+  "job_id": "7e25abd6-f38e-4fd8-8251-66e5663cba0f",
+  "asset_id": "1d661723-26f7-56ee-a768-3d0bd42292c9",
+  "width": 512,
+  "height": 288,
+  "faithful": false,
+  "init_image_strength": 0,
+  "text_guidance_scale": 9,
+  "seed": 69315,
+  "reference": "ejemplos/enrojo.avif",
+  "reference_preparation": "Photo cropped to composition and fitted to 512x288 JPEG as generation input only",
+  "output": "semaforo.png"
+}

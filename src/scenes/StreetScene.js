@@ -1,4 +1,10 @@
 import {SuperPower} from '../game/SuperPower.js';
+import {ComboMeter} from '../game/ComboMeter.js';
+import {Survival,survivalLevel} from '../game/Survival.js';
+import {applyDifficulty,difficultyFor} from '../data/difficulty.js';
+import {ImpactText} from '../fx/ImpactText.js';
+import {applyPalette,paletteFor} from '../data/palettes.js';
+import {cardForPerfectLevel} from '../game/Collectibles.js';
 import {preloadSuperPlayer,prepareSuperPlayer} from '../data/superPlayers.js';
 import {Panela} from '../game/Panela.js';
 import {handItemFor} from '../game/panelaRules.js';
@@ -12,8 +18,10 @@ import { bossFor, bossMusicFor } from '../data/bosses.js';
 import { MiniBoss } from '../boss/MiniBoss.js';
 import { PigeonFlock, PIGEON_FLIGHT } from '../boss/PigeonFlock.js';
 import {GROUND_PIGEON} from '../stage/GroundPigeons.js';
+import {preloadHazards} from '../data/hazards.js';
 import {MOTORATA_ENTRY} from '../data/motorata.js';
 import {MotorcycleArrivals} from '../actors/MotorcycleArrivals.js';
+import {beginEnemyDeath,updateEnemyDeaths} from '../actors/EnemyDeath.js';
 import groundPigeonUrl from '../data/NPC/pigeon_ground.png?url';
 import { SprayBarrage } from '../boss/SprayBarrage.js';
 import { GroundStains } from '../game/GroundStains.js';
@@ -56,7 +64,11 @@ import {RING_ORDER} from '../bonus/ringRules.js';
 import {ChivaBonus} from '../bonus/ChivaBonus.js';
 import {preloadChivaBonus,prepareChivaBonus} from '../data/chivaBonus.js';
 import {JUGGLING_CLUB_RECT} from '../data/juggler.js';
+import {MonserrateStage} from '../monserrate/MonserrateStage.js';
+import {preloadMonserrate} from '../data/monserrate.js';
 import {CyclingStage} from '../cycling/CyclingStage.js';
+import {AuraStage} from '../aura/AuraStage.js';
+import {AURA_LEVEL,preloadAura} from '../data/aura.js';
 import {HEN_SHEET} from '../data/donPico.js';
 import {preloadCycling,CYCLING_ASSETS} from '../data/cycling.js';
 
@@ -84,10 +96,10 @@ function evictActors(scene, wanted) {
   const spent = scene.game?.spentSources;
   for (const [key, actor] of Object.entries(ACTOR_SHEETS)) {
     if (wanted.has(key)) continue;
-    for (const name of [key, `${key}-struggle`, `${key}-vuvuzela`, `${key}-panela`, `${key}-super`]) if (scene.textures.exists(name)) scene.textures.remove(name);
+    for (const name of [key, `${key}-struggle`, `${key}-vuvuzela`, `${key}-vuvuzela-run`, `${key}-panela`, `${key}-panela-run`, `${key}-super`]) if (scene.textures.exists(name)) scene.textures.remove(name);
     // Animations keep references to the old frames: drop them so registerAnimations rebuilds them on the next load.
     for (const state of Object.keys(actor.animations ?? {})) scene.anims.remove(`${key}-${state}`);
-    const raws = [`${key}-source`, `${key}-struggle-source`, `${key}-vuvuzela-source`, `${key}-panela-source`, `${key}-super-source`, ...(actor.appendUrls ?? []).map((_, i) => `${key}-append-${i}`)];
+    const raws = [`${key}-source`, `${key}-struggle-source`, `${key}-vuvuzela-source`, `${key}-vuvuzela-run-source`, `${key}-panela-source`, `${key}-panela-run-source`, `${key}-super-source`, ...(actor.appendUrls ?? []).map((_, i) => `${key}-append-${i}`)];
     for (const name of raws) spent?.delete(name);
   }
 }
@@ -98,7 +110,12 @@ export class StreetScene extends Phaser.Scene {
   init(data) {
     this.levelIndex = Phaser.Math.Clamp(data.level ?? 0, 0, levels.length - 1);
     this.run=data.run??this.game?.run??new RunState();this.run.level=this.levelIndex;
+    this.cardDeathsAtStart=data.cardDeathsAtStart??this.run.deaths;
+    this.cardAttemptEligible=!data.bossCheckpoint || data.cardAttemptEligible===true;
     this.level = {...levels[this.levelIndex],music:this.levelIndex===0?LEVEL1_MUSIC:chooseMusic(this.game?.lastMusicKey)};
+    this.isAuraExhibition=Boolean(data.auraBattle);
+    this.isAura=(this.isAuraExhibition || this.level.mode==='aura') && !data.chivaBonus && !data.ringBonus;this.aura=null;
+    if(this.isAura)this.level={...this.level,...AURA_LEVEL,props:null,traffic:null,groundPigeons:null,potatoSupplies:false};
     if(import.meta.env.DEV && ['frutatiana','don_diablo','don_pico','papero','reversa'].includes(data.enemyTest) && data.testArt){
       const art=data.testArt;
       this.level={...this.level,name:art.name,key:art.background.key,url:art.background.url,layers:art.layers,
@@ -109,8 +126,13 @@ export class StreetScene extends Phaser.Scene {
     if(this.isChivaBonus)this.level={...this.level,name:'BONUS · LA CHIVA',total:0,boss:null,enemies:[],crossingEnemies:[],
       top:400,bottom:500,props:null,rain:null,traffic:null,groundPigeons:null};
     if(this.isRingBonus){this.bonusReturnLevel=data.returnLevel??6;this.level={...this.level,name:'BONUS · EL RING',key:RING_BACKGROUND.key,url:RING_BACKGROUND.url,layers:null,total:0,boss:null,enemies:RING_ORDER,crossingEnemies:[],mode:'ring',top:330,bottom:450,hp:1,speed:1,damage:1,pressure:1,props:null,rain:null,traffic:null,groundPigeons:null,potatoSupplies:false};}
+    this.isSurvival=Boolean(data.survival) && !this.isAura && !this.isChivaBonus && !this.isRingBonus;
+    if(this.isSurvival)this.level=survivalLevel(this.level);
+    if(this.isAura || this.isChivaBonus || this.isRingBonus)this.level={...this.level,night:null}; // their own art, always lit
+    this.level=applyDifficulty(this.level,difficultyFor(this.run.difficulty));
     this.handItemKind=handItemFor(this.level);this.vuvuzela=null;this.panela=null;this.superPower=null;
     this.isCycling=this.level.mode==='cycling' && !this.isChivaBonus && !this.isRingBonus;this.cycling=null;
+    this.isMonserrate=this.level.mode==='monserrate' && !this.isChivaBonus && !this.isRingBonus;this.monserrate=null;
     if(this.game)this.game.lastMusicKey=this.level.music.key;
     this.floor = { ...FLOOR, top: this.level.top, bottom: this.level.bottom??FLOOR.bottom };
     this.characterKey = data.character || 'office';
@@ -122,6 +144,7 @@ export class StreetScene extends Phaser.Scene {
     this.deathHandled=false;this.waitingContinue=false;this.gameOver=false;this.respawnDelay=0;
     this.respawnProtectedUntil=0;this.victoryRemaining=0;this.pendingResult=null;
     this.defeated = 0;
+    this.reinforcementCount=0;
     this.facing = 1;
     this.playerAttack = null;
     this.hurtUntil = 0;
@@ -157,6 +180,27 @@ export class StreetScene extends Phaser.Scene {
   }
 
   preload() {
+    // Level loader (main.js): progress while files download, "preparing" while create() builds the sheets.
+    // (MenuScene borrows this preload for the shared assets: it has no level, so no loader there.)
+    if(this.level && this.game?.events && this.load?.on){
+      const name=this.isChivaBonus?'Destruye la chiva':this.isRingBonus?'El ring de los traques':this.level.name;
+      this.game.events.emit('level-loading',{level:this.levelIndex,name,character:this.characterKey,bonus:this.isChivaBonus||this.isRingBonus});
+      // the scene's loader survives restarts: replace (not stack) the listeners
+      if(this.loaderHooks){this.load.off('progress',this.loaderHooks.progress);this.load.off('loaderror',this.loaderHooks.error);}
+      this.loaderHooks={progress:value=>this.game.events.emit('level-load-progress',value),error:file=>this.game.events.emit('level-load-error',{key:file.key,url:file.src})};
+      this.load.on('progress',this.loaderHooks.progress);this.load.on('loaderror',this.loaderHooks.error);
+      this.load.once('complete',()=>this.game.events.emit('level-load-progress',1));
+    }
+    if(this.isAura){
+      preloadAura(this);preloadEffects(this);
+      if(!this.cache.audio.exists(this.level.music.key))this.load.audio(this.level.music.key,this.level.music.url);
+      return;
+    }
+    if(this.isMonserrate){
+      evictActors(this,new Set());preloadMonserrate(this);preloadEffects(this);
+      if(!this.cache.audio.exists(this.level.music.key))this.load.audio(this.level.music.key,this.level.music.url);
+      return;
+    }
     if(this.isCycling){
       evictActors(this,new Set()); // the street fighters' sheets (tens of MB) are not used while cycling; they reload on demand
       preloadCycling(this);preloadEffects(this);preloadItem(this,'money');preloadItem(this,'full');
@@ -173,7 +217,7 @@ export class StreetScene extends Phaser.Scene {
       if(!this.textures.exists(VUVUZELA_TEXTURE))this.load.image(VUVUZELA_TEXTURE,vuvuzelaUrl);
     }else if(this.handItemKind==='panela'){preloadPanela(this);preloadPanelaPlayer(this);}
     if(this.level?.groundPigeons && !this.textures.exists(GROUND_PIGEON.key))this.load.spritesheet(GROUND_PIGEON.key,groundPigeonUrl,{frameWidth:GROUND_PIGEON.frameWidth,frameHeight:GROUND_PIGEON.frameHeight});
-    preloadPickups(this);preloadProps(this);preloadPacho(this);
+    preloadPickups(this);preloadProps(this);preloadPacho(this);preloadHazards(this);
     if(this.cameras?.main?.setZoom)fitArcadeCamera(this);
     preloadEffects(this);
     const label = this.add.text(480, 270, 'CARGANDO LA CIUDAD…', { fontFamily: FONT, fontSize: '18px', color: '#d6ed64' }).setOrigin(.5);
@@ -185,7 +229,7 @@ export class StreetScene extends Phaser.Scene {
     // Only the fighter, enemies and boss this level needs; the menu (no level yet) loads none.
     const wanted = this.wanted ?? new Set();
     if(wanted.has('jugo') && !this.textures.exists('taximeter'))this.load.image('taximeter-source',TAXIMETER.url);
-    if(this.level?.taxiRush && !this.textures.exists('taxi-rush'))this.load.image('taxi-rush-source',TAXI_RUSH_ATLAS.url);
+    if((this.level?.taxiRush || this.level?.hazards?.taxi) && !this.textures.exists('taxi-rush'))this.load.image('taxi-rush-source',TAXI_RUSH_ATLAS.url);
     evictActors(this, wanted);
     for (const key of wanted) loadActor(this, key, ACTOR_SHEETS[key]);
     if (!this.textures.exists('knife')) this.load.image('knife', knife.url);
@@ -201,6 +245,10 @@ export class StreetScene extends Phaser.Scene {
   }
 
   create() {
+    if(this.isAura){
+      this.aura=new AuraStage(this);this.aura.create();return;
+    }
+    if(this.isMonserrate){this.monserrate=new MonserrateStage(this);this.monserrate.create();return;}
     if(this.isCycling){this.cycling=new CyclingStage(this);this.cycling.create();return;}
     if(this.isChivaBonus)prepareChivaBonus(this);
     if(this.handItemKind)prepareSuperPlayer(this);
@@ -224,11 +272,12 @@ export class StreetScene extends Phaser.Scene {
     if (this.wanted.has('office')) prepareCutout(this,IPHONE.texture,'office-source',IPHONE.sourceRect);
     // Tear-gas canister and cloud stages from the level 5 boss sheet.
     if (this.wanted.has('antidisturbios')) enemies.antidisturbios.gasRects.forEach(([x,y,width,height],i)=>prepareCutout(this,`gas-${i}`,'antidisturbios-source',{x,y,width,height}));
-    if(this.level.taxiRush)prepareEffects(this,'taxi-rush',TAXI_RUSH_ATLAS);
+    if(this.level.taxiRush || this.level.hazards?.taxi)prepareEffects(this,'taxi-rush',TAXI_RUSH_ATLAS);
     if(this.wanted.has('jugo'))prepareEffects(this,'taximeter',TAXIMETER);
     releaseSources(this);
     this.drawStreet();
     this.player = this.makeFighter(200, 450, this.characterKey, this.character);
+    this.applyPlayerPalette();
     if(this.characterKey==='office')this.iphone=new IPhoneSpecial(this);
     if(this.characterKey==='student'){prepareBookTextures(this);this.books=new OrbitingBooks(this);}
     this.enemies = [];
@@ -239,7 +288,10 @@ export class StreetScene extends Phaser.Scene {
     if(this.handItemKind==='vuvuzela')this.vuvuzela=new Vuvuzela(this);
     else if(this.handItemKind==='panela')this.panela=new Panela(this);
     if(this.handItemKind)this.superPower=new SuperPower(this);
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,H,J,K,L,Q,SHIFT,SPACE,P,R,ENTER,UP,DOWN,LEFT,RIGHT');
+    this.combo=new ComboMeter(this);
+    this.survival=this.isSurvival?new Survival(this):null;
+    this.impactText=new ImpactText(this);this.timeScale=1;
+    this.keys = this.input.keyboard.addKeys('W,A,S,D,H,J,K,L,Q,U,SHIFT,SPACE,P,R,ENTER,UP,DOWN,LEFT,RIGHT');
     this.input.keyboard.addCapture(['SPACE', 'UP', 'DOWN', 'LEFT', 'RIGHT']);
     this.playerName=this.add.text(26, 22, `${String(Object.keys(characters).indexOf(this.characterKey) + 1).padStart(2, '0')} / ${this.character.name}`, { fontFamily: FONT, fontSize: '15px', color: '#e8edce', fontStyle: 'bold' }).setDepth(1000);
     this.healthBack=this.add.rectangle(26, 51, 204, 12, 0x14282c).setOrigin(0).setDepth(1000);
@@ -258,7 +310,7 @@ export class StreetScene extends Phaser.Scene {
     }
     const extraControl = this.character.attacks.lowKick ? ' · L PATADA BAJA' : '';
     const controlsHint=this.game.touchControls?.mobile()
-      ? 'JOYSTICK MOVER · PUÑO · PATADA · ESPECIAL −10 ENERGÍA · SALTO · Ⅱ PAUSA'
+      ? 'JOYSTICK MOVER · PUÑO · PATADA · ESPECIAL −10 VIDA · SALTO · Ⅱ PAUSA'
       : `H PUÑO · J PATADA · K ${this.character.specialLabel}${extraControl} · SHIFT ${this.character.dash === false ? this.character.specialLabel : 'DASH'} · ESPACIO SALTO · P PAUSA · R REINICIAR`;
     this.controlsLabel=this.add.text(480, 521, controlsHint, { fontFamily: FONT, fontSize: '10px', color: '#d9e2c8' }).setOrigin(.5).setDepth(1000);
     this.overlay = this.add.container(480, 260, [
@@ -280,13 +332,13 @@ export class StreetScene extends Phaser.Scene {
       this.invulnerableUntil=Infinity;
       this.enemies.forEach((enemy,index)=>{enemy.x=560+index*120;enemy.y=index?this.floor.top:450;});
     }
-    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap || enemies[this.enemyTest]?.juggler || enemies[this.enemyTest]?.paint || enemies[this.enemyTest]?.throw?.fruit || enemies[this.enemyTest]?.diablito || enemies[this.enemyTest]?.pollero || enemies[this.enemyTest]?.papero || enemies[this.enemyTest]?.reversa || enemies[this.enemyTest]?.ortencio)) {
+    if(import.meta.env.DEV && this.enemyTest && (enemies[this.enemyTest]?.combo || enemies[this.enemyTest]?.charge || enemies[this.enemyTest]?.shieldBreak || enemies[this.enemyTest]?.brayatan || enemies[this.enemyTest]?.pacho || enemies[this.enemyTest]?.leap || enemies[this.enemyTest]?.juggler || enemies[this.enemyTest]?.paint || enemies[this.enemyTest]?.throw?.fruit || enemies[this.enemyTest]?.diablito || enemies[this.enemyTest]?.pollero || enemies[this.enemyTest]?.papero || enemies[this.enemyTest]?.reversa || enemies[this.enemyTest]?.ortencio || enemies[this.enemyTest]?.callReinforcements)) {
       for(const enemy of this.enemies)for(const object of [enemy.sprite,enemy.shadow,enemy.healthBar,enemy.tell,enemy.taunt])object?.destroy();
       this.enemies=[];this.waves.spawned=this.level.total;this.defeated=this.level.total-1;
       const isBossPreview=Boolean(enemies[this.enemyTest].pacho || enemies[this.enemyTest].reversa || this.enemyTest==='jugo');
       if(isBossPreview){this.defeated=this.level.total;this.bossIntroShown=true;}
       const enemy=isBossPreview?this.spawnMiniBoss(bossFor(this.level)).enemy:this.spawnEnemy(this.enemyTest,0,0,2,0);
-      enemy.x=450;enemy.y=450;if(!isBossPreview && !enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap && !enemy.config.juggler && !enemy.config.paint && !enemy.config.throw?.fruit && !enemy.config.diablito && !enemy.config.pollero && !enemy.config.papero && !enemy.config.reversa && !enemy.config.ortencio)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
+      enemy.x=450;enemy.y=450;if(!isBossPreview && !enemy.config.shieldBreak && !enemy.config.brayatan && !enemy.config.pacho && !enemy.config.leap && !enemy.config.juggler && !enemy.config.paint && !enemy.config.throw?.fruit && !enemy.config.diablito && !enemy.config.pollero && !enemy.config.papero && !enemy.config.reversa && !enemy.config.ortencio && !enemy.config.callReinforcements)enemy.config.speed=0;else {enemy.x=650;this.invulnerableUntil=Infinity;}enemy.nextHit=Infinity;
       this.player.x=400;this.player.y=450;this.nextGroupAttack=Infinity;this.updateCounter();
       if(this.enemyTest==='ortencio'){
         this.level={...this.level,boss:null,total:2};this.waves.spawned=2;this.defeated=0;this.invulnerableUntil=0;
@@ -302,7 +354,7 @@ export class StreetScene extends Phaser.Scene {
       this.motorcycles?.destroy();this.motorcycles=null;
       this.energyPickups?.destroy();this.energyPickups=null;
       this.chivaBonus=null;this.ringBonus?.destroy();this.ringBonus=null;
-      this.vuvuzela?.destroy();this.vuvuzela=null;this.panela?.destroy();this.panela=null;this.superPower?.destroy();this.superPower=null;
+      this.vuvuzela?.destroy();this.vuvuzela=null;this.panela?.destroy();this.panela=null;this.superPower?.destroy();this.superPower=null;this.combo?.destroy();this.combo=null;
       this.arcade?.destroy();this.arcade=null;
       this.music?.destroy(); this.music = null;
       this.sfx?.destroy();this.sfx=null;
@@ -332,7 +384,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   spawnEnemy(key,index,slot,count,wave) {
-    const config=scaledEnemy(enemies[key],this.level),crossing=this.level.crossingEnemies?.includes(key)??false;
+    const config=scaledEnemy(enemies[key],this.level,key),crossing=this.level.crossingEnemies?.includes(key)??false;
     const facing=(wave+slot)%2?1:-1;
     const y=this.floor.top+18+slot*(this.floor.bottom-this.floor.top-32)/Math.max(1,count-1);
     const vx=viewLeft(this);
@@ -378,6 +430,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   nextLevel() {
+    if(this.isAura && this.isAuraExhibition)return;
     if(this.isChivaBonus || this.isRingBonus){
       if((this.chivaBonus?.ready || this.ringBonus?.ready) && !this.transitioning){
         this.transitioning=true;this.run.advance(this.bonusReturnLevel);
@@ -393,25 +446,36 @@ export class StreetScene extends Phaser.Scene {
   }
 
   restartLevel() {
+    if(this.isAura){this.game.events.emit('level-restart');this.scene.restart({character:this.characterKey,level:this.levelIndex,auraBattle:this.isAuraExhibition,run:this.run});return true;}
     if(this.isChivaBonus || this.isRingBonus)return false; // one bonus attempt; restarting cannot duplicate its reward
     if(this.restarting || this.cinematic || this.waitingContinue || this.gameOver || (this.finished && this.level.boss))return false;
     this.restarting=true;
     if(!this.boss && !this.miniBoss)this.run.score=this.run.levelStartScore;
-    const data={character:this.characterKey,level:this.levelIndex,bossCheckpoint:Boolean(this.level.boss && (this.boss || this.miniBoss)),run:this.run};
+    const checkpoint=Boolean(this.level.boss && (this.boss || this.miniBoss));
+    if(this.isSurvival){this.run.startSurvival(1);this.game.events.emit('level-restart');this.scene.restart({character:this.characterKey,level:this.levelIndex,survival:true,run:this.run});return true;}
+    const data={character:this.characterKey,level:this.levelIndex,bossCheckpoint:checkpoint,run:this.run,
+      ...(checkpoint?{cardDeathsAtStart:this.cardDeathsAtStart,cardAttemptEligible:this.cardAttemptEligible}:{})};
     this.game.events.emit('level-restart');this.scene.restart(data);return true;
   }
 
   updateCounter() {
     if(this.isRingBonus){this.counter.setText('BONUS · EL RING');return;}
     if(this.isChivaBonus){this.counter.setText('BONUS · LA CHIVA');return;}
+    if(this.isSurvival){this.counter.setText(`OLEADA ${this.survival?.wave||1} · ${this.defeated} DERROTADOS`);return;}
     this.counter.setText(`NIVEL ${this.levelIndex + 1} · ${this.boss || this.miniBoss ? 'JEFE' : `${this.defeated}/${this.level.total} ${this.level.mode==='crossing'?'RESUELTOS':'DERROTADOS'}`}`);
   }
 
   updateRunStatus(){this.runStatus?.setText(`VIDAS ${this.run.lives} · PUNTOS ${this.run.score}`);}
-  addScore(points){this.run.award(points);this.updateRunStatus();}
+  levelCollectible(){
+    return cardForPerfectLevel(this.level,{won:this.health>0,deaths:this.run.deaths-this.cardDeathsAtStart,
+      eligible:this.cardAttemptEligible,bonus:this.isChivaBonus||this.isRingBonus||this.isAuraExhibition});
+  }
+  addScore(points){this.run.award(Math.round(points*difficultyFor(this.run.difficulty).score));this.updateRunStatus();}
 
   /** Changing fighter from the pause menu: its sheet may not be loaded yet (only the chosen one is), so load it first. */
   ensureCharacter(key, done) {
+    if(this.aura)return this.aura.ensureCharacter(key,done);
+    if(this.isMonserrate)return done();
     if(this.isCycling)return done(); // All five bicycle sheets are prepared together.
     if (!characters[key]) return done();
     if(this.textures.exists(key) && (!this.handItemKind || (this.textures.exists(`${key}-${this.handItemKind}`) && this.textures.exists(`${key}-super`))))return done();
@@ -434,6 +498,8 @@ export class StreetScene extends Phaser.Scene {
 
   switchCharacter(key) {
     if(!characters[key] || this.gameOver)return false;
+    if(this.aura)return this.aura.setCharacter(key);
+    if(this.monserrate){this.monserrate.setCharacter(key);return true;}
     if(this.cycling){this.cycling.setCharacter(key);return true;}
     this.iphone?.destroy();this.books?.destroy();this.iphone=null;this.books=null;
     this.characterKey=key;this.character=characters[key];this.player.key=key;this.player.config=this.character;
@@ -441,13 +507,14 @@ export class StreetScene extends Phaser.Scene {
     this.jumpStart=-1000;this.jumpHeight=0;
     this.arcade?.resetPlayer();
     this.player.sprite.stop().setTexture(key,this.character.idle).setScale(this.character.height/this.textures.get(key).referenceHeight);
+    this.applyPlayerPalette();
     this.healthBar.setFillStyle(this.character.color);this.healthBar.width=this.health*2;
     this.playerName.setText(`${String(Object.keys(characters).indexOf(key)+1).padStart(2,'0')} / ${this.character.name}`);
     this.hud?.setPlayer();
     if(key==='office')this.iphone=new IPhoneSpecial(this);
     if(key==='student'){prepareBookTextures(this);this.books=new OrbitingBooks(this);}
     if(this.arcade)for(const special of [this.iphone,this.books])if(special)fitArcadeText(special.label);
-    this.controlsLabel?.setText(this.game.touchControls?.mobile?.()?'JOYSTICK MOVER · PUÑO · PATADA · ESPECIAL −10 ENERGÍA · SALTO · Ⅱ PAUSA':`H PUÑO · J PATADA · K ${this.character.specialLabel}${key==='student'?' · L PATADA BAJA':''} · Q SUPER · SHIFT DASH · ESPACIO SALTO · P PAUSA · R REINICIAR`);
+    this.controlsLabel?.setText(this.game.touchControls?.mobile?.()?'JOYSTICK MOVER · PUÑO · PATADA · ESPECIAL −10 VIDA · SALTO · Ⅱ PAUSA':`H PUÑO · J PATADA · K ${this.character.specialLabel}${key==='student'?' · L PATADA BAJA':''} · Q SUPER · SHIFT DASH · ESPACIO SALTO · P PAUSA · R REINICIAR`);
     this.input.keyboard.resetKeys();this.placeFighter(this.player);
     if(this.finished && this.health>0)this.play(this.player,'victory',1000);else this.idle(this.player);
     return true;
@@ -470,6 +537,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   respawn() {
+    if(this.monserrate)return this.monserrate.respawn();
     if(this.cycling)return this.cycling.respawn();
     this.health=100;this.healthBar.width=200;this.deathHandled=false;this.respawnDelay=0;this.timeLeft=ARCADE.hud.timeLimit*1000;
     this.player.x=this.floor.left+135;this.player.y=Math.max(this.floor.top,Math.min(450,this.floor.bottom));
@@ -483,6 +551,7 @@ export class StreetScene extends Phaser.Scene {
   }
 
   continueRun() {
+    if(this.aura)return this.aura.continueRun();
     if(!this.waitingContinue || this.gameOver)return false;
     if(!this.run.continue())return false;this.waitingContinue=false;this.finished=false;this.respawn();return true;
   }
@@ -497,6 +566,7 @@ export class StreetScene extends Phaser.Scene {
 
   beginBossIntro() {
     if(this.bossIntroShown || this.boss || this.miniBoss || !this.level.boss || !this.waves.cleared || this.health<=0)return false;
+    if(this.enemies.some(enemy=>enemy.hp<=0 && enemy.deathMotion && !enemy.deathMotion.landed && enemy.sprite.visible!==false))return false;
     this.stage?.pigeons?.clear();
     this.bossIntroShown=true;this.cinematic=true;this.playerAttack=null;
     if(this.arcade){this.arcade.player.transition('walk');this.arcade.clearInput();this.arcade.combat.tokens.clear();}
@@ -596,6 +666,9 @@ export class StreetScene extends Phaser.Scene {
     this.play(this.player, this.character.animations.dash ? 'dash' : 'walk', DASH.duration);
   }
 
+  /** The fighter's chosen palette (src/data/palettes.js), kept through hit flashes. */
+  applyPlayerPalette(){if(this.game?.paletteState)applyPalette(this.player?.sprite,paletteFor(this.characterKey,this.game.paletteState));}
+
   hitEnemy(enemy, attack) {
     if(this.ringBonus?.locked && enemy.config.ringFighter)return;
     if(enemy.hp<=0 || (!attack.super && (enemy.sackSpinning || this.combatTime<(enemy.invulnerableUntil??0)))){ // e.g. a boss mid-evade
@@ -615,8 +688,17 @@ export class StreetScene extends Phaser.Scene {
       if(enemy.hp>damage){this.blockHit(enemy,damage);return;}
       attack={...attack,damage}; // the chip damage finishes him off: fall through to the normal defeat
     }
-    const hpBefore=enemy.hp;enemy.hp = Math.max(0, enemy.hp - attack.damage);
-    if(enemy.hp<hpBefore)this.superPower?.onHit(attack);
+    if(!attack.super && this.combatTime<(enemy.parriedUntil??0)){
+      attack={...attack,damage:Math.round(attack.damage*ARCADE.parry.counterDamage)};
+      if(!enemy.counterShown && this.add?.text){
+        enemy.counterShown=true;
+        const label=this.add.text(enemy.x,enemy.y-enemy.config.height-30,'¡CONTRA!',{fontFamily:FONT,fontSize:'14px',color:'#ffd36b',stroke:'#142127',strokeThickness:3}).setOrigin(.5).setDepth(951);
+        this.tweens?.add?.({targets:label,y:label.y-20,alpha:0,duration:600,onComplete:()=>label.destroy()});
+      }
+    }
+    const deathHeight=enemy.z??0,hpBefore=enemy.hp;enemy.hp = Math.max(0, enemy.hp - attack.damage);
+    if(enemy.hp<hpBefore){this.superPower?.onHit(attack);this.combo?.onHit(attack);this.impactText?.show(enemy,attack,hpBefore-enemy.hp);}
+    if(enemy.hp===0 && hpBefore>0 && enemy.config.boss && !enemy.config.minion)this.impactText?.finale();
     const bossHurt=BOSS_SOUNDS[enemy.key]?.hurt??ENEMY_HURT_SOUNDS[enemy.key];
     if(bossHurt && enemy.hp>0 && this.combatTime>=(enemy.gruntReady??0)){enemy.gruntReady=this.combatTime+BOSS_HURT_COOLDOWN;this.sfx?.play(bossHurt);}
     if(attack.radialKnockback) {
@@ -647,16 +729,21 @@ export class StreetScene extends Phaser.Scene {
     if (enemy.hp === 0) {
       if(this.lastHit?.enemy===enemy)this.lastHit=null;
       // A boss is not part of the wave count; it pays its own bonus.
-      const points=enemy.config.ringFighter?0:enemy.config.boss ? (bossFor(this.level)?.score ?? 1000) : enemy.config.minion ? 50 : 100;
+      const base=enemy.config.ringFighter?0:enemy.config.boss ? (bossFor(this.level)?.score ?? 1000) : enemy.config.minion ? 50 : 100;
+      const points=this.combo?this.combo.points(base,enemy.config):base;
       this.addScore(points);if(points)this.scorePopup(enemy.x,enemy.y-enemy.config.height-10,points,enemy.config.boss);
       enemyDeathSound(this,enemy);
-      if(!enemy.config.boss && !enemy.config.minion && !enemy.config.ringFighter)this.defeated++;
+      if(!enemy.config.boss && !enemy.config.minion && !enemy.config.ringFighter && !enemy.reinforcement)this.defeated++;
       if(enemy.config.ringFighter)this.ringBonus?.onDefeated(enemy);
       enemy.shadow.setVisible(false); enemy.healthBar.setVisible(false); enemy.taunt?.setVisible(false);
-      this.tweens.add({ targets: enemy.sprite, alpha: 0, delay: 650, duration: 250 });
       this.updateCounter();
     }
     this.arcade?.enemyHit(enemy,attack);
+    if(enemy.hp===0){
+      const holder=this.arcade?.player;
+      if(holder?.grab?.target===enemy && holder.grab.piledriver?.phase!=='recover')holder.transition('walk');
+      beginEnemyDeath(this,enemy,deathHeight);
+    }
   }
 
   /** Points that jump out of a defeated enemy (or a picked-up card) and float away. */
@@ -695,9 +782,10 @@ export class StreetScene extends Phaser.Scene {
     if(this.combatTime<this.respawnProtectedUntil)return false;
     const followup=combo && combo===this.comboVictim && combo.connected && combo.enemy.pending===combo && combo.enemy.hp>0 && this.combatTime>=this.dashUntil;
     if ((this.combatTime < this.invulnerableUntil && !followup) || this.health <= 0 || this.paused || this.finished || this.cinematic) return false;
+    if(this.arcade?.player.catchStrike(combo)) return false;
     this.comboVictim=combo;
     this.health = Math.max(0, this.health - damage);
-    if(damage>0)this.superPower?.reset();
+    if(damage>0){this.superPower?.reset();this.combo?.end('hit');}
     if(this.health===0 && this.ringBonus)this.ringBonus.knockout();
     if(this.health===0){this.books?.clear();this.comboVictim=null;}
     this.healthBar.width = this.health * 2;
@@ -727,6 +815,17 @@ export class StreetScene extends Phaser.Scene {
     const sprite = this.add.image(x, enemy.y - 78, 'knife').setDisplaySize(knife.width, knife.width)
       .setRotation(Math.PI / 4 + (facing < 0 ? Math.PI : 0)).setDepth(enemy.y + 1);
     this.projectiles.push({ x, y: enemy.y, facing, damage: enemy.config.damage, sprite,owner:enemy });
+  }
+
+  /** One normal enemy from this level, independent of the campaign wave quota. */
+  callReinforcement(owner,random=Math.random){
+    if(owner.hp<=0 || this.health<=0 || this.paused || this.cinematic || this.finished || this.boss || this.miniBoss)return null;
+    const pool=[...new Set(this.level.enemies)].filter(key=>enemies[key] && !enemies[key].boss && !enemies[key].minion && !enemies[key].callReinforcements);
+    if(!pool.length)return null;
+    const key=pool[Math.min(pool.length-1,Math.floor(random()*pool.length))];
+    const index=10000+(++this.reinforcementCount),wave=owner.callWave=(owner.callWave??0)+1;
+    const ally=this.spawnEnemy(key,index,0,1,wave);
+    ally.reinforcement=true;ally.calledBy=owner;return ally;
   }
 
   /** A wave of minions running in from both screen edges (level 1 and 4 bosses). */
@@ -817,7 +916,7 @@ export class StreetScene extends Phaser.Scene {
       }
       const ducking = this.playerAttack?.type === 'lowKick';
       const hit = !ducking && knifeHits(previous, projectile.x, projectile.y, this.player, this.jumpHeight);
-      if (hit) this.hitPlayer(projectile.damage,null,projectile.owner);
+      if (hit && !this.arcade?.player.catchProjectile(projectile)) this.hitPlayer(projectile.damage,null,projectile.owner);
       const vx = viewLeft(this);
       if (hit || projectile.x < vx-40 || projectile.x > vx+1000) { projectile.sprite.destroy(); return false; }
       return true;
@@ -889,7 +988,7 @@ export class StreetScene extends Phaser.Scene {
     if(enemy.facing>0?enemy.x>viewLeft(this)+1100:enemy.x<viewLeft(this)-140) {
       enemy.hp=0;enemy.pending=null;
       enemy.sprite.setVisible(false);enemy.shadow.setVisible(false);enemy.healthBar.setVisible(false);enemy.tell.setVisible(false);
-      this.defeated++;this.updateCounter();return;
+      if(!enemy.reinforcement)this.defeated++;this.updateCounter();return;
     }
     this.placeFighter(enemy);
     enemy.healthBar.setPosition(enemy.x-21,enemy.y-enemy.config.height-10).setDepth(enemy.y+1);
@@ -899,7 +998,7 @@ export class StreetScene extends Phaser.Scene {
   tickClock() {
     if(this.isChivaBonus || this.isRingBonus)return; // the bonus timer pays partial points instead of taking a life
     const limit=ARCADE.hud.timeLimit*1000;if(!this.hud || !limit)return;
-    const section=`${this.waves?.arena}|${Boolean(this.boss || this.miniBoss)}`;
+    const section=this.isSurvival?`wave-${this.waves?.wave}`:`${this.waves?.arena}|${Boolean(this.boss || this.miniBoss)}`; // survival: full clock every wave
     if(section!==this.clockSection){this.clockSection=section;this.timeLeft=limit;}
     if(this.health<=0 || this.cinematic || this.pendingResult)return;
     this.timeLeft=Math.max(0,this.timeLeft-ARCADE.clock.stepMs);
@@ -919,8 +1018,12 @@ export class StreetScene extends Phaser.Scene {
     }
   }
   updateFrame(_time, delta) {
+    if(this.aura){this.aura.update(delta);return;}
+    if(this.monserrate){this.monserrate.update(delta);return;}
     if(this.cycling){this.cycling.update(delta);return;}
     this.hud?.update();
+    // Controls help: only while the level starts and during pause (it covers the floor otherwise).
+    this.controlsLabel?.setVisible?.(Boolean(this.paused) || (this.combatTime??0)<ARCADE.hud.controlsHintMs);
     if(this.arcade){
       const runtime=this.arcade;
       runtime.capture(this.arcadeInput());
@@ -928,6 +1031,7 @@ export class StreetScene extends Phaser.Scene {
       if(this.arcade===runtime)runtime.update(delta);
       return;
     }
+    if(!this.paused && !this.cinematic)updateEnemyDeaths(this,Math.min(delta,50));
     if(this.cinematic)return;
     if(this.health<=0 && !this.gameOver) {
       this.handleDeath();
@@ -1063,7 +1167,7 @@ export class StreetScene extends Phaser.Scene {
       if (won) this.game.events.emit('level-clear', this.levelIndex);
       this.play(this.player,'victory',1000);
       this.game.events.emit('level-victory');
-      this.pendingResult={won,last,bossCheckpoint:Boolean(this.boss),score:this.run.score,character:this.character.name};
+      this.pendingResult={won,last,bossCheckpoint:Boolean(this.boss),collectible:won?this.levelCollectible()?.id??null:null,score:this.run.score,character:this.character.name};
       this.victoryRemaining=1100;
     }
   }
@@ -1078,7 +1182,7 @@ export class StreetScene extends Phaser.Scene {
     const k=this.keys,touch=this.game.touchControls?.input;
     const pressed=key=>{const t=touch?.justDown(key);return (k[key]?Phaser.Input.Keyboard.JustDown(k[key]):false)||Boolean(t);};
     const actions=[];
-    for(const [key,type] of [['H','punch'],['J','kick'],['K',this.character.special],['L','lowKick'],['Q','super']])if(pressed(key))actions.push(type);
+    for(const [key,type] of [['H','punch'],['J','kick'],['K',this.character.special],['L','lowKick'],['Q','super'],['U','parry']])if(pressed(key))actions.push(type);
     const result={actions,restart:pressed('R'),enter:pressed('ENTER'),pause:pressed('P'),jump:pressed('SPACE'),dash:pressed('SHIFT'),
       dx:Number(k.D.isDown||k.RIGHT.isDown)-Number(k.A.isDown||k.LEFT.isDown)||touch?.x||0,
       dy:Number(k.S.isDown||k.DOWN.isDown)-Number(k.W.isDown||k.UP.isDown)||touch?.y||0};

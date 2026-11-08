@@ -146,3 +146,359 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 
 .touch-actions .touch-super{background:#153f59;border-color:#85faff;color:#b9ffff}
 .touch-actions .touch-super:disabled{opacity:.45}
+.touch-actions .touch-parry{background:#1d3550;border-color:#9ad8ff;color:#d6f3ff}
+.selection-heading{flex-wrap:wrap}
+#aura-mode{font-size:10px;max-width:100%;padding:10px 12px}
+#aura-mode[aria-pressed=true]{background:#d6ed64;color:#142127;border-color:#d6ed64}
+
+/* Online ranking */
+.ranking-input input{width:12ch;letter-spacing:.04em;text-transform:none;font-size:30px}
+.ranking-help{font-size:9px;color:#aebeb1;letter-spacing:.5px}
+.ranking-status{margin:10px 0 0;font-size:10px;line-height:1.6;letter-spacing:1px;color:#d6ed64}
+.ranking-status[data-tone=error]{color:#ff8a7a}.ranking-status[data-tone=warn]{color:#ffe14d}
+.ranking-list li{grid-template-columns:2.4em minmax(0,1fr) auto auto}
+.ranking-list .initials{font-size:16px;letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ranking-list .who{text-align:right}
+.achievement-unlocks{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.achievement-unlocks li{display:flex;gap:6px;align-items:center;padding:6px 9px;border:1px solid #ffe14d;background:#ffe14d14;color:#ffe14d;font-size:10px;animation:achievement-pop .45s ease-out both}
+.achievement-unlocks li b{color:#d6ed64;font-weight:600}
+@keyframes achievement-pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.result-modal[data-mode=gameover] .achievement-unlocks{justify-content:flex-start}
+#ranking-open{font-size:10px;padding:10px 12px}
+.ranking-board{position:absolute;inset:0;z-index:25;display:flex;align-items:center;justify-content:center;padding:18px;background:#061014d9}
+.board-panel{width:min(860px,100%);max-height:100%;overflow:auto;padding:22px 26px;background:#142127;border:1px solid #66735c;box-shadow:0 20px 80px #0009}
+.board-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.board-head h2{margin:4px 0 12px;font:800 clamp(28px,4vw,42px)/1 'Barlow Condensed',Impact,sans-serif;color:#d6ed64}
+.board-head button{font-size:10px;padding:9px 12px}
+.board-tabs{display:flex;gap:8px;margin-bottom:6px}.board-tabs button{font-size:10px;padding:8px 12px}
+.board-tabs button[aria-selected=true]{background:#d6ed64;color:#142127;border-color:#d6ed64}
+.board-body{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;align-items:start}
+.board-body .ranking-list{width:100%;margin-top:8px}
+.board-profile{font-size:10px;color:#d1dcca;line-height:1.6}
+.board-profile h3{margin:6px 0 2px;font:800 26px/1 'Barlow Condensed',Impact,sans-serif;color:#ffe14d;letter-spacing:.02em}
+.board-profile .rank-title{color:#d6ed64;letter-spacing:1px}
+.xp-bar{height:8px;margin:8px 0 4px;background:#0b1430;border:1px solid #66735c}.xp-bar i{display:block;height:100%;background:#d6ed64}
+.board-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:10px 0}.board-stats span{padding:6px;background:#ffffff08;text-align:center}.board-stats b{display:block;font-size:14px;color:#e7e8df}
+.achievement-grid{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.achievement-grid li{padding:6px 8px;background:#ffffff08;border:1px solid #ffffff14;opacity:.45;filter:grayscale(1)}
+.achievement-grid li.unlocked{opacity:1;filter:none;border-color:#ffe14d66}
+.achievement-grid strong{display:block;color:#ffe14d;font-size:10px}.achievement-grid small{display:block;font-size:8px;color:#aebeb1;line-height:1.4}
+@media(max-width:700px){.board-body{grid-template-columns:1fr}.board-panel{padding:16px}}
+@media(prefers-reduced-motion:reduce){.achievement-unlocks li{animation:none}}
+/* Collectible reward: the supplied photograph remains the full-bleed card artwork. */
+.collectible-modal{width:min(800px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:0;border:1px solid #b99d5b;background:#101d1b;color:#f4ead4;overflow:auto;box-shadow:0 24px 100px #000b}
+.collectible-modal::backdrop{background:#020b0ddd;backdrop-filter:blur(5px)}
+.collectible-content{padding:clamp(16px,3vw,30px);text-align:center}
+.collectible-content>.eyebrow{color:#c4ac72;font-size:9px;letter-spacing:3px}
+.collectible-content>h2{font:800 clamp(24px,4vw,38px)/1 'Barlow Condensed',Impact,sans-serif;margin:10px 0 20px;color:#ffe3a2}
+.collectible-card{position:relative;isolation:isolate;aspect-ratio:1.65;overflow:hidden;border:2px solid #d1b775;border-radius:14px;background:#1b2a20;text-align:left;box-shadow:inset 0 0 0 5px #171e19,0 12px 35px #0008}
+.collectible-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 35%;image-rendering:pixelated;z-index:-2}
+.collectible-card::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#03100ba8,transparent 24%,transparent 35%,#05110bbd 67%,#05110bf5);box-shadow:inset 0 0 0 6px #dbc58c45}
+.collectible-top{display:flex;justify-content:space-between;gap:16px;padding:20px;color:#ffe7ac;font-size:10px;letter-spacing:2px}
+.collectible-top>span{background:#07140dc9;padding:7px 10px;border:1px solid #d0b7766b}
+.collectible-seal{position:absolute;left:22px;bottom:39%;font-size:9px;letter-spacing:2px;color:#e5d5a7;padding:6px 9px;border-left:2px solid #f3cb67;background:#0a1719b8}
+.collectible-bottom{position:absolute;inset:auto 24px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px}
+.collectible-bottom h3{margin:0;font:700 clamp(20px,3.5vw,32px)/1 'Barlow Condensed',Impact,sans-serif;color:#fff1d0;text-shadow:0 2px 7px #000}
+.collectible-bottom h3 strong{display:block;margin-top:2px;font-size:clamp(40px,7vw,72px);line-height:.95;letter-spacing:-1px}
+.collectible-value{flex-shrink:0;text-align:right;color:#ffe098}
+.collectible-value strong{display:block;font:900 clamp(34px,6vw,60px)/1 'Barlow Condensed',Impact,sans-serif}
+.collectible-value span{font-size:8px;letter-spacing:1.4px}
+#collectible-description{max-width:60ch;margin:18px auto;color:#d6dcc8;font-size:12px;line-height:1.7}
+.collectible-close{display:block;min-width:210px;min-height:46px;margin:0 auto;padding:12px 24px;background:#e7c982;color:#12211c;border-color:#e7c982;font-weight:600;letter-spacing:2px}
+.collectible-close:hover{background:#ffe9af;color:#12211c;border-color:#ffe9af}
+.collectible-close:focus-visible{outline:2px solid #fff6dd;outline-offset:4px}
+.collectible-save-note{display:block;margin-top:13px;font-size:9px;color:#94ac98;line-height:1.6}
+.collectible-modal[data-locked=true] .collectible-photo{filter:grayscale(1);opacity:.25}
+.collectible-modal[data-locked=true] .collectible-seal{color:#d8ddcb;border-color:#879989}
+@media(max-width:520px){.collectible-card{aspect-ratio:1.05}.collectible-top{padding:13px;font-size:8px;letter-spacing:1px}.collectible-top>span{padding:5px}.collectible-bottom{inset:auto 14px 18px;gap:8px}.collectible-bottom h3{font-size:22px}.collectible-bottom h3 strong{font-size:43px}.collectible-value strong{font-size:38px}.collectible-value span{font-size:6px;letter-spacing:.4px}.collectible-seal{left:14px;bottom:41%;font-size:8px}.collectible-content>h2{margin-bottom:14px}}
+@media(max-height:560px) and (orientation:landscape){.collectible-modal{width:min(800px,calc(100vw - 36px))}.collectible-content{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(160px,1fr);align-items:center;gap:10px 22px;padding:16px}.collectible-content>.eyebrow{grid-column:1/-1;margin:0}.collectible-content>h2{grid-column:1/-1;margin:0 0 4px;font-size:25px}.collectible-card{grid-column:1;grid-row:3/span 3;aspect-ratio:1.5}.collectible-content>#collectible-description,.collectible-close,.collectible-save-note{grid-column:2}.collectible-content>#collectible-description{margin:0;font-size:10px}.collectible-close{min-width:0;width:100%;min-height:44px}.collectible-save-note{margin-top:0;font-size:8px}.collectible-bottom{inset:auto 12px 14px;gap:7px}.collectible-bottom h3{font-size:20px}.collectible-bottom h3 strong{font-size:38px}.collectible-value strong{font-size:32px}.collectible-value span{font-size:6px}.collectible-seal{left:12px;font-size:7px}.collectible-top{padding:10px;font-size:7px;letter-spacing:1px}}
+.collectible-card{width:100%;max-height:calc(100dvh - 320px);margin-inline:auto}
+.collectible-close:focus-visible{color:#12211c;background:#e7c982;border-color:#e7c982}
+.selection-heading{flex-wrap:wrap}
+#collection-open{white-space:nowrap}
+.collectible-modal{width:min(1040px,calc(100vw - 28px))}
+.collectible-modal .collectible-content{display:block;text-align:center;padding:clamp(16px,3vw,30px)}
+.collectible-progress{margin:-5px 0 22px;color:#c4ac72;font-size:10px;letter-spacing:2px}
+.collectible-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;text-align:left}
+.collectible-grid[hidden],.collectible-detail[hidden],.collectible-photo[hidden],.collectible-lock[hidden],.collectible-back[hidden]{display:none}
+.collection-tile{position:relative;isolation:isolate;display:flex;flex-direction:column;justify-content:flex-end;min-width:0;min-height:210px;overflow:hidden;padding:19px 16px 16px;border:1px solid #c4ac7280;border-radius:7px;background:#10201c;color:#fff1d0;text-align:left;box-shadow:inset 0 0 0 4px #dbc58c12;transition:border-color .15s,transform .15s}
+.collection-tile:hover{border-color:#ffe098;transform:translateY(-2px);background:#192c24;color:#fff1d0}
+.collection-tile:focus-visible,.collectible-back:focus-visible{outline:2px solid #ffe098;outline-offset:4px}
+.collection-tile-art{position:absolute;inset:0;z-index:-2;display:grid;place-items:center;font:800 90px/1 'Barlow Condensed',Impact,sans-serif;color:#c5ac6b35;background:repeating-linear-gradient(135deg,transparent 0 12px,#c4ac7206 12px 13px)}
+.collection-tile-art img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.collection-tile::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,#06130d44,transparent 20%,#06130ded 72%)}
+.collection-tile[data-locked=true]::after{background:linear-gradient(180deg,transparent 20%,#081710c9 70%)}
+.collection-tile-number{position:absolute;left:16px;top:15px;font-size:9px;letter-spacing:2px;color:#c4ac72}
+.collection-tile-state{position:absolute;right:12px;top:14px;font-size:8px;letter-spacing:1px;padding:3px 5px;border:1px solid #c4ac7240;background:#081710b8;color:#ffe098}
+.collection-tile[data-locked=true] .collection-tile-state{color:#a1afa5}
+.collection-tile>strong{font:800 clamp(21px,2.4vw,29px)/1.05 'Barlow Condensed',Impact,sans-serif;margin-top:85px}
+.collection-tile-rule{display:block;margin-top:10px;font-size:9px;line-height:1.6;color:#bac9ba;text-transform:none;letter-spacing:0}
+.collectible-detail{max-width:760px;margin:0 auto}
+.collectible-back{display:block;min-height:44px;margin:0 0 14px;padding:8px 12px;border:1px solid #b99d5b66;background:transparent;color:#dbc58c;font-size:10px;letter-spacing:1px}
+.collectible-detail .collectible-card{max-height:none;aspect-ratio:16/9}
+.collectible-detail .collectible-bottom h3{font:800 clamp(26px,5vw,52px)/.95 'Barlow Condensed',Impact,sans-serif;max-width:75%;text-wrap:balance}
+.collectible-detail .collectible-top{padding:16px;font-size:9px}
+.collectible-detail .collectible-top>span{max-width:65%}
+.collectible-detail .collectible-seal{bottom:34%}
+.collectible-lock{position:absolute;inset:15% 0 30%;display:grid;place-items:center;color:#b99d5b50;font:800 130px/1 'Barlow Condensed',Impact,sans-serif;z-index:-1}
+@media(max-width:700px){.collectible-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.collection-tile{min-height:205px;padding-inline:12px}.collection-tile-number{left:12px}.collection-tile-state{top:37px;right:auto;left:12px}.collectible-detail .collectible-top{padding:10px;font-size:7px;gap:6px}.collectible-detail .collectible-bottom{inset:auto 14px 14px}.collectible-detail .collectible-value strong{font-size:30px}.collectible-detail .collectible-seal{left:14px;bottom:38%;font-size:7px}.collectible-modal .collectible-content>#collectible-description{font-size:10px}}
+@media(max-width:360px){.collectible-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.collection-tile{transition:none}.collection-tile:hover{transform:none}}
+@media(max-height:560px) and (orientation:landscape){.collectible-card{max-height:none}}
+
+/* ═══ Cyber UI · Craftpix "Free GUI for Cyberpunk Pixel Art" (src/ui/cyber, licencia en LICENSE-craftpix.txt) ═══
+   Steel-navy plates with pixel bevels, plum/red pixel buttons and a neon accent per fighter. Every piece is a
+   9-slice drawn at 2× so the source pixels stay crisp. */
+:root{--cy-navy:#222a5c;--cy-steel:#37446e;--cy-edge:#8babbf;--cy-red:#d22f1e;--cy-plum:#38002c;--cy-gold:#ffda45;--cy-ink:#f3ead2;--accent:#d6ed64}
+.cy-plate,.fighter-card,.result-panel,.board-panel{border:24px solid transparent;border-image:url(./ui/cyber/plate.png) 12 / 24px stretch;
+  background:url(./ui/cyber/glass-soft.png) 0 0/128px 128px repeat,var(--cy-steel);background-clip:padding-box;image-rendering:pixelated}
+/* buttons */
+.selection-heading button,.board-head button,.board-tabs button,.result-actions button,.toolbar button,.audio-toggle,.ranking-input button,#aura-mode,.level-picker select{
+  border:10px solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / 10px stretch;background:none;border-radius:0;
+  color:var(--cy-ink);letter-spacing:1.5px;image-rendering:pixelated;text-shadow:0 2px 0 #1a0014;transition:filter .12s,transform .06s}
+.selection-heading button:hover,.board-head button:hover,.board-tabs button:hover,.result-actions button:hover,.toolbar button:not(:disabled):hover,.audio-toggle:hover,#aura-mode:hover{filter:brightness(1.35)}
+.selection-heading button:active,.board-tabs button:active,.result-actions button:active,.toolbar button:active,.audio-toggle:active{transform:translateY(2px)}
+.result-actions .primary,.ranking-input button,.board-tabs button[aria-selected=true],.audio-toggle[aria-pressed=true],#aura-mode[aria-pressed=true],button.primary{
+  border-image:url(./ui/cyber/button-red.png) 5 fill / 10px stretch;background:none;color:#fff7dc;text-shadow:0 2px 0 #6b0e10}
+.selection-heading button:focus-visible,.result-actions button:focus-visible,.board-panel button:focus-visible,.toolbar button:focus-visible,.audio-toggle:focus-visible{outline:2px solid var(--cy-gold);outline-offset:3px}
+.toolbar button:disabled{filter:grayscale(.7) brightness(.7)}
+/* icons (white pack icons tinted with the text colour) */
+#ranking-open::before,#back::before,#collection-open::before,#board-close::before,#new-game::before,#next-level::after{content:'';display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:8px;background:currentColor;
+  -webkit-mask:var(--icon) center/16px no-repeat;mask:var(--icon) center/16px no-repeat;image-rendering:pixelated}
+#ranking-open{--icon:url(./ui/cyber/icon-trophy.png)}#back{--icon:url(./ui/cyber/icon-back.png)}#collection-open{--icon:url(./ui/cyber/icon-cards.png)}
+#board-close{--icon:url(./ui/cyber/icon-close.png)}#new-game{--icon:url(./ui/cyber/icon-play.png)}
+#next-level::after{--icon:url(./ui/cyber/icon-next.png);margin:0 0 0 8px}
+/* character cards: name + tagline only, neon frame in the fighter's colour */
+.fighter-card[data-pick=office]{--accent:#c8f04a}.fighter-card[data-pick=student]{--accent:#ff8a3d}.fighter-card[data-pick=teleperforman]{--accent:#b47cff}
+.fighter-card[data-pick=gymbro]{--accent:#ff4b3a}.fighter-card[data-pick=magolita]{--accent:#41a4ff}
+.selection .fighter-card{background:url(./ui/cyber/glass-soft.png) 0 0/128px 128px repeat,var(--cy-steel);background-clip:padding-box;position:relative;align-items:center;text-align:center;gap:6px;padding:0;height:auto;min-height:0;color:var(--cy-ink);box-shadow:none;overflow:visible;transition:transform .15s,filter .15s}
+.selection .fighter-card:hover{transform:translateY(-4px);filter:brightness(1.12)}
+.selection .fighter-card img.profile{width:100%;height:auto;margin:0 0 6px;border:3px solid #0b0f2a;box-shadow:0 0 0 2px var(--cy-edge),4px 4px 0 3px #0008;align-self:stretch}
+.selection .fighter-card strong{font:800 clamp(14px,1.5vw,22px)/1 'Barlow Condensed',Impact,sans-serif;letter-spacing:.03em;max-width:100%;overflow-wrap:anywhere;color:var(--cy-ink);text-shadow:0 3px 0 #10133a}
+.selection .fighter-card>span{font-size:10px;line-height:1.5;color:#b9c4dc;padding:0 2px}
+.selection .fighter-card[aria-pressed=true]{border-image:url(./ui/cyber/bevel.png) 14 fill / 24px stretch;background:none;
+  filter:drop-shadow(0 0 6px var(--accent)) drop-shadow(0 0 14px color-mix(in srgb,var(--accent) 55%,transparent));transform:translateY(-6px)}
+.selection .fighter-card[aria-pressed=true] img.profile{border-color:var(--accent);box-shadow:0 0 0 2px #0b0f2a,0 0 14px var(--accent)}
+.selection .fighter-card[aria-pressed=true] strong{color:var(--accent)}
+.selection .fighter-card[aria-pressed=true]::after{content:'';position:absolute;left:50%;bottom:-30px;width:16px;height:16px;transform:translateX(-50%) rotate(90deg);background:var(--accent);
+  -webkit-mask:url(./ui/cyber/icon-play.png) center/16px no-repeat;mask:url(./ui/cyber/icon-play.png) center/16px no-repeat;animation:cy-bob .8s steps(2) infinite}
+@keyframes cy-bob{50%{bottom:-34px}}
+.selection .fighter-card:focus-visible{outline:2px dashed var(--cy-gold);outline-offset:8px}.selection .fighter-card[aria-pressed=true]:focus-visible{outline:none}
+.selection h2{color:var(--cy-ink);text-shadow:3px 3px 0 var(--cy-red),6px 6px 0 #10133a}
+.selection .eyebrow,.selection-hint{color:var(--cy-edge)}
+/* windows: result / game over / ranking */
+.result-modal,.ranking-board{background:#060818cc}
+.result-panel,.board-panel{box-shadow:0 20px 80px #000a;color:var(--cy-ink);position:relative}
+.result-panel h2,.board-head h2{color:var(--cy-gold);text-shadow:3px 3px 0 var(--cy-red)}
+.result-panel .eyebrow,.board-panel .eyebrow{color:var(--cy-edge)}
+.ranking-list li:nth-child(odd){background:#ffffff0d}.ranking-list li.mine{background:#d22f1e33;outline:1px solid var(--cy-red)}
+.ranking-input input{background:var(--cy-navy);border:2px solid var(--cy-edge);color:var(--cy-gold)}
+.achievement-grid li{background:#0b0f2a80;border-color:#8babbf40}.achievement-grid li.unlocked{border-color:var(--cy-gold)}
+.xp-bar{background:var(--cy-plum);border-color:var(--cy-edge)}.xp-bar i{background:linear-gradient(#ffda45 0 25%,#d22f1e 25%)}
+/* top and bottom bars around the game */
+.stage-bar,.toolbar{background:linear-gradient(#3d4a78,#2a3463);border-color:#0b0f2a;box-shadow:inset 0 2px 0 var(--cy-edge),inset 0 -3px 0 #0b0f2a;image-rendering:pixelated}
+.stage-bar b{color:var(--cy-gold)}
+.stage-bar .live{color:var(--cy-edge)}
+.result-modal[data-mode=gameover] .result-actions .primary,.result-modal[data-mode=gameover] #new-game,.result-modal[data-mode=gameover] #new-game:hover{border-image:url(./ui/cyber/button-red.png) 5 fill / 10px stretch;background:none;color:#fff7dc;text-shadow:0 2px 0 #6b0e10}
+.result-modal[data-mode=gameover] #new-game::after{content:none}
+.result-modal[data-mode=gameover] #new-game{justify-content:center}
+/* Level loader: a TransMilenio crossing the route while the level downloads (src/ui/LevelLoader.js) */
+.level-loader{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(ellipse at 50% 40%,#2a3463 0,#0b0f2a 70%),#0b0f2a}
+.loader-panel{display:flex;gap:26px;align-items:center;width:min(760px,100%);border:24px solid transparent;border-image:url(./ui/cyber/plate.png) 12 / 24px stretch;
+  background:url(./ui/cyber/glass-soft.png) 0 0/128px 128px repeat,var(--cy-steel);background-clip:padding-box;image-rendering:pixelated;color:var(--cy-ink);box-shadow:0 20px 80px #000a}
+.loader-portrait{width:132px;height:132px;flex:none;object-fit:cover;border:3px solid #0b0f2a;box-shadow:0 0 0 2px var(--cy-edge),4px 4px 0 3px #0008;image-rendering:auto;animation:loader-bob .6s steps(2) infinite}
+.loader-copy{flex:1;min-width:0}
+.level-loader h2{margin:4px 0 18px;font:800 clamp(26px,4vw,40px)/1 'Barlow Condensed',Impact,sans-serif;color:var(--cy-gold);text-shadow:3px 3px 0 var(--cy-red);letter-spacing:.02em}
+.level-loader .eyebrow{color:var(--cy-edge)}
+.loader-road{position:relative;height:30px;margin:28px 0 12px;background:#1a1d2e;border:2px solid #0b0f2a;box-shadow:inset 0 2px 0 #00000080,0 0 0 2px var(--cy-edge)}
+.loader-road::before{content:'';position:absolute;left:0;right:0;top:13px;height:3px;background:repeating-linear-gradient(90deg,#ffda45 0 14px,transparent 14px 28px);opacity:.75;animation:loader-lane .5s linear infinite}
+.loader-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(#d22f1e 0 55%,#8c1b12 55%);opacity:.55;transition:width .25s steps(6)}
+.loader-stops{position:absolute;inset:0;display:flex;justify-content:space-between;padding:0 2px;pointer-events:none}
+.loader-stops i{width:6px;height:38px;margin-top:-6px;background:var(--cy-edge);border:2px solid #0b0f2a}
+.loader-bus{position:absolute;left:0;bottom:6px;width:96px;height:36px;transform:translateX(-50%);transition:left .25s steps(6);filter:drop-shadow(0 3px 0 #0008)}
+.loader-bus svg{display:block;width:100%;height:100%;animation:loader-bounce .3s steps(2) infinite}
+.level-loader.is-parked .loader-bus svg{animation:loader-bounce 1.2s steps(2) infinite}
+.loader-status{margin:14px 0 6px;font-size:11px;letter-spacing:2px;color:var(--cy-edge)}.loader-status b{color:var(--cy-gold);font-size:14px}
+.loader-tip{margin:10px 0 0;font-size:11px;line-height:1.6;color:#d6dcf0}.loader-tip::before{content:'TIP · ';color:var(--cy-gold)}
+.loader-error{margin:10px 0 0;font-size:11px;line-height:1.6;color:#ff8a7a}
+@keyframes loader-bounce{50%{transform:translateY(-2px)}}
+@keyframes loader-bob{50%{transform:translateY(-3px)}}
+@keyframes loader-lane{to{background-position:-28px 0}}
+@media(max-width:600px){.loader-panel{flex-direction:column;gap:12px}.loader-portrait{width:96px;height:96px}}
+@media(prefers-reduced-motion:reduce){.loader-bus svg,.loader-portrait,.loader-road::before{animation:none}.loader-bus,.loader-fill{transition:none}}
+/* Controls screen (src/ui/ControlsScreen.js): desktop only, between the selection and level 1 */
+.controls-screen{position:fixed;inset:0;z-index:26;display:flex;align-items:center;justify-content:center;padding:clamp(8px,2vw,24px);background:radial-gradient(ellipse at 50% 30%,#2a3463 0,#0b0f2a 75%)}
+.controls-panel{width:min(1200px,100%);max-height:100%;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:24px solid transparent;border-image:url(./ui/cyber/plate.png) 12 / 24px stretch;
+  background:url(./ui/cyber/glass-soft.png) 0 0/128px 128px repeat,var(--cy-steel);background-clip:padding-box;image-rendering:pixelated;color:var(--cy-ink);box-shadow:0 20px 80px #000a}
+.controls-head{display:flex;justify-content:flex-start;gap:18px;align-items:center;margin-bottom:14px;padding:0;border:0;background:none}.controls-head>div{text-align:left}
+.controls-portrait{width:86px;height:86px;object-fit:cover;border:3px solid #0b0f2a;box-shadow:0 0 0 2px var(--cy-edge);image-rendering:auto}
+.controls-head h2{margin:2px 0 4px;font:800 clamp(28px,4vw,42px)/1 'Barlow Condensed',Impact,sans-serif;color:var(--cy-gold);text-shadow:3px 3px 0 var(--cy-red)}
+.controls-head .eyebrow{color:var(--cy-edge)}.controls-who{margin:0;font-size:11px;letter-spacing:2px;color:#c9d2ea}.controls-who b{color:var(--cy-ink)}
+.controls-grid{display:grid;grid-template-columns:minmax(145px,.55fr) minmax(0,1fr) minmax(0,1.2fr);gap:18px}
+.controls-grid section{min-width:0;background:#0b0f2a73;border:2px solid #0b0f2a;box-shadow:inset 0 0 0 1px #8babbf40;padding:16px}
+.controls-system-section{grid-column:1/-1}
+.controls-grid .combo-legend{margin:0 0 12px;color:var(--cy-edge);font-size:10px;line-height:1.7;letter-spacing:.5px}
+#controls-system{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+#controls-combos li,#controls-system li{flex-direction:column;align-items:flex-start;gap:8px}
+.controls-grid h3{margin:0 0 10px;font-size:10px;letter-spacing:3px;color:var(--cy-edge)}.controls-grid h3:not(:first-child){margin-top:14px}
+.controls-move{display:flex;flex-direction:column;gap:12px;align-items:center}
+.dpad{display:grid;grid-template-areas:'. up .' 'left down right';grid-template-columns:repeat(3,38px);gap:4px}
+.controls-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+.controls-list li{display:flex;align-items:flex-start;gap:12px;min-width:0;font-size:12px;line-height:1.5;letter-spacing:.5px}
+.controls-list .keys{display:flex;flex-wrap:wrap;align-items:center;gap:4px;flex-shrink:0;max-width:100%;min-width:64px}.controls-list .keys i{font-style:normal;color:var(--cy-edge)}
+.controls-list .what{min-width:0;overflow-wrap:anywhere}
+.controls-list .what small{display:block;font-size:10px;line-height:1.6;color:var(--cy-gold);letter-spacing:.5px;margin-top:4px}
+.controls-screen kbd{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:34px;padding:0 6px;font:700 13px/1 'IBM Plex Mono',monospace;color:var(--cy-ink);
+  border:8px solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / 8px stretch;image-rendering:pixelated;box-sizing:border-box;text-shadow:0 2px 0 #1a0014}
+.controls-screen kbd.wide{min-width:64px;font-size:10px}
+.controls-foot{display:flex;justify-content:space-between;gap:12px;margin-top:16px}
+.controls-foot button{min-height:48px;padding:0 18px;font-size:12px;border:10px solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / 10px stretch;background:none;color:var(--cy-ink);letter-spacing:1.5px;text-shadow:0 2px 0 #1a0014;image-rendering:pixelated}
+.controls-foot button.primary{border-image:url(./ui/cyber/button-red.png) 5 fill / 10px stretch;color:#fff7dc;text-shadow:0 2px 0 #6b0e10}
+.controls-foot button:hover{filter:brightness(1.3)}.controls-foot button:focus-visible{outline:2px solid var(--cy-gold);outline-offset:3px}
+.controls-foot .primary{animation:controls-pulse 1s steps(2) infinite}
+@keyframes controls-pulse{50%{filter:brightness(1.25)}}
+@media(max-width:900px){.controls-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.controls-grid>section:first-child{grid-column:1/-1}.controls-move{flex-direction:row;justify-content:center;gap:32px}#controls-system{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.controls-panel{border-width:16px;border-image-width:16px}.controls-grid{grid-template-columns:minmax(0,1fr);gap:12px}.controls-grid section{padding:12px}.controls-head{gap:12px}.controls-portrait{width:60px;height:60px}.controls-head .eyebrow,.controls-who{font-size:9px;letter-spacing:1px}#controls-system{grid-template-columns:minmax(0,1fr)}.controls-foot{flex-wrap:wrap}.controls-foot button{flex:1;font-size:10px;letter-spacing:.5px;padding:0 8px}}
+@media(prefers-reduced-motion:reduce){.controls-foot .primary{animation:none}}
+.palette-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;max-width:1040px;align-self:center}
+.palette-picker .palette-label{font-size:9px;letter-spacing:2px;color:#aebeb1;margin-right:4px}
+.palette-picker button{display:flex;align-items:center;gap:6px;padding:5px 10px;font-size:10px;letter-spacing:1px}
+.palette-picker button i{display:inline-block;width:14px;height:14px;border:1px solid #05080a;box-shadow:0 0 0 1px #e8edce55}
+.palette-picker button[aria-pressed=true]{background:#d6ed64;color:#142127;border-color:#d6ed64}
+.palette-picker button.locked{opacity:.45}
+.palette-picker button.locked::after{content:'🔒';font-size:9px}
+.palette-toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);z-index:50;padding:10px 18px;background:#142127;border:1px solid #d6ed64;color:#d6ed64;font:600 12px 'IBM Plex Mono',monospace;letter-spacing:1px;transition:opacity .5s}
+.palette-toast.out{opacity:0}
+.difficulty-picker button[data-difficulty=hora_pico][aria-pressed=true]{background:#ff8a3d;border-color:#ff8a3d}
+.difficulty-picker button[data-difficulty=facil][aria-pressed=true]{background:#7fe0ff;border-color:#7fe0ff}
+.difficulty-note{font-size:9px;color:#aebeb1;letter-spacing:1px;margin-left:6px}
+
+/* ── Main menu (SoR4 style) ─────────────────────────────────────────────── */
+.main-menu{position:absolute;inset:0;z-index:6;background:#05080a var(--menu-art) center/cover no-repeat;overflow:hidden;font-family:'Barlow Condensed',Impact,sans-serif}
+.main-menu::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#05080acc 0,#05080a00 55%);pointer-events:none}
+.menu-column{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;width:min(34%,380px);min-width:250px;height:100%;padding:clamp(18px,6vh,60px) 26px 18px clamp(22px,4vw,48px);
+  background:linear-gradient(90deg,#000000f2,#05080ae0 85%,#05080a00);box-shadow:8px 0 30px #000a}
+.menu-logo{font:900 italic clamp(22px,3vw,34px)/1 'Barlow Condensed',Impact,sans-serif;letter-spacing:1px;color:#ffd36b;text-shadow:3px 3px 0 #b3261e,0 0 18px #ff8a3d66;margin-bottom:clamp(10px,3vh,26px)}
+.menu-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(0px,.6vh,6px)}
+.menu-item{display:flex;align-items:baseline;justify-content:space-between;gap:12px;cursor:pointer;color:#e8e8e8;font:800 italic clamp(19px,2.6vw,30px)/1.05 'Barlow Condensed',Impact,sans-serif;
+  letter-spacing:.5px;text-transform:uppercase;transition:transform .12s,color .12s;transform-origin:left center;user-select:none}
+.menu-item.big{font-size:clamp(26px,3.6vw,44px)}
+.menu-item.active{color:#ffe14d;transform:scale(1.08);text-shadow:0 0 10px #ffb34799,2px 2px 0 #7b2409}
+.menu-item.disabled{color:#6b7480;cursor:default}
+.menu-item.disabled.active{color:#9aa3ad;text-shadow:none}
+.menu-value{display:inline-flex;align-items:center;gap:8px;font-size:.72em;color:#7fe0ff}
+.menu-value b{font-size:.7em;color:#ffd36b;cursor:pointer;padding:0 2px}
+.menu-subtitle{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:3px;color:#7fe0ff;margin:0 0 8px}
+.menu-list .menu-subtitle~.menu-item{font-size:clamp(14px,1.8vw,20px)}
+.menu-hint{min-height:3.2em;margin:clamp(14px,4vh,40px) 0 12px;font:600 11px/1.5 'IBM Plex Mono',monospace;color:#c3cfc4;letter-spacing:.5px}
+.menu-foot{display:flex;gap:18px;font:600 10px 'IBM Plex Mono',monospace;color:#aebeb1;letter-spacing:1px}
+.menu-foot kbd{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#2bd27a;color:#05080a;font-size:10px;margin-right:4px}
+.menu-foot span+span kbd{background:#ff5d5d}
+
+/* ── Character selection (SoR4 style) ─────────────────────────────────── */
+.sor-select:not([hidden]){display:block!important;padding:0!important;overflow:hidden;background:linear-gradient(180deg,#071a2acc,#0b2f4699 50%,#071a2ad9),var(--selection-art) center/cover,#0b2333!important}
+.sor-select>.selection-heading,.sor-select>.selection-hint{display:none!important}
+.select-top{position:absolute;top:14px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;z-index:3}
+.select-keys{display:flex;flex-direction:row;gap:22px;font:800 italic 20px/1 'Barlow Condensed',Impact,sans-serif;color:#fff}
+.select-keys i{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-style:normal;font-size:15px;margin-right:6px;color:#05080a;vertical-align:middle}
+.select-keys .pad-a{background:#2bd27a}.select-keys .pad-b{background:#ff5d5d}
+.select-cancel{all:unset;cursor:pointer;font:inherit;color:inherit}
+.select-cancel:focus-visible{outline:2px solid #ffd36b}
+.select-mode{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:2px;color:#7fe0ff;background:#05080acc;padding:6px 10px;border:1px solid #7fe0ff55}
+.select-stage{position:absolute;left:clamp(20px,4vw,70px);top:54px;width:clamp(300px,36vw,440px);z-index:2}
+.select-art{position:relative;height:clamp(180px,38vh,330px);overflow:visible;background:#0b2f46;box-shadow:0 0 0 2px #7fe0ff33,0 20px 40px #000a}
+.select-art-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%;opacity:.55;filter:saturate(1.2) contrast(1.05);mix-blend-mode:screen}
+.select-art::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#3fb6ff22,#0b2f46cc)}
+.select-sprite{position:absolute;left:50%;bottom:-8px;width:min(95%,300px);height:auto;aspect-ratio:1;transform:translateX(-50%);image-rendering:pixelated;filter:drop-shadow(0 6px 0 #0007);animation:select-breathe 1.6s ease-in-out infinite}
+@keyframes select-breathe{50%{transform:translateX(-50%) scaleY(1.015)}}
+.select-stage.enter .select-art{animation:select-slide .28s ease-out}
+@keyframes select-slide{from{transform:translateX(-24px);opacity:.3}}
+.select-stage.chosen .select-art{box-shadow:0 0 0 3px #ffd36b,0 0 30px #ffd36b99}
+.select-namebar{display:flex;align-items:center;gap:10px;margin:10px 0 0 0}
+.select-namebar b{font:900 italic 42px/1 'Barlow Condensed',Impact,sans-serif;color:#fff;text-shadow:3px 3px 0 #000}
+.select-name{flex:1;background:#05080a;color:#ffd36b;font:900 italic 24px/1.4 'Barlow Condensed',Impact,sans-serif;letter-spacing:2px;text-align:center;clip-path:polygon(0 30%,8% 0,100% 0,100% 100%,0 100%)}
+.select-desc{margin:10px 0 10px;font:600 clamp(13px,1.35vw,16px)/1.45 'IBM Plex Mono',monospace;color:#d8e4ea;text-shadow:1px 1px 0 #000}
+.select-stage .palette-picker{max-width:none;gap:8px}
+.select-stage .palette-picker .palette-label{font-size:clamp(11px,1.1vw,13px);letter-spacing:2px;color:#d8e4ea;margin-right:2px}
+.select-stage .palette-picker button{padding:5px 9px;font-size:clamp(12px,1.15vw,14px);letter-spacing:1px}
+.select-stage .palette-picker button i{width:17px;height:17px}
+.select-stage .palette-picker button.locked::after{font-size:11px}
+.select-band{position:absolute;left:0;right:0;bottom:0;height:clamp(150px,32vh,240px);background:linear-gradient(180deg,#0d1e2bf0,#05080af5);border-top:3px solid #7fe0ff55;display:flex;align-items:flex-end;justify-content:flex-end;padding:0 clamp(14px,6vw,90px) 10px;z-index:1}
+.select-band-title{position:absolute;left:24px;bottom:18px;font:900 italic clamp(50px,10vw,120px)/1 'Barlow Condensed',Impact,sans-serif;color:#ffffff10;letter-spacing:4px;pointer-events:none}
+.sor-select .fighter-options{display:flex!important;gap:4px;width:auto!important;max-width:none!important;flex:0 0 auto!important}
+.sor-select .fighter-card{position:relative;width:clamp(60px,8.2vw,112px);height:clamp(130px,26vh,210px)!important;padding:0!important;border:2px solid #05080a;background:#ffd36b;box-shadow:none;transform:skewX(-6deg);overflow:visible;filter:brightness(.6) saturate(.8);transition:filter .15s,transform .15s}
+.sor-select .fighter-card img{width:100%;height:100%!important;max-width:none;object-fit:cover;object-position:center 15%;margin:0!important;filter:none}
+.sor-select .fighter-card strong,.sor-select .fighter-card>span{display:none}
+.sor-select .fighter-card[aria-pressed=true]{filter:none;transform:skewX(-6deg) translateY(-12px);border-color:#ffd36b;box-shadow:0 0 0 2px #05080a,0 0 22px #ffd36b88}
+.sor-select .fighter-card:hover{filter:brightness(.85)}
+.p1-tag{display:none;position:absolute;top:-30px;left:0;font:900 italic 26px/1 'Barlow Condensed',Impact,sans-serif;color:#fff;text-shadow:2px 2px 0 #000}
+.sor-select .fighter-card[aria-pressed=true] .p1-tag{display:block}
+@media(max-width:850px){.select-stage{left:16px;width:200px}.select-art{height:200px}.select-band{height:130px;padding-right:10px}.sor-select .fighter-card{width:56px;height:110px!important}.menu-column{width:60%}}
+
+/* ── COMBOS screen ─────────────────────────────────────────────────────── */
+.combos-screen{position:absolute;inset:0;z-index:7;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:1fr auto;gap:0 24px;
+  padding:clamp(16px,3vh,30px) clamp(18px,3vw,44px) 14px;background:radial-gradient(circle at 75% 40%,#1d4a6a 0,#0b1a26 55%,#05080a 100%);color:#fff;overflow:hidden}
+.combos-screen[hidden]{display:none!important}
+.combos-left{display:flex;flex-direction:column;min-height:0}
+.combos-left h2{margin:0;font:900 italic clamp(44px,6vw,76px)/.9 'Barlow Condensed',Impact,sans-serif;color:#ffe14d;text-shadow:4px 4px 0 #b3261e;letter-spacing:1px}
+.combos-tip{margin:10px 0 14px;max-width:560px;font:600 clamp(13px,1.3vw,16px)/1.45 'IBM Plex Mono',monospace;color:#d8e4ea}
+.combos-tip b{color:#7fe0ff}
+.combos-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:clamp(4px,1vh,10px);counter-reset:combo}
+.combos-list li{display:flex;align-items:center;gap:16px;padding:clamp(6px,1.2vh,12px) 14px;border-left:5px solid transparent;cursor:pointer;opacity:.55;transition:opacity .15s,transform .15s,background .15s;transform-origin:left center}
+.combos-list li strong{min-width:clamp(150px,15vw,220px);font:900 italic clamp(24px,2.8vw,36px)/1 'Barlow Condensed',Impact,sans-serif;letter-spacing:.5px}
+.combos-list li.active{opacity:1;background:linear-gradient(90deg,#ffe14d22,#ffe14d00);border-left-color:#ffe14d;transform:scale(1.03)}
+.combos-list li.active strong{color:#ffe14d;text-shadow:2px 2px 0 #7b2409}
+.combo-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.combo-chips .arrow{font-style:normal;color:#7fe0ff;font:900 22px/1 'Barlow Condensed',sans-serif}
+.chip{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;min-width:clamp(40px,3.6vw,54px);height:clamp(40px,3.6vw,54px);padding:0 6px;border-radius:50%;
+  border:3px solid #05080a;box-shadow:0 3px 0 #05080a;transition:transform .08s,box-shadow .08s,filter .08s;filter:saturate(.6) brightness(.8)}
+.chip b{font:900 clamp(16px,1.6vw,22px)/1 'Barlow Condensed',Impact,sans-serif;color:#05080a;white-space:nowrap}
+.chip small{font:700 9px/1 'IBM Plex Mono',monospace;color:#05080a99}
+.chip.punch{background:#7fe0ff}.chip.kick{background:#ffb347}
+.chip.last{border-radius:12px;min-width:clamp(52px,4.6vw,70px)}
+.chip.lit{filter:none;transform:translateY(-3px) scale(1.12);box-shadow:0 6px 0 #05080a,0 0 18px #fff8}
+.chip.last.lit{background:#ffe14d;box-shadow:0 6px 0 #05080a,0 0 28px #ffe14d}
+.combos-right{display:flex;flex-direction:column;align-items:center;min-height:0}
+.combos-roster{display:flex;gap:6px;margin-bottom:8px}
+.combos-roster button{all:unset;cursor:pointer;width:clamp(42px,4.4vw,60px);height:clamp(42px,4.4vw,60px);border:3px solid #05080a;opacity:.5;transform:skewX(-6deg);overflow:hidden;background:#ffd36b}
+.combos-roster button img{width:100%;height:100%;object-fit:cover;object-position:center 15%}
+.combos-roster button.active{opacity:1;border-color:#ffe14d;box-shadow:0 0 14px #ffe14d99}
+.combos-demo{position:relative;width:min(100%,clamp(240px,40vh,380px));aspect-ratio:1;background:radial-gradient(circle at 50% 80%,#7fe0ff33,#0000 65%)}
+.combos-demo canvas{width:100%;height:100%;image-rendering:pixelated;filter:drop-shadow(calc(var(--rush,0) * -3px) 0 0 #7fe0ff88) drop-shadow(calc(var(--rush,0) * -6px) 0 0 #ffe14d44)}
+.combos-demo.finish canvas{filter:drop-shadow(0 0 16px #ffe14d) brightness(1.25)}
+.combos-burst{position:absolute;left:50%;top:18%;transform:translate(-50%,-50%) scale(0);font:900 italic clamp(36px,4vw,56px)/1 'Barlow Condensed',Impact,sans-serif;color:#ffe14d;text-shadow:3px 3px 0 #b3261e,0 0 20px #ff8a3d;pointer-events:none}
+.combos-burst.pop{animation:combo-pop .9s ease-out forwards}
+@keyframes combo-pop{0%{transform:translate(-50%,-50%) scale(2.2);opacity:0}15%{transform:translate(-50%,-50%) scale(1);opacity:1}75%{opacity:1}100%{transform:translate(-50%,-80%) scale(1);opacity:0}}
+.combos-speed{position:absolute;right:4px;bottom:6px;font:700 13px 'IBM Plex Mono',monospace;color:#7fe0ff;text-shadow:1px 1px 0 #000}
+.combos-about{margin:10px 0 0;max-width:430px;text-align:center;font:600 clamp(14px,1.4vw,17px)/1.45 'IBM Plex Mono',monospace;color:#fff}
+.combos-foot{grid-column:1/-1;display:flex;gap:26px;justify-content:center;font:600 12px 'IBM Plex Mono',monospace;color:#aebeb1;letter-spacing:1px;padding-top:8px}
+.combos-foot b{color:#ffe14d}.combos-foot i{font-style:normal;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#ff5d5d;color:#05080a}
+@media(max-width:850px){.combos-screen{grid-template-columns:1fr;overflow:auto}.combos-right{order:-1}}
+
+/* MI CUENTA · avance en la nube */
+.account-modal{width:min(620px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:0;border:1px solid #b99d5b;background:#101d1b;color:#f4ead4;overflow:auto;box-shadow:0 24px 100px #000b}
+.account-modal::backdrop{background:#020b0ddd;backdrop-filter:blur(5px)}
+.account-content{padding:clamp(16px,3vw,28px);display:grid;gap:14px}
+.account-content>.eyebrow{margin:0;color:#c4ac72;font-size:10px;letter-spacing:3px;text-align:center}
+.account-content>h2{margin:0;font:800 clamp(28px,4vw,40px)/1 'Barlow Condensed',Impact,sans-serif;color:#ffe3a2;text-align:center}
+.account-status{margin:0;padding:10px 12px;border-left:3px solid #c8ec80;background:#0a1714;font-size:13px;letter-spacing:1px;color:#c8ec80}
+.account-status[data-state=offline],.account-status[data-state=error],.account-status[data-state=disabled],.account-status[data-state=no-user]{border-color:#ffb547;color:#ffd38a}
+.account-block{display:grid;gap:9px;padding:14px;border:1px solid #d0b77640;background:#0c1916}
+.account-block h3{margin:0;font:700 20px/1 'Barlow Condensed',Impact,sans-serif;letter-spacing:1px;color:#ffe3a2}
+.account-note{margin:0;font-size:12px;line-height:1.45;color:#cbd5c2}
+.account-row,.account-recover-form{display:flex;flex-wrap:wrap;gap:8px}
+.account-modal input{flex:1 1 180px;min-height:42px;padding:0 12px;border:1px solid #6d7e66;background:#06100d;color:#fff4d6;font:600 15px 'IBM Plex Mono',monospace;letter-spacing:1px;text-transform:uppercase}
+.account-modal input:focus{outline:2px solid #ffe14d;outline-offset:1px}
+.account-modal button{min-height:42px;padding:0 16px;border:1px solid #d1b775;background:#4b1630;color:#ffe9b5;font:700 13px 'IBM Plex Mono',monospace;letter-spacing:1px;cursor:pointer}
+.account-modal button:hover:not(:disabled),.account-modal button:focus-visible{background:#7a2149;outline:2px solid #ffe14d;outline-offset:1px}
+.account-modal button:disabled{opacity:.45;cursor:default}
+.account-code{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding-top:6px}
+.account-code[hidden]{display:none}
+.account-code>span{grid-column:1/-1;font-size:10px;letter-spacing:2px;color:#c4ac72}
+.account-code code{font:600 14px 'IBM Plex Mono',monospace;color:#c8ec80;word-break:break-all;user-select:all;background:#06100d;padding:8px 10px;border:1px dashed #6d7e66}
+.account-code small{grid-column:1/-1;font-size:11px;line-height:1.4;color:#aab59f}
+.account-recover-form input[name=code]{flex-basis:100%}
+.account-message{margin:0;min-height:1.2em;font-size:13px;letter-spacing:1px;color:#c8ec80;text-align:center}
+.account-message[data-tone=warn]{color:#ffb547}
+.account-close{justify-self:center;min-width:180px}

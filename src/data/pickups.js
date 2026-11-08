@@ -5,6 +5,7 @@ import boxesUrl from './items/boxes.png?url';
 import energyUrl from './items/item_energy.png?url';
 import fullEnergyUrl from './items/item_full_energy.png?url';
 import moneyUrl from './items/item_money.png?url';
+import lifeCoinUrl from './items/item_life_coin.png?url';
 import {prepareCutout,needsSource} from './spriteSheets.js';
 
 // Uniform cells (same size and bottom line) for 4-frame strips, so the animation never jumps.
@@ -30,6 +31,7 @@ export const CONTAINERS={
 // Drops from any broken container: every `fullEvery`-th drop of a level is the changua (refills all energy);
 // otherwise a TuLlave card (+1000 points) with `moneyChance`, or the pandebono with chocolate (+25 energy).
 export const ITEMS={
+  life:{texture:'item-life-0',width:32,height:32,lives:1,prefix:'item-life',source:'item-life-source',rects:[[0,0,64,64]]},
   energy:{texture:'item-energy-0',width:60,height:50,heal:25,frames:4,frameTicks:8,prefix:'item-energy',source:'item-energy-source',rects:strip(119,569)},
   // TuLlave spinning: front, edge, back, edge (the edge frames are thin; frameTicks keeps the spin readable).
   money:{texture:'item-money-0',width:60,height:40,heal:0,score:1000,frames:4,frameTicks:9,prefix:'item-money',source:'item-money-source',align:'center',
@@ -37,7 +39,7 @@ export const ITEMS={
   full:{texture:'item-full-0',width:62,height:58,heal:100,frames:6,frameTicks:8,prefix:'item-full',source:'item-full-source',
     rects:[0,1,2,3,4,5].map(i=>[(i%3)*512+20,Math.floor(i/3)*512+(i<3?40:34),480,448])},
 };
-export const PICKUPS={chance:.65,hits:2,heal:25,maxEnergy:100,canHeight:76,itemWidth:56,itemHeight:38,fullEvery:4,moneyChance:.35,
+export const PICKUPS={chance:.65,hits:2,heal:25,maxEnergy:100,canHeight:76,itemWidth:56,itemHeight:38,fullEvery:4,moneyChance:.35,lifeChance:.08,lifeMaxPerLevel:1,
   halfWidth:24,halfDepth:8,lane:24,pickupX:28,pickupY:20,pickupZ:8,poseFrames:6,
   spawnLeft:.38,spawnRight:.78,laneMargin:18,
   canRects:CONTAINERS.can.rects,
@@ -47,7 +49,7 @@ export const containersFor=levelIndex=>{
   const kinds=Object.keys(CONTAINERS).filter(kind=>CONTAINERS[kind].levels.includes(levelIndex));
   return kinds.length?kinds:['can'];
 };
-const ITEM_URLS={'item-energy-source':energyUrl,'item-money-source':moneyUrl,'item-full-source':fullEnergyUrl};
+const ITEM_URLS={'item-energy-source':energyUrl,'item-money-source':moneyUrl,'item-full-source':fullEnergyUrl,'item-life-source':lifeCoinUrl};
 /** Load one existing pickup for modes that do not use destructible containers. */
 export function preloadItem(scene,kind){
   const item=ITEMS[kind];

@@ -1,0 +1,77 @@
+{
+  "source": "approved original image_gen art",
+  "rival": {
+    "runtimeCell": [
+      256,
+      512
+    ],
+    "referenceHeight": 280,
+    "baseline": 450,
+    "anchor": "red shorts center",
+    "poses": [
+      {
+        "animation": "rival-idle-taunt",
+        "frame": 0,
+        "hip": 258.0,
+        "height": 280
+      },
+      {
+        "animation": "rival-idle-taunt",
+        "frame": 1,
+        "hip": 238.0,
+        "height": 279
+      },
+      {
+        "animation": "rival-idle-taunt",
+        "frame": 2,
+        "hip": 224.0,
+        "height": 280
+      },
+      {
+        "animation": "rival-crowd-hype",
+        "frame": 0,
+        "hip": 257.5,
+        "height": 295
+      },
+      {
+        "animation": "rival-crowd-hype",
+        "frame": 1,
+        "hip": 195.0,
+        "height": 273
+      },
+      {
+        "animation": "rival-crowd-hype",
+        "frame": 2,
+        "hip": 226.0,
+        "height": 281
+      },
+      {
+        "animation": "rival-defeat",
+        "frame": 0,
+        "hip": 258.5,
+        "height": 271
+      },
+      {
+        "animation": "rival-defeat",
+        "frame": 1,
+        "hip": 238.5,
+        "height": 267
+      },
+      {
+        "animation": "rival-defeat",
+        "frame": 2,
+        "hip": 224.0,
+        "height": 261
+      }
+    ]
+  },
+  "crowd": {
+    "runtimeCell": [
+      192,
+      256
+    ],
+    "referenceHeight": 200,
+    "baseline": 240,
+    "count": 8
+  }
+}

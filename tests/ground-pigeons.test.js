@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {GroundPigeons,GROUND_PIGEON} from '../src/stage/GroundPigeons.js';
 import {COMBAT_CAMPAIGN as CAMPAIGN} from '../src/data/campaign.js';
 import {stageLayout} from '../src/stage/scroll.js';
+import {EFFECT_FILES} from '../src/audio/SoundEffects.js';
 
 class Visual {
   constructor(x,y,key){Object.assign(this,{x,y,key});}
@@ -44,9 +45,11 @@ test('proximity in both floor axes startles a flock, telegraphs its attack and p
   const {s,system,hits,step,sounds}=setup();system.update();const g=system.groups[0];
   s.player.x=g.x;s.player.y=g.y+40;step();assert.equal(g.state,'ground');assert.equal(hits.length,0);
   s.player.y=g.y;step();assert.equal(g.state,'alert');assert.equal(hits.length,0);
+  assert.deepEqual(sounds,['pigeonFlight'],'sound starts when birds take off, before their attack');
+  assert.equal(EFFECT_FILES[sounds[0]],'pidgeon.mp3');
   assert.ok(g.birds.every(b=>b.sprite.key==='pigeon-flight'));
   step(20);assert.equal(g.state,'alert');assert.equal(hits.length,0);
-  step(80);assert.equal(g.state,'flight');assert.equal(hits.length,1);assert.ok(hits[0]<=5);
+  step(80);assert.equal(g.state,'flight');assert.equal(hits.length,1);assert.ok(hits[0]<=Math.ceil(5*CAMPAIGN[1].damage),'a light peck, scaled by the plaza difficulty');
   step(60);assert.ok(!system.groups.includes(g));assert.equal(hits.length,1);
   assert.deepEqual(sounds,['pigeonFlight'],'one flight sound per startled flock, never per frame');
 });

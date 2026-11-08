@@ -96,7 +96,7 @@ export class OrbitingBooks {
   updateHud() {
     const s=this.scene,remaining=Math.max(0,s.specialReadyAt-s.combatTime);
     const text=this.active?`K / EXPLOSIÓN ${((this.activeUntil-s.combatTime)/1000).toFixed(1)} s`
-      :!canSpendSpecialEnergy(s)?'K / LIBROS SIN ENERGÍA':remaining?`K / LIBROS RECARGA ${(remaining/1000).toFixed(1)} s`:'K / LIBROS LISTOS · -10 ENERGÍA';
+      :!canSpendSpecialEnergy(s)?'K / LIBROS SIN VIDA':remaining?`K / LIBROS RECARGA ${(remaining/1000).toFixed(1)} s`:'K / LIBROS LISTOS · −10 VIDA';
     if(text!==this.label.text)this.label.setText(text).setColor(this.active||!remaining?'#d6ed64':'#aebeb1');
   }
   clear() {this.activeUntil=0;this.struck.clear();this.destroyShock();for(const book of this.books)book.sprite.setVisible(false);}

@@ -1,7 +1,9 @@
 import {ARCADE} from '../data/arcade.js';
 import {timeline} from '../data/attacks.js';
+import {ARMED_RUN,armedRunTexture,ARMED_BODY_SCALE} from '../data/armedRun.js';
 
-export const VUVUZELA={uses:10,extraRange:65,damageMultiplier:1.25,spawnChance:.55};
+export const VUVUZELA={uses:10,extraRange:65,damageMultiplier:1.25,spawnChance:.55,
+  throwSpeed:520,flightFrames:36,throwLane:24,throwWidth:40};
 
 /** Dedicated weapon timing; impact occurs only while the armed impact drawing is visible. */
 export function vuvuzelaAttack(data,character){
@@ -33,7 +35,7 @@ export function prepareVuvuzela(scene){
 
 export class Vuvuzela {
   constructor(scene,random=Math.random){
-    this.scene=scene;this.random=random;this.remaining=0;this.items=[];this.rolled=new Set();this.bursts=[];
+    this.scene=scene;this.random=random;this.remaining=0;this.items=[];this.rolled=new Set();this.bursts=[];this.shots=[];
     this.held=scene.add.image(0,0,scene.characterKey,scene.character.idle).setOrigin(.5,1).setVisible(false);
     const frame=scene.textures?.get(VUVUZELA_TEXTURE).get('trimmed');
     this.artRatio=frame?frame.height/frame.width:.285;
@@ -46,7 +48,23 @@ export class Vuvuzela {
       .setDisplaySize(48,48*this.artRatio).setRotation(-.2).setDepth(y+1)};
     this.items.push(item);return item;
   }
-  equip(){this.remaining=VUVUZELA.uses;this.scene.sfx?.play('item');}
+  equip(remaining=VUVUZELA.uses){this.remaining=remaining;this.scene.sfx?.play('item');}
+  /** J sends the horn forward; impact or landing shatters it permanently. */
+  throwForward(){
+    const s=this.scene,p=s.player;if(!this.remaining || this.pendingBreak)return false;
+    const x=p.x+s.facing*24,lift=s.character.height*.55;
+    this.shots.push({x,y:p.y,lift,startLift:lift,facing:s.facing,age:0,
+      damage:Math.round(s.character.attacks.punch.damage*VUVUZELA.damageMultiplier),
+      sprite:s.add.image(x,p.y-lift,VUVUZELA_TEXTURE,'trimmed').setDisplaySize(48,48*this.artRatio).setFlipX(s.facing<0).setDepth(p.y+1)});
+    this.clearHeld();s.sfx?.play('wave');return true;
+  }
+  shatter(shot,frame){
+    shot.sprite.destroy();
+    const s=this.scene,x=Math.max(s.floor.left??-Infinity,Math.min(s.floor.right??Infinity,shot.x));
+    this.bursts.push({x,y:shot.y-shot.lift,born:frame});
+    s.sfx?.play('metalCrack');
+  }
+  clearFlights(){for(const shot of this.shots)shot.sprite.destroy();this.shots=[];}
   attack(data){return this.remaining>0 && data.type==='punch'?vuvuzelaAttack(data,this.scene.character):data;}
   commit(action){
     if(action.data.weapon!=='vuvuzela' || action.weaponUsed)return;
@@ -61,7 +79,8 @@ export class Vuvuzela {
   clearHeld(){this.remaining=0;this.pendingBreak=false;this.held.setVisible(false);this.scene.player.sprite.setVisible(true);this.trail.clear();this.label.setVisible(false);}
   update(frame){
     const s=this.scene,p=s.player,model=s.arcade.player,action=model.action;
-    if(s.health<=0 || s.finished){this.clearHeld();return;}
+    if(s.paused || s.cinematic)return;
+    if(s.health<=0 || s.finished){this.clearHeld();this.clearFlights();return;}
     const arena=s.waves?.arena??0;
     if(!this.rolled.has(arena) && (!s.stage || s.stage.reached(arena))){
       this.rolled.add(arena);
@@ -76,15 +95,39 @@ export class Vuvuzela {
       g.lineStyle(1,0xffdf65,.65).strokeEllipse(item.x,item.y-4,58,17);
       item.sprite.setPosition(item.x,item.y-16+bob);
       if(this.pendingBreak || this.remaining || action || model.state!=='walk' || (p.z??0)>8 || Math.abs(p.x-item.x)>28 || Math.abs(p.y-item.y)>20)return true;
-      this.equip();g.destroy();item.sprite.destroy();return false;
+      this.equip(item.remaining);g.destroy();item.sprite.destroy();return false;
     });
     // Keep the last swing alive through all active frames, then shatter once.
     if(this.pendingBreak && (!action || action.displayedFrame?.phase!=='active')){
       if(action)action.weaponBroken=true;this.break();
     }
+    this.shots=this.shots.filter(shot=>{
+      const previous=shot.x;shot.x+=shot.facing*VUVUZELA.throwSpeed/ARCADE.clock.fps;shot.age++;
+      const t=Math.min(1,shot.age/VUVUZELA.flightFrames);
+      shot.lift=shot.startLift*(1-t)+Math.sin(t*Math.PI)*24;
+      const target=s.enemies.filter(enemy=>{
+        const half=enemy.config?.hurtbox?.halfWidth??ARCADE.body.halfWidth;
+        return enemy.hp>0 && (enemy.z??0)<ARCADE.body.airborneAvoidHeight && shot.lift>10
+          && Math.abs(shot.y-enemy.y)<VUVUZELA.throwLane
+          && enemy.x+half>=Math.min(previous,shot.x)-VUVUZELA.throwWidth/2
+          && enemy.x-half<=Math.max(previous,shot.x)+VUVUZELA.throwWidth/2;
+      }).sort((a,b)=>(a.x-b.x)*shot.facing)[0];
+      if(target){
+        shot.x=Math.max(Math.min(previous,shot.x),Math.min(Math.max(previous,shot.x),target.x));
+        const attack={type:'vuvuzela',damage:shot.damage,facing:shot.facing,knockback:18,stun:300,finisher:false};
+        const hp=target.hp;s.hitEnemy(target,attack);
+        if(target.hp<hp)s.arcade.combat.impact?.(p,target,attack);
+        this.shatter(shot,frame);return false;
+      }
+      shot.sprite.setPosition(shot.x,shot.y-shot.lift).setRotation(shot.age*shot.facing*.35);
+      if(t>=1 || shot.x<=(s.floor.left??-Infinity) || shot.x>=(s.floor.right??Infinity)){
+        this.shatter(shot,frame);return false;
+      }
+      return true;
+    });
     this.trail.clear();
     const swinging=action?.data.weapon==='vuvuzela' && !action.weaponBroken;
-    this.label.setVisible(Boolean(this.remaining || swinging)).setText(`H VUVUZELA · ${this.remaining}/10`);
+    this.label.setVisible(Boolean(this.remaining || swinging)).setText(`H VUVUZELA · ${this.remaining}/10 · J LANZAR`);
     this.fx.clear().setDepth(p.y+10);
     this.bursts=this.bursts.filter(b=>{
       const t=(frame-b.born)/28;if(t>=1)return false;
@@ -99,16 +142,20 @@ export class Vuvuzela {
   render(){
     const s=this.scene,p=s.player,model=s.arcade.player,action=model.action;
     const swing=action?.data.weapon==='vuvuzela' && !action.weaponBroken;
-    const key=`${s.characterKey}-vuvuzela`;
+    const key=`${s.characterKey}-vuvuzela`,runKey=armedRunTexture(s.characterKey),runArt=ARMED_RUN[s.characterKey];
     const armed=s.health>0 && !s.finished && !s.arcade.diablitos?.holdsPlayer && (this.remaining>0 || swing)
       && (model.state==='walk' || swing) && s.textures.exists(key);
     p.sprite.setVisible(!armed);this.held.setVisible(Boolean(armed));
     if(!armed)return;
     const walking=s.arcade.input?.dx || s.arcade.input?.dy;
-    const pose=swing?action.displayedFrame.weaponPose:walking?1+Math.floor(model.age/ARCADE.animation.walkFramesPerPose)%4:0;
-    const scale=s.character.height/s.textures.get(key).referenceHeight;
-    this.held.setTexture(key,pose).setScale(scale).setFlipX(s.facing<0).setAlpha(p.sprite.alpha)
+    // Armed run: the clean run-cycle body holding the horn (legs alternate); other characters use the sheet's 4 walking poses.
+    const run=Boolean(runArt && !swing && walking && s.textures.exists(runKey));
+    const cadence=s.character.walkFramesPerPose??ARCADE.animation.walkFramesPerPose;
+    const pose=swing?action.displayedFrame.weaponPose:run?runArt.order[Math.floor(model.age/cadence)%runArt.order.length]:walking?1+Math.floor(model.age/ARCADE.animation.walkFramesPerPose)%4:0;
+    const scale=s.character.height/s.textures.get(run?s.characterKey:key).referenceHeight
+      *(run?1:(ARMED_BODY_SCALE[s.characterKey]??1));
+    this.held.setTexture(run?runKey:key,pose).setScale(scale).setFlipX(s.facing<0).setAlpha(p.sprite.alpha)
       .setPosition(p.sprite.x,p.y-(p.z??0)+4*scale).setDepth(p.y);
   }
-  destroy(){for(const item of this.items){item.graphic.destroy();item.sprite.destroy();}this.items=[];this.scene.player.sprite.setVisible(true);this.held.destroy();this.trail.destroy();this.fx.destroy();this.label.destroy();}
+  destroy(){this.clearFlights();for(const item of this.items){item.graphic.destroy();item.sprite.destroy();}this.items=[];this.scene.player.sprite.setVisible(true);this.held.destroy();this.trail.destroy();this.fx.destroy();this.label.destroy();}
 }

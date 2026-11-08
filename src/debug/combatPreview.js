@@ -64,7 +64,7 @@ export function installCombatPreview(game) {
     const status=document.createElement('output');status.style.cssText='width:100%;font:11px monospace;color:#e8edce';panel.append(status);
     game.events.on('poststep',()=>{
       const s=game.scene.getScene('Street');if(!s.arcade)return;
-      status.textContent=`GALLINAS · ${s.arcade.poultry.hens.map(h=>h.phase).join(', ')||'ninguna'} · J: cualquier personaje · L: Universitaria`;
+      status.textContent=`GALLINAS · ${s.arcade.poultry.hens.map(h=>h.phase).join(', ')||'ninguna'} · J: cualquier personaje · L: Maca Demia`;
     });
   }
   if(new URLSearchParams(location.search).get('enemyTest')==='don_diablo'){

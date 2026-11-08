@@ -116,11 +116,11 @@ test('a new run resets bonus eligibility while continuing a run preserves it',()
   assert.equal(run.chivaBonusPlayed,true);run.reset();assert.equal(run.chivaBonusPlayed,false);
 });
 
-test('bonus is inserted only after level 3 and before level 4, once per run',()=>{
+test('"Destruye la chiva" is inserted only after Calles del centro and before the Ciclovía, once per run',()=>{
   const run=new RunState();
-  assert.equal(CHIVA_BONUS.afterLevel,2);
-  assert.deepEqual([0,1,2,3,4,5,6].filter(next=>shouldStartChivaBonus(next,run)),[3]);
-  run.chivaBonusPlayed=true;assert.equal(shouldStartChivaBonus(3,run),false);
+  assert.equal(CHIVA_BONUS.afterLevel,6);
+  assert.deepEqual([0,1,2,3,4,5,6,7,8,9,10,11].filter(next=>shouldStartChivaBonus(next,run)),[7]);
+  run.chivaBonusPlayed=true;assert.equal(shouldStartChivaBonus(7,run),false);
 });
 
 test('Coste stays in front of every spectator and has clear space to kneel',()=>{

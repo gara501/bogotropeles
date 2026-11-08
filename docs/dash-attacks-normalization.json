@@ -1,0 +1,62 @@
+{
+  "office": {
+    "source": "prompts/dash-attacks/player_1.png",
+    "output": "player_1_slide.png",
+    "scale": 0.42048517520215634,
+    "guardHeight": 156,
+    "cell": [
+      320,
+      320
+    ],
+    "baseline": 279,
+    "anchor": 160
+  },
+  "student": {
+    "source": "prompts/dash-attacks/player_2.png",
+    "output": "player_2_slide.png",
+    "scale": 0.5128205128205128,
+    "guardHeight": 180,
+    "cell": [
+      320,
+      320
+    ],
+    "baseline": 279,
+    "anchor": 160
+  },
+  "teleperforman": {
+    "source": "prompts/dash-attacks/player_3.png",
+    "output": "player_3_slide_clean.png",
+    "scale": 0.4635416666666667,
+    "guardHeight": 178,
+    "cell": [
+      320,
+      320
+    ],
+    "baseline": 279,
+    "anchor": 160
+  },
+  "gymbro": {
+    "source": "prompts/dash-attacks/player_4.png",
+    "output": "player_4_shoulder.png",
+    "scale": 0.4888888888888889,
+    "guardHeight": 198,
+    "cell": [
+      320,
+      320
+    ],
+    "baseline": 279,
+    "anchor": 160
+  },
+  "magolita": {
+    "source": "prompts/dash-attacks/player_5.png",
+    "output": "player_5_slide_clean.png",
+    "scale": 0.4157608695652174,
+    "guardHeight": 153,
+    "cell": [
+      320,
+      320
+    ],
+    "baseline": 279,
+    "anchor": 160
+  }
+}

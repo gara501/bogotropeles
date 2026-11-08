@@ -1,5 +1,6 @@
 import yulitzaDefeatUrl from './enemies/enemy_12_defeat.png?url';
 import {AGENTE_PARE} from './agentePare.js';
+import {CUIDACARROS} from './cuidacarros.js';
 import walkerUrl from './enemies/enemy_1.png?url';
 import {MOTORATA} from './motorata.js';
 import {HOMELESS} from './homeless.js';
@@ -60,6 +61,7 @@ import {ORTENCIO} from './ortencio.js';
 
 const animations = { walk: sequence(0, 5), attack: sequence(6, 11), hurt: sequence(12, 17), defeat: sequence(18, 23) };
 export const enemies = {
+  cuidacarros:CUIDACARROS,
   motorata:MOTORATA,
   homeless:HOMELESS,
   parlanchin:MIME,
@@ -180,9 +182,10 @@ export const enemies = {
       throw:sequence(16,19),heal:sequence(12,15),hurt:[21,22],defeat:sequence(24,27)}},
   // Level 1 boss (bosses/enemy_boss_1.png, 4×7 poses): runs in fast, 3-slash knife combo, throws footballs from range.
   // Anchors are the hip centre of each pose so lunges and wind-ups do not shift the body.
-  barra:{name:'THE CHIKEN GOMEZ',url:barraUrl,rows:[4,4,4,4,4,4,4,6],height:122,speed:250,hp:900,range:118,damage:9,idle:20,boss:true,
+  // Size: both sheets are drawn at the same scale (hat and sneakers measure the same), so the whistle poses keep scale 1;
+  // shrinking them made him smaller while summoning. height 110 puts his run/attack poses at GOMELO's height.
+  barra:{name:'THE CHIKEN GOMEZ',url:barraUrl,rows:[4,4,4,4,4,4,4,6],height:110,speed:250,hp:900,range:118,damage:9,idle:20,boss:true,
     appendUrls:[barraWhistleUrl],
-    frameScales:{28:.85,29:.85,30:.85,31:.85,32:.85,33:.85},
     frameAnchors:{0:172,1:413,2:662,3:948,4:152,5:388,6:634,7:904,8:143,9:395,10:698,11:952,12:140,13:391,14:642,15:948,
       16:129,17:407,18:625,19:945,20:135,21:419,22:673,23:948,24:136,25:396,26:662,27:923,
       28:128,29:384,30:640,31:896,32:1152,33:1408},
