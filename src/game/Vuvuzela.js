@@ -154,6 +154,7 @@ export class Vuvuzela {
     const pose=swing?action.displayedFrame.weaponPose:run?runArt.order[Math.floor(model.age/cadence)%runArt.order.length]:walking?1+Math.floor(model.age/ARCADE.animation.walkFramesPerPose)%4:0;
     const scale=s.character.height/s.textures.get(run?s.characterKey:key).referenceHeight
       *(run?1:(ARMED_BODY_SCALE[s.characterKey]??1));
+    if(p.sprite.paletteTint!=null)this.held.setTint(p.sprite.paletteTint);else this.held.clearTint();
     this.held.setTexture(run?runKey:key,pose).setScale(scale).setFlipX(s.facing<0).setAlpha(p.sprite.alpha)
       .setPosition(p.sprite.x,p.y-(p.z??0)+4*scale).setDepth(p.y);
   }

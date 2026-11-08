@@ -478,7 +478,7 @@ export class StreetScene extends Phaser.Scene {
     if(this.isMonserrate)return done();
     if(this.isCycling)return done(); // All five bicycle sheets are prepared together.
     if (!characters[key]) return done();
-    if(this.textures.exists(key) && (!this.handItemKind || (this.textures.exists(`${key}-${this.handItemKind}`) && this.textures.exists(`${key}-super`))))return done();
+    if(this.textures.exists(key) && (!this.handItemKind || (this.textures.exists(`${key}-${this.handItemKind}`) && this.textures.exists(`${key}-${this.handItemKind}-run`) && this.textures.exists(`${key}-super`))))return done();
     this.wanted.add(key);
     if(this.handItemKind)preloadSuperPlayer(this,key);
     loadActor(this, key, characters[key]);

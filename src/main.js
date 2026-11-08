@@ -651,7 +651,7 @@ if (import.meta.env.DEV) {
   });
   if(debugParams.has('campaignPreview'))game.events.once('menu-ready',async()=>{
     const {installCampaignPreview}=await import('./debug/campaignPreview.js');installCampaignPreview(game);
-    if(['palomojao','dorado','andino','chorro','plaza','taxis','panela','super'].includes(debugParams.get('campaignPreview'))){
+    if(['palomojao','dorado','andino','chorro','plaza','taxis','panela','vuvuzela','super'].includes(debugParams.get('campaignPreview'))){
       selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
       showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');
       game.events.once('level-start',()=>{
@@ -666,13 +666,13 @@ if (import.meta.env.DEV) {
             s.superPower.charge=SUPER.hits;s.superPower.showCharge();
             s.enemies.forEach((enemy,i)=>{enemy.x=600+i*130;enemy.y=450;enemy.config={...enemy.config,speed:0};});
           }
-          if(debugParams.get('campaignPreview')==='panela'){
-            s.debugPreview=true;s.panela?.equip();
+          if(['panela','vuvuzela'].includes(debugParams.get('campaignPreview'))){
+            s.debugPreview=true;(s.panela??s.vuvuzela)?.equip();
             s.enemies.forEach((enemy,i)=>{enemy.x=600+i*130;enemy.y=450;});
           }
         }
       });
-      const previewCombat={palomojao:7,dorado:8,andino:6,chorro:4,plaza:1,taxis:8,panela:1,super:2}[debugParams.get('campaignPreview')];
+      const previewCombat={palomojao:7,dorado:8,andino:6,chorro:4,plaza:1,taxis:8,panela:1,vuvuzela:0,super:2}[debugParams.get('campaignPreview')];
       game.scene.start('Street',{character:selected,level:campaignIndexForCombat(previewCombat)});focusGame();
     }
   });

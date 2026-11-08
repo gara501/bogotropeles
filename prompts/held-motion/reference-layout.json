@@ -1,0 +1,109 @@
+{
+  "office": {
+    "file": "player_1_run_clean.png",
+    "count": 10,
+    "w": 128,
+    "h": 128,
+    "anchor": 72,
+    "scale": 1.45,
+    "n": 1,
+    "height": 150,
+    "heights": [
+      150,
+      147,
+      153,
+      157,
+      157,
+      152,
+      142,
+      147,
+      152,
+      157
+    ],
+    "cols": 5
+  },
+  "student": {
+    "file": "player_2_walk.png",
+    "count": 8,
+    "w": 224,
+    "h": 200,
+    "anchor": 132,
+    "scale": 1,
+    "n": 2,
+    "height": 177,
+    "heights": [
+      177,
+      176,
+      183,
+      166,
+      170,
+      166,
+      178,
+      174
+    ],
+    "cols": 4
+  },
+  "teleperforman": {
+    "file": "player_3_walk.png",
+    "count": 8,
+    "w": 256,
+    "h": 256,
+    "anchor": 127,
+    "scale": 0.9128205128205128,
+    "n": 3,
+    "height": 176,
+    "heights": [
+      176,
+      179,
+      183,
+      180,
+      172,
+      174,
+      179,
+      175
+    ],
+    "cols": 4
+  },
+  "gymbro": {
+    "file": "player_4_run.png",
+    "count": 8,
+    "w": 256,
+    "h": 256,
+    "anchor": 128,
+    "scale": 0.96,
+    "n": 4,
+    "height": 208,
+    "heights": [
+      208,
+      214,
+      216,
+      203,
+      211,
+      210,
+      215,
+      198
+    ],
+    "cols": 4
+  },
+  "magolita": {
+    "file": "player_5_walk.png",
+    "count": 8,
+    "w": 256,
+    "h": 256,
+    "anchor": 145,
+    "scale": 1,
+    "n": 5,
+    "height": 158,
+    "heights": [
+      158,
+      161,
+      161,
+      156,
+      162,
+      164,
+      163,
+      156
+    ],
+    "cols": 4
+  }
+}

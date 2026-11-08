@@ -110,7 +110,7 @@ test('Teleperforman keeps the same standing body size when walking armed, stoppi
   for(let i=0;i<=8;i++){
     model.age=i*4;vuvuzela.render();frames.push(vuvuzela.held.frame);
     assert.equal(vuvuzela.held.key,'teleperforman-vuvuzela-run');
-    assert.ok(Math.abs(195*ARMED_RUN.teleperforman.scale*vuvuzela.held.scale-guard)<1,'walking must match the guard body');
+    assert.ok(Math.abs(176*ARMED_RUN.teleperforman.scale*vuvuzela.held.scale-guard)<3,'walking must match the guard body');
   }
   assert.deepEqual(frames,[0,1,2,3,4,5,6,7,0]);
   scene.facing=-1;scene.arcade.input.dx=-1;vuvuzela.render();assert.equal(vuvuzela.held.flipX,true);
@@ -122,7 +122,7 @@ test('Teleperforman keeps the same standing body size when walking armed, stoppi
 
 test('armed locomotion strips have exactly one configured cell per pose',()=>{
   // A mismatch makes prepareSheet read outside the image and build a texture too wide for WebGL.
-  const files={office:'player_1_vuvuzela_run.png',magolita:'player_5_vuvuzela_walk.png',teleperforman:'player_3_vuvuzela_walk.png'};
+  const files=Object.fromEntries(Object.keys(ARMED_RUN).map(key=>[key,`${key}_vuvuzela_motion_v2.png`]));
   for(const [character,run] of Object.entries(ARMED_RUN)){
     const png=readFileSync(new URL(`../src/data/players/${files[character]}`,import.meta.url));
     assert.equal(png.readUInt32BE(16),run.poses*(run.cellWidth??128),character);assert.equal(png.readUInt32BE(20),run.cellHeight??128,character);

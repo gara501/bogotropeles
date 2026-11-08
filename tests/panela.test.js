@@ -4,6 +4,8 @@ import {Panela} from '../src/game/Panela.js';
 import {PANELA,handItemFor,panelaTouches} from '../src/game/panelaRules.js';
 import {CAMPAIGN} from '../src/data/campaign.js';
 import {Player} from '../src/actors/Player.js';
+import {Vuvuzela} from '../src/game/Vuvuzela.js';
+import {ARMED_RUN,ARMED_BODY_SCALE} from '../src/data/armedRun.js';
 
 function fixture(){
   const visuals=[],sounds=[];
@@ -11,7 +13,8 @@ function fixture(){
     const proxy=new Proxy({visible:true,alpha:1,x:200,destroyed:false,
       destroy(){this.destroyed=true;},setVisible(v){this.visible=v;return this;},
       setTexture(k,f){this.key=k;this.frame=f;return this;},setFrame(f){this.frame=f;return this;},
-      setScale(v){this.scale=v;return this;},setFlipX(v){this.flipX=v;return this;}},
+      setScale(v){this.scale=v;return this;},setFlipX(v){this.flipX=v;return this;},
+      setAlpha(v){this.alpha=v;return this;},setTint(v){this.tint=v;return this;},clearTint(){this.tint=null;return this;}},
       {get:(target,key)=>key in target?target[key]:()=>proxy});visuals.push(proxy);return proxy;
   };
   const s={characterKey:'office',character:{height:106,idle:0,texture:'office',special:'special',animations:{punch:[0,1,2]},
@@ -119,3 +122,34 @@ test('Gomelo runs with panela through ten alternating poses at the unarmed caden
   assert.equal(item.held.key,'office-panela');assert.equal(item.held.frame,7,'throwing cannot accidentally play running art');
   model.transition('hurt');item.render();assert.equal(item.held.visible,false);assert.equal(s.player.sprite.visible,true);
 });
+
+for(const hero of ['office','student','teleperforman','gymbro','magolita'])for(const object of ['vuvuzela','panela']){
+  test(`${hero} with ${object}: full locomotion, standing scale, strike, palette and damage transitions`,()=>{
+    const {s,model}=fixture(),reference={office:153,student:181,teleperforman:195,gymbro:218,magolita:153};
+    const height={office:106,student:93,teleperforman:116,gymbro:117,magolita:98};
+    s.characterKey=hero;s.character={...s.character,height:height[hero],walkFramesPerPose:['office','gymbro'].includes(hero)?3:4};
+    const key=`${hero}-${object}`,runKey=`${key}-run`,refs={[hero]:reference[hero],[key]:320,[runKey]:200};
+    s.textures={exists:name=>name in refs,get:name=>({referenceHeight:refs[name],get:()=>null})};
+    const item=object==='panela'?s.panela:(s.vuvuzela=new Vuvuzela(s));item.equip();
+    const config=ARMED_RUN[hero],cadence=s.character.walkFramesPerPose;
+    for(const facing of [-1,1]){
+      s.facing=facing;s.arcade.input={dx:facing,dy:0};
+      const poses=[];
+      for(let i=0;i<=config.poses;i++){
+        model.age=i*cadence;item.render();poses.push(item.held.frame);
+        assert.equal(item.held.key,runKey);assert.equal(item.held.scale,height[hero]/reference[hero]);
+        assert.equal(item.held.flipX,facing<0);assert.equal(s.player.sprite.visible,false);
+      }
+      assert.deepEqual(poses,[...config.order,0]);
+    }
+    s.arcade.input={dx:0,dy:1};model.age=cadence*2;item.render();assert.equal(item.held.frame,2);
+    s.player.sprite.paletteTint=0xa8b6ff;s.player.sprite.alpha=.4;item.render();assert.equal(item.held.tint,0xa8b6ff);assert.equal(item.held.alpha,.4);
+    s.player.sprite.paletteTint=null;item.render();assert.equal(item.held.tint,null);
+    s.arcade.input={dx:0,dy:0};item.render();assert.equal(item.held.key,key);assert.equal(item.held.frame,0);
+    assert.equal(item.held.scale,height[hero]/320*(ARMED_BODY_SCALE[hero]??1));
+    s.arcade.input.dx=1;model.begin('punch');model.action.displayedFrame=model.action.data.frames.find(f=>f.phase==='active');item.render();
+    assert.equal(item.held.key,key);assert.equal(item.held.frame,7,'strike shows contact, never locomotion');
+    model.transition('hurt');item.render();assert.equal(item.held.visible,false);assert.equal(s.player.sprite.visible,true);
+    model.transition('walk');item.clearHeld();item.render();assert.equal(item.held.visible,false);assert.equal(s.player.sprite.visible,true);
+  });
+}

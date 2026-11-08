@@ -4,13 +4,11 @@ import student from './players/player_2_panela.png?url';
 import teleperforman from './players/player_3_panela.png?url';
 import gymbro from './players/player_4_panela.png?url';
 import magolita from './players/player_5_panela.png?url';
-import officeRunUrl from './players/player_1_panela_run.png?url';
-import {PANELA_RUN,armedRunTexture} from './armedRun.js';
+import {preloadHeldLocomotion,prepareHeldLocomotion} from './heldLocomotion.js';
 import {needsSource,prepareSheet,prepareEffects} from './spriteSheets.js';
 import {PANELA_TEXTURE} from '../game/Panela.js';
 
 export const PANELA_PLAYERS={office,student,teleperforman,gymbro,magolita};
-const PANELA_RUN_URLS={office:officeRunUrl};
 export const PANELA_ATLAS={url:itemUrl,frames:{whole:[82,150,382,257],flight:[588,102,353,321],crack:[1024,0,512,512],
   break1:[0,512,512,512],break2:[512,512,512,512],crumbs:[1024,512,512,512]}};
 const CUTS={
@@ -36,15 +34,9 @@ export function preparePanela(scene){prepareEffects(scene,PANELA_TEXTURE,PANELA_
 export function preloadPanelaPlayer(scene,character=scene.characterKey){
   const url=PANELA_PLAYERS[character],key=`${character}-panela`;
   if(url && !scene.textures.exists(key) && needsSource(scene,`${key}-source`))scene.load.image(`${key}-source`,url);
-  const runKey=armedRunTexture(character,'panela');
-  if(PANELA_RUN[character] && !scene.textures.exists(runKey) && needsSource(scene,`${runKey}-source`))scene.load.image(`${runKey}-source`,PANELA_RUN_URLS[character]);
+  preloadHeldLocomotion(scene,character,'panela');
 }
 export function preparePanelaPlayer(scene,character=scene.characterKey){
   if(PANELA_PLAYERS[character])prepareSheet(scene,`${character}-panela`,{rows:[3,3,3],trimFrames:true,...PANELA_POSES[character]});
-  const run=PANELA_RUN[character],key=armedRunTexture(character,'panela');
-  if(run && !scene.textures.exists(key) && scene.textures.exists(`${key}-source`))prepareSheet(scene,key,{
-    rows:[run.poses],trimFrames:true,
-    frameRects:Array.from({length:run.poses},(_,i)=>({x:i*128,y:0,width:128,height:128,anchor:i*128+72})),
-    frameScales:Object.fromEntries(Array.from({length:run.poses},(_,i)=>[i,run.scale])),
-  });
+  prepareHeldLocomotion(scene,character,'panela');
 }
