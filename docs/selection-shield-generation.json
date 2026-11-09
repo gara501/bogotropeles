@@ -1,0 +1,9 @@
+{
+  "tool": "imagegen (built-in)",
+  "reference": "ejemplos/escudo.webp",
+  "generatedSource": "C:/Users/gandr/.codex/generated_images/01a1be31-fac4-7270-916e-3864593af3f3/exec-4d0762d0-f281-4173-8256-f0ef80947ec9.png",
+  "output": "src/data/UI/selection_loading_shield.png",
+  "prompt": "Create ONE transparent PNG game UI loading emblem based on the attached Bogota heraldic shield. Preserve the unmistakable silhouette: tall shield with gently scalloped top rising in a middle point, curved sides and bottom point; deep royal/navy blue outer border with small simplified gold pomegranate ornaments; golden yellow inner shield; central BLACK CROWNED EAGLE with wide spread serrated wings, upright head turned left, fan tail and two red pomegranates near its claws. Translate the embroidered photographic reference into crisp polished 2D ARCADE PIXEL ART suitable for Street Bogota character-selection screen. Clean deliberate pixel clusters and dark outlines, restrained shading, no cloth/weave/photo texture, no lettering. Strong readable emblem at 160px tall, centered front-on symmetrical shield with all edges and ornaments fully visible, generous transparent margin. Colors navy, muted antique gold, black, tiny red accents; a subtle cool pale-blue outer highlight may help against a dark game menu. This is a neutral waiting placeholder shared by all characters. No human figures, no characters, no backdrop, no glow cloud, no shadow rectangle, no words, no loading text, no checkerboard. Fully transparent exterior. Prefer portrait canvas800x960.",
+  "normalization": "RGBA 256x320, centered within232x288, nearest-neighbor resize; transparent margins preserved. Quantized to128 colors for a14104-byte loading asset.",
+  "use": "Shared character-selection placeholder until the current character preview is painted."
+}

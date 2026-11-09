@@ -17,11 +17,10 @@ export class ComicIntroScene extends Phaser.Scene {
   preload(){
     for(const panel of COMIC_PANELS){const url=ART[`./comic/${panel.file}`];if(panel.file && url && !this.textures.exists(`comic-${panel.id}`))this.load.image(`comic-${panel.id}`,url);}
     CARD_CHARACTERS.forEach((_,i)=>{const url=cardUrl(i+1);if(url && !this.textures.exists(`comic-card-${i}`))this.load.image(`comic-card-${i}`,url);});
-    if(this.sound && !this.cache.audio.exists('comic-music'))this.load.audio('comic-music',`${import.meta.env?.BASE_URL??'./'}assets/${COMIC.music}`);
   }
   create(){
     fitArcadeCamera(this);this.cameras.main.setBackgroundColor('#05080a');
-    if(this.cache.audio.exists('comic-music')){this.music=this.sound.add('comic-music',{loop:true,volume:COMIC.volume});this.music.play();}
+    // Title, comic and character selection share game.menuMusic without restarting it.
     this.skipHint=this.add.text(W-16,H-14,this.game.touchControls?.mobile?.()?'TOCA PARA SALTAR':'ENTER · SALTAR',{fontFamily:MONO,fontSize:'11px',color:'#8c97a6'}).setOrigin(1,1).setDepth(50);
     this.input.keyboard?.on('keydown',this.skip,this);this.input.on('pointerdown',this.skip,this);
     this.events.once('shutdown',()=>{this.input.keyboard?.off('keydown',this.skip,this);this.input.off('pointerdown',this.skip,this);this.music?.stop();this.music?.destroy();this.music=null;for(const m of [...(this.cardMasks??[]).map(e=>e.shape),...(this.stripMasks??[])])m.destroy();this.cardMasks=null;this.stripMasks=null;});

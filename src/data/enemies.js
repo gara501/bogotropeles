@@ -74,6 +74,9 @@ export const enemies = {
   don_diablo:DON_DIABLO,
   don_pico:DON_PICO,
   ...RING_FIGHTERS,
+  // Street version of the Ring's Brincolas (replaces the guard, enemy_4): same sheet and hop-then-slap AI, but it scores,
+  // counts toward the wave and is far less tanky than the 440 hp Ring boss.
+  brincolas_calle:{...RING_FIGHTERS.brincolas_rataquieta,name:'BRINCOLAS',street:true,hp:160,damage:9},
   papero:PAPERO,
   reversa:DON_REVERSA,
   jugo:JUGO,
@@ -197,6 +200,10 @@ export const enemies = {
     // Below half health he whistles for stick-carrying supporters. Never more than four of his minions alive.
     summon:{enemy:'barrista',variants:2,counts:[2,3],maxAlive:4,below:.5,first:300,cooldown:10000,windup:800,recovery:550,
       poses:[28,29,30,31,32,33],hitFrame:3,sound:'whistle',label:'¡REFUERZOS!'},
+    // Last quarter of health, once: he glows red, leaps across the screen 4-6 times very fast (untouchable while
+    // airborne), whistles for his supporters, then keeps fighting with a quicker knife combo.
+    frenzy:{below:.25,hops:[4,6],hopMs:300,height:80,minDistance:220,pose:4,tint:[0xff2a2a,0xff7a6a],label:'¡ME ENVERRAQUÉ!',
+      combo:{windup:270,interval:190,recovery:380,cooldown:950},speedMultiplier:1.15},
     animations:{walk:sequence(0,3),attack:sequence(4,7),attack1:sequence(4,7),attack2:sequence(8,11),attack3:sequence(12,15),
       throw:sequence(16,19),summon:sequence(28,33),hurt:[21,22],defeat:sequence(24,27)}},
   // Two supporters: four running poses, one stick strike and one recoil pose per row.

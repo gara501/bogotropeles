@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import {MonserrateRun,MONSERRATE,MONSERRATE_DASH,MONSERRATE_JUMP,projectHiker} from './MonserrateRun.js';
+import {MonserrateRun,MONSERRATE,MONSERRATE_DASH,MONSERRATE_JUMP,MONSERRATE_CLOSE,projectHiker} from './MonserrateRun.js';
 import {fitArcadeCamera,fitArcadeText,applyPixelFilter} from '../data/arcade.js';
 import {characters} from '../data/characters.js';
 import {levels} from '../data/levels.js';
@@ -7,7 +7,8 @@ import {LevelMusic} from '../audio/LevelMusic.js';
 import {SoundEffects,PLAYER_HURT_SOUNDS} from '../audio/SoundEffects.js';
 import {MONSERRATE_CARD} from '../game/Collectibles.js';
 import {MONSERRATE_HUD,forestObjects,projectForest,mountainTransform} from './MonserrateScenery.js';
-import {trailOffset,trailRow,trailSection,cliffObjects,RAILING,logSpan} from './MonserrateTrail.js';
+import {trailOffset,trailRow,trailSection,cliffObjects,RAILING} from './MonserrateTrail.js';
+import {drawJumps,makeObstacleTextures} from './MonserrateObstacles.js';
 
 /** Kerb blocks (34 px ≈ 1.3 m of trail each): outer edge on the left, inner lip facing the stairs on the right. */
 function makeCurbTexture(){
@@ -60,7 +61,7 @@ export class MonserrateStage{
     s.add.image(0,0,'monserrate-road').setOrigin(0).setDepth(1);
     if(s.textures.exists('monserrate-fence-layer'))s.textures.remove('monserrate-fence-layer');
     this.fence=s.textures.createCanvas('monserrate-fence-layer',960,540);
-    this.curb=makeCurbTexture();this.posts=makeRailPosts(s.textures.get('monserrate-fence-source').getSourceImage());
+    this.obstacles=makeObstacleTextures();this.curb=makeCurbTexture();this.posts=makeRailPosts(s.textures.get('monserrate-fence-source').getSourceImage());
     // Railing occludes the roadside plants and rocks, using the same warp as the road.
     s.add.image(0,0,'monserrate-fence-layer').setOrigin(0).setDepth(SCENERY_DEPTH.railing);
     this.stone=s.textures.get('monserrate-stone').getSourceImage();
@@ -140,7 +141,7 @@ export class MonserrateStage{
     const dashPressed=pressed('SHIFT') || this.dashQueued;this.dashQueued=false;
     if(dashPressed && this.run.dash()){s.sfx?.play('whip');s.cameras.main.shake(120,.002);}
     const jumpPressed=pressed('SPACE') || pressed('UP') || pressed('W') || this.jumpQueued;this.jumpQueued=false;
-    if(jumpPressed && this.run.jump())s.sfx?.play('whip');
+    if(jumpPressed && this.run.jump())s.sfx?.play('jump');
     touch?.discardPresses();const events=this.run.step(ms,steer);s.combatTime=this.run.elapsed;
     for(const _ of events.hits){s.health=Math.max(0,s.health-MONSERRATE.damage);s.healthBar.width=s.health*2;s.cameras.main.shake(100,.003);s.sfx?.play(PLAYER_HURT_SOUNDS[s.characterKey]);}
     for(const _ of events.falls){
@@ -149,6 +150,10 @@ export class MonserrateStage{
     }
     for(const jump of events.jumped){s.addScore(MONSERRATE_JUMP.points);this.say(jump.kind==='gap'?'¡QUÉ SALTO!':'¡HOP!');}
     for(const passed of events.passed)s.addScore(passed.jumped?MONSERRATE_JUMP.points:passed.dashed?MONSERRATE_DASH.dodgePoints:25);
+    if(events.close.length){s.addScore(MONSERRATE_CLOSE.points*events.close.length);this.say('¡POR UN PELO!','#8ff0ff');s.sfx?.play('whip');}
+    // Each new stretch of the climb is announced; the sanctuary is the final sprint.
+    const section=trailSection(this.run.distance).label;
+    if(section!==this.section){if(this.section)this.say(section==='SANTUARIO'?'¡RECTA FINAL!':section,'#c8ec80');this.section=section;}
     this.render();if(this.run.done && s.health>0)this.finish();
   }
   say(value,color='#ffe14d'){this.callout?.setText(value).setColor(color);this.calloutUntil=this.run.elapsed+700;}
@@ -167,39 +172,18 @@ export class MonserrateStage{
       g.lineStyle(1.5+feel*2.5,run.dashing?0xffe14d:0xffffff,(.18+feel*.42)*(1-phase*.5));
       g.lineBetween(x0,y0,480+dx*(r0+len),170+dy*(r0+len));
     }
-  }
-  /** Broken stairs: a dark pit with a lit far lip. Logs: a trunk lying across its lanes. */
-  renderJumps(ctx,distance){
-    for(const jump of this.run.jumps){
-      const z0=jump.at-distance,z1=z0+jump.length;
-      if(z1<-3 || z0>110)continue;
-      if(jump.kind==='gap'){
-        const near=projectHiker(0,Math.max(-3,z0),distance),far=projectHiker(0,z1,distance);
-        for(let y=Math.floor(far.y);y<near.y;y+=2){
-          const {width,centre,z}=trailRow(y,distance);
-          const depth=Math.max(0,Math.min(1,(z-z0)/jump.length));
-          ctx.fillStyle=depth>.82?'#6d6a5c':depth>.7?'#2b2a24':'#0b0d0b';
-          ctx.fillRect(centre-width/2,y,width,2);
-        }
-        // broken edges: jagged stones on the near lip and the far side's lit step
-        for(const [edge,colour,up] of [[near,'#b8b29a',-1],[far,'#d6cfb4',1]]){
-          if(edge===near && z0<=-3)continue;
-          const row=trailRow(Math.max(TRAIL_TOP,Math.floor(edge.y)),distance),teeth=14,w=row.width/teeth;
-          ctx.fillStyle=colour;ctx.fillRect(row.centre-row.width/2,Math.floor(edge.y)-1,row.width,Math.max(1,3*edge.scale));
-          for(let k=0;k<teeth;k++){const h=((k*7+jump.at)%5+1)*2.2*edge.scale;ctx.fillRect(row.centre-row.width/2+k*w,Math.floor(edge.y)+(up>0?0:-h),w*.8,h);}
-        }
-        continue;
+    // Dust puffs streaming back from the runner's heels (not while airborne).
+    if(!run.airborne){
+      const foot=projectHiker(run.x,0,run.distance),puffs=3+Math.round(feel*7);
+      for(let i=0;i<puffs;i++){
+        const phase=((run.elapsed/260+i/puffs)%1),side=i%2?1:-1;
+        g.fillStyle(0xd8cfb0,(.5-phase*.45)*(.5+feel*.5));
+        g.fillCircle(foot.x+side*(8+phase*26+i*1.5),foot.y-2+phase*10,2+phase*(3+feel*4));
       }
-      if(z0<-1.5)continue;
-      const [left,right]=logSpan(jump),a=projectHiker(left,z0,distance),b=projectHiker(right,z0,distance);
-      const h=Math.max(3,44*a.scale),y=a.y-h;
-      ctx.fillStyle='#3b2412';ctx.fillRect(a.x,y,b.x-a.x,h);
-      ctx.fillStyle='#7a4c26';ctx.fillRect(a.x,y,b.x-a.x,h*.55);
-      ctx.fillStyle='#a8743f';ctx.fillRect(a.x,y,b.x-a.x,Math.max(1,h*.18));
-      ctx.fillStyle='#d9b27a';for(const x of [a.x,b.x-h*.7]){ctx.fillRect(x,y+h*.1,h*.7,h*.8);}
-      ctx.fillStyle='#8a5a32';for(const x of [a.x,b.x-h*.7]){ctx.fillRect(x+h*.22,y+h*.32,h*.26,h*.36);}
     }
   }
+  /** Broken stairs (sinkhole with soil layers) and fallen logs: see MonserrateObstacles.js. */
+  renderJumps(ctx,distance){drawJumps(ctx,this.run.jumps,distance,this.obstacles);}
   renderRoad(){
     const ctx=this.road.context;ctx.clearRect(0,0,960,540);ctx.imageSmoothingEnabled=false;
     const fence=this.fence.context;fence.clearRect(0,0,960,540);fence.imageSmoothingEnabled=false;

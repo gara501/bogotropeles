@@ -6,8 +6,9 @@ export class MainMenu {
     this.root=root;this.items=items;this.onBack=onBack;this.index=0;this.sub=null;
     root.classList.add('main-menu');root.style.setProperty('--menu-art',`url(${art})`);
     root.innerHTML=`<div class="menu-column"><ul class="menu-list" role="menu"></ul>
-      <p class="menu-hint" aria-live="polite"></p><footer class="menu-foot"><span><kbd>Ⓐ</kbd> ENTER · ELEGIR</span><span><kbd>Ⓑ</kbd> ESC · VOLVER</span></footer></div>`;
+      <p class="menu-hint" aria-live="polite"></p><button class="menu-back" type="button" hidden>← VOLVER</button><footer class="menu-foot"><span><kbd>Ⓐ</kbd> ENTER · ELEGIR</span><span><kbd>Ⓑ</kbd> ESC · VOLVER</span></footer></div>`;
     this.list=root.querySelector('.menu-list');this.hint=root.querySelector('.menu-hint');
+    this.back=root.querySelector('.menu-back');this.back.addEventListener('click',()=>this.closeSub());
     root.addEventListener('click',event=>{
       const li=event.target.closest('[data-index]');if(!li)return;
       const arrow=event.target.closest('[data-dir]');this.index=Number(li.dataset.index);
@@ -24,6 +25,7 @@ export class MainMenu {
   closeSub(){if(!this.sub)return false;this.index=this.sub.parentIndex;this.sub=null;this.render();return true;}
   render(){
     const entries=this.entries;
+    this.back.hidden=!this.sub;
     this.list.replaceChildren(...(this.sub?[Object.assign(document.createElement('li'),{className:'menu-subtitle',textContent:this.sub.title})]:[]),
       ...entries.map((item,i)=>{
         const li=document.createElement('li');li.dataset.index=i;li.setAttribute('role','menuitem');
@@ -38,7 +40,7 @@ export class MainMenu {
       }));
     const item=entries[this.index];this.hint.textContent=item?.hint?.()??'';
   }
-  move(step){const n=this.entries.length;if(!n)return;this.index=(this.index+step+n)%n;this.render();}
+  move(step){const n=this.entries.length;if(!n)return;this.index=(this.index+step+n)%n;this.render();this.list.querySelector('.active')?.scrollIntoView({block:'nearest',inline:'nearest'});}
   change(dir){const item=this.entries[this.index];if(item?.change && !item.disabled?.()){item.change(dir);this.render();}}
   choose(){const item=this.entries[this.index];if(!item || item.disabled?.())return;if(item.action)item.action();else if(item.change)this.change(1);}
   /** Returns true when the key was handled. */

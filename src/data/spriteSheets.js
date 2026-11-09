@@ -78,8 +78,11 @@ export function prepareSheet(scene, key, config) {
   }
   const anchors = poses.map((p, index) => p.anchor ?? config.frameAnchors?.[index] ?? (p.left + p.right + 1) / 2);
   const scales=poses.map((_,index)=>config.frameScales?.[index]??1);
+  // Airborne poses share a source-space ground reference instead of pinning
+  // each rotated silhouette's lowest pixel to the ground.
+  const baselines=poses.map((p,index)=>config.frameBaselines?.[index]??p.bottom+1);
   const frameWidth = Math.ceil(Math.max(...poses.map((p, index) => Math.max(anchors[index] - p.left, p.right + 1 - anchors[index])*scales[index])) * 2) + 8;
-  const frameHeight = Math.ceil(Math.max(...poses.map((p,index) => (p.bottom - p.top + 1)*scales[index]))) + 8;
+  const frameHeight = Math.ceil(Math.max(...poses.map((p,index) => Math.max(p.bottom-p.top+1,baselines[index]-p.top)*scales[index]))) + 8;
   const texture = scene.textures.createCanvas(key, frameWidth * 6, frameHeight * Math.ceil(expected / 6));
   const cutout=document.createElement('canvas');
   texture.context.imageSmoothingEnabled=false;
@@ -95,7 +98,7 @@ export function prepareSheet(scene, key, config) {
     }
     const scale=scales[index],drawWidth=Math.round(w*scale),drawHeight=Math.round(h*scale);
     const drawX=cellX+Math.round(frameWidth/2-(anchors[index]-pose.left)*scale);
-    const drawY=cellY+frameHeight-drawHeight-4;
+    const drawY=cellY+frameHeight-Math.round((baselines[index]-pose.top)*scale)-4;
     if(scale===1)texture.context.putImageData(output,drawX,drawY);
     else {
       cutout.width=w;cutout.height=h;cutout.getContext('2d').putImageData(output,0,0);

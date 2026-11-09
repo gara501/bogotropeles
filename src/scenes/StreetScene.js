@@ -626,7 +626,7 @@ export class StreetScene extends Phaser.Scene {
     if(type==='books')return this.books?.start();
     const attack = this.character.attacks[type];
     const airborne = this.combatTime - this.jumpStart < 650;
-    if(type==='punch' && this.character.punchCombo && this.playerAttack?.comboStage!==undefined) {
+    if(type==='punch' && !this.character.comboRoutes && this.character.punchCombo && this.playerAttack?.comboStage!==undefined) {
       const current=this.playerAttack;
       current.queued=Math.min(current.queued+1,this.character.punchCombo.animations.length-current.comboStage-1);
       return;
@@ -635,7 +635,7 @@ export class StreetScene extends Phaser.Scene {
     if (type === this.character.special && this.combatTime < this.specialReadyAt) return;
     if(type===this.character.special && !canSpendSpecialEnergy(this))return;
     if (attack.cooldown && type!==this.character.special) this.specialReadyAt = this.combatTime + attack.cooldown;
-    if(type==='punch' && this.character.punchCombo)return this.startPunchStage(0,0,this.facing);
+    if(type==='punch' && !this.character.comboRoutes && this.character.punchCombo)return this.startPunchStage(0,0,this.facing);
     this.playerAttack = { ...attack, type, start: this.combatTime, facing: this.facing, hit: false };
     if(type==='punch')this.sfx?.play('punch');
     else if(type==='kick' || type==='lowKick')this.sfx?.play('kick');
@@ -729,11 +729,11 @@ export class StreetScene extends Phaser.Scene {
     if (enemy.hp === 0) {
       if(this.lastHit?.enemy===enemy)this.lastHit=null;
       // A boss is not part of the wave count; it pays its own bonus.
-      const base=enemy.config.ringFighter?0:enemy.config.boss ? (bossFor(this.level)?.score ?? 1000) : enemy.config.minion ? 50 : 100;
+      const base=enemy.config.ringFighter && !enemy.config.street?0:enemy.config.boss ? (bossFor(this.level)?.score ?? 1000) : enemy.config.minion ? 50 : 100;
       const points=this.combo?this.combo.points(base,enemy.config):base;
       this.addScore(points);if(points)this.scorePopup(enemy.x,enemy.y-enemy.config.height-10,points,enemy.config.boss);
       enemyDeathSound(this,enemy);
-      if(!enemy.config.boss && !enemy.config.minion && !enemy.config.ringFighter && !enemy.reinforcement)this.defeated++;
+      if(!enemy.config.boss && !enemy.config.minion && (!enemy.config.ringFighter || enemy.config.street) && !enemy.reinforcement)this.defeated++;
       if(enemy.config.ringFighter)this.ringBonus?.onDefeated(enemy);
       enemy.shadow.setVisible(false); enemy.healthBar.setVisible(false); enemy.taunt?.setVisible(false);
       this.updateCounter();
@@ -1174,7 +1174,7 @@ export class StreetScene extends Phaser.Scene {
 
   placeFighter(fighter, height = 0) {
     const jitter=(fighter.jitterUntil??0)>this.combatTime?(Math.floor(this.combatTime/34)%2?2:-2):0;
-    fighter.sprite.setPosition(fighter.x + jitter, fighter.y - height + 4 * fighter.sprite.scaleY).setDepth(fighter.y);
+    fighter.sprite.setPosition(fighter.x+jitter+(fighter.grabJitterX??0),fighter.y-height+4*fighter.sprite.scaleY+(fighter.grabJitterY??0)).setDepth(fighter.y);
     fighter.shadow.setPosition(fighter.x, fighter.y).setDepth(fighter.y - 1);
   }
 

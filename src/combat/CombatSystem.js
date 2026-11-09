@@ -32,7 +32,7 @@ export class CombatSystem {
     if(byPlayer && attack.finisher)s.cameras?.main.shake(f.finisherShake.ms,f.finisherShake.strength);else s.cameras?.main.shake(f.shakeMs,f.shakeStrength);
     if(!byPlayer){const graphic=this.acquire();if(!graphic)return;this.impacts.push({graphic,x:((attacker?.x??victim.x)+victim.x)/2,y:victim.y-(victim.config?.height??0)/2,until:this.frame+f.impact});return;}
     // The player's hits: sparks by strike type at the contact point (kicks land lower), plus a rebound on finishers.
-    const kick=/kick|stomp|slide/i.test(attack.type??''),kind=attack.finisher?'finisher':kick?'kick':'punch',life=f.sparks[kind];
+    const kick=/kick|stomp|slide/i.test(attack.impactType??attack.type??''),kind=attack.finisher?'finisher':kick?'kick':'punch',life=f.sparks[kind];
     const facing=attack.facing||Math.sign(victim.x-attacker.x)||1,height=victim.config?.height??100;
     const x=victim.x-facing*24,y=victim.y-height*(kick?.42:.62);
     // Pooled sprite particles + a light when FX are on; the old redrawn-Graphics burst remains as the fallback.

@@ -3,7 +3,7 @@
 export const SURVIVAL={
   combat:5,lives:1,total:9999,
   // Regular enemies of the later streets (no crossing riders, no bosses): their sheets load with the level.
-  pool:['walker','thrower','sweeper','belly','yulitza','motorata','guitarist','vendor','chain','guard','leash','brawler','fan'],
+  pool:['walker','thrower','sweeper','belly','yulitza','motorata','guitarist','vendor','chain','brincolas_calle','leash','brawler','fan'],
   // Per cleared wave: multipliers on top of the street's own ladder, capped.
   ramp:{hp:.045,damage:.03,speed:.012,pressure:.035,maxHp:3,maxDamage:2.4,maxSpeed:1.45,maxPressure:2.6,gap:.96,minGap:280},
   healEvery:5,heal:30,waveBonus:40,recordKey:'street-bogota-survival-v1',

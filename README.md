@@ -34,6 +34,12 @@ Los PNG originales de personajes y enemigos se conservan en `src/data/`.
 | --- | --- |
 | Mover | WASD o flechas |
 | Puño | H |
+| Combo de tres puños (Gomelo) | H, H, H: recto, cruzado bajo y remate en zancada |
+| Sacudir y soltar al rival agarrado (Gomelo) | H, un toque; líneas de velocidad y destello |
+| Tres puños (Teleperforman) | H, H, H: recto, cruzado y gancho |
+| Diadema al agarrar (Teleperforman) | Agarrar + H: tres latigazos, daño total de dos puños y suelta |
+| Carnet con teléfono (Teleperforman) | J, J, J: ascendente, giro y golpe al suelo |
+| Proyectar al rival agarrado (Gomelo) | J delante; atrás + J detrás |
 | Patada | J |
 | Patada baja (universitaria) | L |
 | Libros orbitales (universitaria) | K, una pulsación por activación |
@@ -270,9 +276,9 @@ Niveles: Transmilleno exterior, La Candelaria, Calles del centro (con taxi) y Zo
 
 ## Pantalla COMBOS y sensación de combo
 
-**COMBOS** (`src/ui/CombosScreen.js`, en el menú principal). Lista las cinco rutas en letra grande (PPP · PPP + KK · KKK · KKK + ABAJO K · PP + KK + ARRIBA P) con sus botones de teclado (H/J) y de gamepad (X/Y). El remate se ve resaltado. A la derecha, el personaje elegido hace el combo en bucle: los botones se encienden al ritmo de cada golpe, los primeros golpes van a ritmo normal y el remate sale rápido («REMATE ×1.6») y termina con «¡COMBO!». ↑ ↓ cambia de combo, ← → de personaje, ESC/B vuelve. La pantalla CONTROLES ya no lista los combos: remite a esta.
+**COMBOS** (`src/ui/CombosScreen.js`, en el menú principal). PPKKK es común a los cinco personajes: H/H/J/J/J en teclado y X/X/Y/Y/Y en gamepad. Gymbro termina con tres patadas en giro; Universitaria, con tres librazos. Universitaria además tiene KKK (J/J/J o Y/Y/Y): frontal, lateral y remate circular alto con arco azul. La demostración usa las mismas animaciones que el controlador y resalta el último golpe con «REMATE ×1.6» y «¡COMBO!». ↑ ↓ cambia de combo; ← → de personaje; ESC/B vuelve. Las demás rutas anteriores y sus modificadores direccionales siguen retirados. Detalles: `docs/shared-combos.md`, `docs/student-book-combo.md` y `docs/student-kick-combo.md`.
 
-**Sensación en el juego (cadencia de artes marciales).** Los golpes que abren un combo salen a velocidad normal. El golpe que **completa** una ruta (el 3.º puño de PPP, la última patada de PPP + KK o KKK, la barrida, el gancho) sale ×1,6 más rápido, pega ×1,25 y conserva todo su recorrido, con estela de partículas e imagen fantasma. Al conectar congela un instante más, con destello, anillo de chispas y luz, y en rutas de 4 o más golpes un respiro de cámara lenta, sin textos en pantalla. Los jefes reciben el combo completo y luego saltan lejos en vez de quedar derribados una y otra vez. Para que sea fácil, el siguiente botón se acepta hasta 12 cuadros antes de la ventana y hasta 28 después del golpe.
+**Sensación en el juego (cadencia de artes marciales).** Solo el último golpe de cada ruta completa el combo: el quinto de PPKKK o el tercero de KKK. Acelera su anticipación ×1,6 y pega ×1,25, conservando el contacto y el recorrido. Los demás golpes mantienen su cadencia normal. Los remates tienen estela, imagen fantasma, hitstop y destello; los jefes reciben la secuencia y luego saltan lejos. El siguiente botón se acepta hasta 12 cuadros antes de la ventana y hasta 28 después del golpe. Ni los librazos de PPKKK ni las patadas de KKK gastan energía especial.
 
 ## Monserrate más rápido y retador
 

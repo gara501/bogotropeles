@@ -1,10 +1,26 @@
 import {COMBO_ART_LAYOUT} from './comboArtLayout.js';
-import {COMBO_ROUTES} from './comboRoutes.js';
+import {COMBO_ROUTES,STUDENT_KICK_ROUTE,OFFICE_PUNCH_ROUTE,TELEPERFORMAN_PUNCH_ROUTE,TELEPERFORMAN_KICK_ROUTE} from './comboRoutes.js';
+import teleperformanWeaponsUrl from './players/teleperforman_weapon_combos_v1.png?url';
+import teleperformanAirLashUrl from './players/teleperforman_air_lash_v1.png?url';
+import officeUppercutUrl from './players/office_uppercut_v1.png?url';
+import studentUppercutUrl from './players/student_uppercut_v1.png?url';
+import teleperformanUppercutUrl from './players/teleperforman_uppercut_v1.png?url';
+import gymbroUppercutUrl from './players/gymbro_uppercut_v1.png?url';
+import gymbroMobileKicksUrl from './players/gymbro_mobile_kicks_v1.png?url';
+import studentBookComboUrl from './players/student_book_combo_v1.png?url';
+import studentKickComboUrl from './players/student_kick_combo_v1.png?url';
+import officePunchShakeUrl from './players/office_punch_shake_v1.png?url';
+import magolitaUppercutUrl from './players/magolita_uppercut_v1.png?url';
 import officeChainUrl from './players/office_combos_v1.png?url';
 import studentChainUrl from './players/student_combos_v1.png?url';
 import teleperformanChainUrl from './players/teleperforman_combos_v1.png?url';
 import gymbroChainUrl from './players/gymbro_combos_v1.png?url';
 import magolitaChainUrl from './players/magolita_combos_v1.png?url';
+import officeAirUrl from './players/office_air_roll_v1.png?url';
+import studentAirUrl from './players/student_air_roll_v1.png?url';
+import teleperformanAirUrl from './players/teleperforman_air_roll_v1.png?url';
+import gymbroAirUrl from './players/gymbro_air_roll_v1.png?url';
+import magolitaAirUrl from './players/magolita_air_roll_v1.png?url';
 import officeUrl from './players/player_1.png?url';
 import studentUrl from './players/player_2.png?url';
 import teleperformanUrl from './players/player_3.png?url';
@@ -12,7 +28,7 @@ import gymbroUrl from './players/player_4.png?url';
 import magolitaUrl from './players/player_5.png?url';
 import teleperformanComboUrl from './players/player_3_combo.png?url';
 import teleperformanWalkUrl from './players/player_3_walking.png?url';
-import gymbroGrabUrl from './players/player_4_agarre.png?url';
+import gymbroGrabUrl from './players/player_4_agarre_consistent.png?url';
 import officeGrabUrl from './players/player_1_agarre.png?url';
 import officeWalkUrl from './players/player_1_walk.png?url';
 import officeRunUrl from './players/player_1_run_clean.png?url';
@@ -26,11 +42,11 @@ import studentKicksAirUrl from './players/player_2_kicks_air.png?url';
 import teleperformanSlideUrl from './players/player_3_slide_clean.png?url';
 import magolitaSlideUrl from './players/player_5_slide_clean.png?url';
 import magolitaKicksUrl from './players/player_5_kicks.png?url';
-import gymbroShoulderUrl from './players/player_4_shoulder.png?url';
+import gymbroShoulderUrl from './players/player_4_dash_consistent.png?url';
 import gymbroPiledriverUrl from './players/player_4_piledriver.png?url';
 import teleperformanWalkPixelLabUrl from './players/player_3_walk.png?url';
 import magolitaWalkUrl from './players/player_5_walk.png?url';
-import gymbroRunUrl from './players/player_4_run.png?url';
+import gymbroRunUrl from './players/player_4_run_consistent.png?url';
 import { sequence } from './spriteSheets.js';
 import { IPHONE } from './iphone.js';
 import { BOOKS } from './books.js';
@@ -121,6 +137,10 @@ export const characters = {
     // H,H,H combo (41-52): 178/308 puts the upright combo pose at the 178 px guard and its head (hair 34.7 px on screen)
     // at the guard's 34.5 px; .50 drew every punch about 12% smaller than the kick.
     frameScales: {...Object.fromEntries(Array.from({length:12},(_,i)=>[41+i,178/308])),...Object.fromEntries(Array.from({length:12},(_,i)=>[53+i,1])),
+      // Keep the upright celebration and kick recovery at combat body scale.
+      // Raised arms, bent knees and floor poses still retain their own silhouettes.
+      ...Object.fromEntries([187,193,191,189,183,191].map((height,i)=>[17+i,178/height])),
+      ...Object.fromEntries(Array.from({length:6},(_,i)=>[35+i,.88])),
       ...Object.fromEntries([.935,.889,.958,.909,.832,.904].map((scale,i)=>[23+i,scale])),
       ...Object.fromEntries([170,168,165,164,164,164,167,165,163,163,166,168,168,165,164,163,166,167,165,162,163,166].map((height,i)=>[65+i,178/height])),
       // Locomotion must match the 178 px guard, not the unused 195 px opening pose.
@@ -162,7 +182,7 @@ export const characters = {
   },
   gymbro: {
     name: 'GYMBRO', texture: 'gymbro', url: gymbroUrl, rows: [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 6, 8, 4,4,4],
-    // player_4_agarre.png stacked under the main sheet: frames 32-35 grab, 36-39 knee, 40-43 throw.
+    // Combat-model grab art keeps the original 1536x1024 stack and frames 32..43.
     // Frames 44-49: native-scale shoulder charge, 320px cells.
     // PixelLab running replaces locomotion; frames 50-57. Shoulder keeps 44-49.
     appendUrls: [gymbroGrabUrl, gymbroRunUrl, gymbroShoulderUrl, gymbroPiledriverUrl],
@@ -170,26 +190,26 @@ export const characters = {
     piledriver:{jumpFrames:36,jumpHeight:76,flightFrames:34,height:100,maxHeight:130,recovery:20,damage:110,stunMs:1500,landingRange:56,
       lift:[58,59,60],spin:[60,61,62,63,64,61,62,63,64,65],descend:66,impact:67,release:68,guard:69},
     // height +10% (106 → 117) so Gymbro reads at the same scale as the enemies.
-    height: 117, speed: ARCADE.player.speeds.gymbro, walkRate:20, walkFramesPerPose:3, color: 0xf0b36c, idle: 4, jump: 21, trimFrames:true,
+    height: 117, speed: ARCADE.player.speeds.gymbro, walkRate:20, walkFramesPerPose:3, color: 0xf0b36c, idle: COMBO_ART_LAYOUT.gymbro.start, jump: 21, trimFrames:true,
     dash: true, special: 'stomp', specialLabel: 'PISOTÓN',
     // Updated 1024 × 1536 sheet: walk, cross, jab/uppercut, fall, dash,
     // kick, hurt, victory. The stomp reuses the raised knee and planted foot.
-    frameRects:PLAYER_ATLASES.gymbro,
+    frameRects:PLAYER_ATLASES.gymbro.map((r,i)=>i>=32 && i<44?{x:(i-32)%4*384,y:1536+Math.floor((i-32)/4)*342,width:384,height:340}:r),
     isolateFrames:true,
     frameAnchors:{0:158,1:390,2:656,3:898,4:140,5:403,6:632,7:900,8:139,9:398,10:644,11:901,12:143,13:398,14:632,15:881,16:141,17:397,18:638,19:900,20:144,21:402,22:641,23:900,24:141,25:402,26:644,27:901,28:130,29:391,30:640,31:892,
-      32:175,33:560,34:942,35:1338,36:188,37:602,38:994,39:1328,40:181,41:573,42:938,43:1318,
+      ...Object.fromEntries(Array.from({length:12},(_,i)=>[32+i,(i%4)*384+192])),
       ...Object.fromEntries(Array.from({length:6},(_,i)=>[44+i,i*320+160])),
       ...Object.fromEntries(Array.from({length:8},(_,i)=>[50+i,i*256+128])),
       ...Object.fromEntries(Array.from({length:12},(_,i)=>[58+i,(i%4)*256+128]))},
-    // The front-facing victory row has a smaller body than the combat rows.
-    // The older grab sheet is larger; shoulder poses now use native guard scale.
+    frameBaselines:Object.fromEntries(Array.from({length:12},(_,i)=>[32+i,1536+Math.floor(i/4)*342+330])),
+    // Grab and idle now use the combo model at its native 198px body height.
+    // The front-facing victory row still needs its existing correction.
     frameScales:{...Object.fromEntries([0,1,2,3].map(i=>[i,.96])),28:198/182,29:198/182,30:198/182,31:198/182,
-      ...Object.fromEntries(Array.from({length:12},(_,i)=>[32+i,198/305*.88])),
       ...Object.fromEntries(Array.from({length:8},(_,i)=>[50+i,.96]))},
     punchCombo:{animations:['punch','punch2','punch3'],stun:350},
     // Dash + K: a single shoulder charge that knocks the target down (the one-hit dash route is its own finisher).
     dashCombo:{inputs:['shoulder'],animations:['shoulder'],knockback:30},
-    animations: { walk: sequence(50, 57), punch: [8], punch2:[5,6,7], punch3:[9,10,11], kick: sequence(20,23), stomp:[20,21,20,23], hurt:sequence(24,27), defeat:sequence(12,15), dash:sequence(16,19), victory:sequence(28,31), shoulder:sequence(44,49),piledriver:sequence(58,69) },
+    animations: { walk: sequence(50, 57), punch: [8], punch2:[5,6,7], punch3:[9,10,11], kick: sequence(20,23), stomp:[20,21,20,23], hurt:sequence(24,27), defeat:sequence(12,15), dash:sequence(44,49), victory:sequence(28,31), shoulder:sequence(44,49),piledriver:sequence(58,69) },
     attacks: {
       // shoulder: travels forward until it connects, then knocks down.
       shoulder: { damage: 34, range: 82, duration: 500, hitAt: 150, knockback: 0, slide: true, activePoses:[46,47], recoveryPoses:[48,49] },
@@ -254,4 +274,111 @@ for(const [key,c] of Object.entries(characters)){
   chainAnimations.forEach((name,row)=>c.animations[name]=sequence(start+row*4,start+row*4+3));
   c.animations.lowKick=c.animations.chainSweep;
   c.attacks.lowKick??={...c.attacks.kick};
+}
+
+const airUrls={office:officeAirUrl,student:studentAirUrl,teleperforman:teleperformanAirUrl,gymbro:gymbroAirUrl,magolita:magolitaAirUrl};
+for(const [key,c] of Object.entries(characters)){
+  const start=c.frameRects.length,y=COMBO_ART_LAYOUT[key].y+8*256;
+  c.airArtStart=start;c.appendUrls=[...c.appendUrls,airUrls[key]];c.rows=[...c.rows,12];
+  c.frameRects=[...c.frameRects,...Array.from({length:12},(_,i)=>({x:i*256,y,width:256,height:256}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:12},(_,i)=>[start+i,i*256+128]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:12},(_,i)=>[start+i,y+248]))};
+  c.keepDetachedFrames=[...(c.keepDetachedFrames??[]),...sequence(start,start+11)];
+  c.animations.jumpRoll=sequence(start,start+7);
+  c.animations.jumpRollBack=[start,...sequence(start+1,start+6).reverse(),start+7];
+  c.animations.airKick=sequence(start+8,start+11);
+}
+
+// Append after the existing sheets so their frame indices stay stable.
+const uppercutUrls={office:officeUppercutUrl,student:studentUppercutUrl,teleperforman:teleperformanUppercutUrl,gymbro:gymbroUppercutUrl,magolita:magolitaUppercutUrl};
+Object.entries(characters).forEach(([key,c])=>{
+  const start=c.frameRects.length,y=COMBO_ART_LAYOUT[key].y+2304;
+  c.appendUrls=[...c.appendUrls,uppercutUrls[key]];c.rows=[...c.rows,4];
+  c.frameRects=[...c.frameRects,...Array.from({length:4},(_,i)=>({x:i*256,y,width:256,height:256}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:4},(_,i)=>[start+i,i*256+128]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:4},(_,i)=>[start+i,y+248]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+3)];
+  c.animations.chainPunch3=sequence(start,start+3);
+});
+
+// Gymbro's PPKKK follows the supplied turning-kick reference, in his own outfit.
+{
+  const c=characters.gymbro,start=c.frameRects.length,y=COMBO_ART_LAYOUT.gymbro.y+2560;
+  c.appendUrls=[...c.appendUrls,gymbroMobileKicksUrl];c.rows=[...c.rows,4,4,4];
+  c.frameRects=[...c.frameRects,...Array.from({length:12},(_,i)=>({x:(i%4)*256,y:y+Math.floor(i/4)*256,width:256,height:256}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:12},(_,i)=>[start+i,(i%4)*256+128]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:12},(_,i)=>[start+i,y+Math.floor(i/4)*256+248]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+11)];
+  ['chainKick1','chainKick2','chainKick3'].forEach((name,row)=>c.animations[name]=sequence(start+row*4,start+row*4+3));
+}
+
+// K remains the common input; Universitaria uses three distinct melee book swings.
+{
+  const c=characters.student,start=c.frameRects.length,y=COMBO_ART_LAYOUT.student.y+2560;
+  c.bookComboArtStart=start;c.appendUrls=[...c.appendUrls,studentBookComboUrl];c.rows=[...c.rows,5,5,5];
+  c.frameRects=[...c.frameRects,...Array.from({length:15},(_,i)=>({x:i%5*320,y:y+Math.floor(i/5)*320,width:320,height:320}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:15},(_,i)=>[start+i,i%5*320+160]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:15},(_,i)=>[start+i,y+Math.floor(i/5)*320+304]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+14)];
+  ['chainBook1','chainBook2','chainBook3'].forEach((name,row)=>c.animations[name]=sequence(start+row*5,start+row*5+4));
+  c.comboRouteAnimations={ppkkk:['chainPunch1','chainPunch2','chainBook1','chainBook2','chainBook3']};
+  c.comboImpactTypes={chainBook1:'book',chainBook2:'book',chainBook3:'book'};
+}
+
+// Universitaria has a separate KKK route; PPKKK still resolves to the book swings above.
+{
+  const c=characters.student,start=c.frameRects.length,y=COMBO_ART_LAYOUT.student.y+3520;
+  c.kickComboArtStart=start;c.comboRoutes=[...COMBO_ROUTES,STUDENT_KICK_ROUTE];
+  c.appendUrls=[...c.appendUrls,studentKickComboUrl];c.rows=[...c.rows,6,6,6];
+  c.frameRects=[...c.frameRects,...Array.from({length:18},(_,i)=>({x:i%6*320,y:y+Math.floor(i/6)*320,width:320,height:320}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:18},(_,i)=>[start+i,i%6*320+160]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:18},(_,i)=>[start+i,y+Math.floor(i/6)*320+304]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+17)];
+  ['chainStudentKick1','chainStudentKick2','chainStudentCircleKick'].forEach((name,row)=>c.animations[name]=sequence(start+row*6,start+row*6+5));
+}
+
+// Gomelo's new PPP shares its first two punches with PPKKK, so the visual prefix stays consistent.
+{
+  const c=characters.office,start=c.frameRects.length,y=COMBO_ART_LAYOUT.office.y+2560;
+  c.punchShakeArtStart=start;c.comboRoutes=[...COMBO_ROUTES,OFFICE_PUNCH_ROUTE];
+  c.appendUrls=[...c.appendUrls,officePunchShakeUrl];c.rows=[...c.rows,6,6,6,6];
+  c.frameRects=[...c.frameRects,...Array.from({length:24},(_,i)=>({x:i%6*320,y:y+Math.floor(i/6)*320,width:320,height:320}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:24},(_,i)=>[start+i,i%6*320+160]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:24},(_,i)=>[start+i,y+Math.floor(i/6)*320+304]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+23)];
+  ['chainGomeloPunch1','chainGomeloPunch2','chainGomeloPunch3'].forEach((name,row)=>c.animations[name]=sequence(start+row*6,start+row*6+5));
+  c.comboRouteAnimations={ppkkk:['chainGomeloPunch1','chainGomeloPunch2','chainKick1','chainKick2','chainKick3']};
+  c.grabShake={poses:sequence(start+18,start+23),start:4,release:26,total:32,amplitude:9,push:18,damage:1.6,stun:400};
+}
+
+// Phone strikes use KKK; headset lashes are reserved for punch while holding a rival.
+{
+  const c=characters.teleperforman,start=c.frameRects.length,y=COMBO_ART_LAYOUT.teleperforman.y+2560;
+  c.weaponComboArtStart=start;c.comboRoutes=[...COMBO_ROUTES,TELEPERFORMAN_PUNCH_ROUTE,TELEPERFORMAN_KICK_ROUTE];
+  c.appendUrls=[...c.appendUrls,teleperformanWeaponsUrl];c.rows=[...c.rows,6,6,6,6,6,6];
+  c.frameRects=[...c.frameRects,...Array.from({length:36},(_,i)=>({x:i%6*384,y:y+Math.floor(i/6)*384,width:384,height:384}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:36},(_,i)=>[start+i,i%6*384+192]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:36},(_,i)=>[start+i,y+Math.floor(i/6)*384+368]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+35)];
+  const names=['chainHeadset1','chainHeadset2','chainHeadset3',...TELEPERFORMAN_KICK_ROUTE.animations];
+  names.forEach((name,row)=>c.animations[name]=sequence(start+row*6,start+row*6+5));
+  c.comboImpactTypes=Object.fromEntries(names.map((name,i)=>[name,i<3?'headsetWhip':'phoneSlam']));
+  c.comboImpactSounds=Object.fromEntries(names.map((name,i)=>[name,i<3?'whip':'celuco']));
+  c.comboRanges=Object.fromEntries(names.map((name,i)=>[name,[105,110,120,125,135,145][i]]));
+  c.grabShake={poses:sequence(start,start+17),poseTimeline:sequence(start,start+17).flatMap(pose=>Array(4).fill(pose)),
+    start:4,release:68,total:76,amplitude:3,push:18,damage:2,stun:400,holdDistance:62,
+    sound:false,vibrate:false,contactHit:true,contacts:[9,33,57],contactSound:'whip'};
+}
+
+// Jump + J: Teleperforman lashes with the headset in mid-air instead of kicking (scripts/prepare-teleperforman-air-lash.py:
+// the lash torso on the tucked jump legs, at the air-roll body scale). Appended last so earlier frame indices stay stable.
+{
+  const c=characters.teleperforman,start=c.frameRects.length,y=COMBO_ART_LAYOUT.teleperforman.y+2560+2304;
+  c.airLashArtStart=start;c.appendUrls=[...c.appendUrls,teleperformanAirLashUrl];c.rows=[...c.rows,4];
+  c.frameRects=[...c.frameRects,...Array.from({length:4},(_,i)=>({x:i*384,y,width:384,height:384}))];
+  c.frameAnchors={...c.frameAnchors,...Object.fromEntries(Array.from({length:4},(_,i)=>[start+i,i*384+192]))};
+  c.frameBaselines={...c.frameBaselines,...Object.fromEntries(Array.from({length:4},(_,i)=>[start+i,y+368]))};
+  c.keepDetachedFrames=[...c.keepDetachedFrames,...sequence(start,start+3)];
+  c.animations.airKick=sequence(start,start+3);
+  c.airKickStyle={impactType:'headsetWhip',sound:'whip',range:110,label:'LATIGAZO AÉREO CON LA DIADEMA'};
 }

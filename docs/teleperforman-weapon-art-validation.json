@@ -1,0 +1,434 @@
+[
+  {
+    "family": "PPP",
+    "pose": 0,
+    "scale": 0.86595,
+    "bounds": [
+      112,
+      208,
+      247,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 1,
+    "scale": 0.86595,
+    "bounds": [
+      64,
+      208,
+      248,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 2,
+    "scale": 0.86595,
+    "bounds": [
+      79,
+      210,
+      333,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 3,
+    "scale": 0.86595,
+    "bounds": [
+      106,
+      193,
+      289,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 4,
+    "scale": 0.86595,
+    "bounds": [
+      114,
+      210,
+      272,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 5,
+    "scale": 0.86595,
+    "bounds": [
+      119,
+      208,
+      252,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 6,
+    "scale": 0.86595,
+    "bounds": [
+      101,
+      226,
+      242,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 7,
+    "scale": 0.86595,
+    "bounds": [
+      59,
+      208,
+      235,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 8,
+    "scale": 0.86595,
+    "bounds": [
+      56,
+      227,
+      342,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 9,
+    "scale": 0.86595,
+    "bounds": [
+      94,
+      199,
+      304,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 10,
+    "scale": 0.86595,
+    "bounds": [
+      107,
+      219,
+      260,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 11,
+    "scale": 0.86595,
+    "bounds": [
+      114,
+      220,
+      253,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 12,
+    "scale": 0.86595,
+    "bounds": [
+      100,
+      236,
+      246,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 13,
+    "scale": 0.86595,
+    "bounds": [
+      73,
+      180,
+      265,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 14,
+    "scale": 0.86595,
+    "bounds": [
+      29,
+      225,
+      350,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 15,
+    "scale": 0.86595,
+    "bounds": [
+      72,
+      190,
+      325,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 16,
+    "scale": 0.86595,
+    "bounds": [
+      89,
+      216,
+      292,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "PPP",
+    "pose": 17,
+    "scale": 0.86595,
+    "bounds": [
+      120,
+      209,
+      257,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 0,
+    "scale": 0.80543,
+    "bounds": [
+      120,
+      190,
+      271,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 1,
+    "scale": 0.80543,
+    "bounds": [
+      95,
+      221,
+      266,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 2,
+    "scale": 0.80543,
+    "bounds": [
+      82,
+      185,
+      289,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 3,
+    "scale": 0.80543,
+    "bounds": [
+      96,
+      163,
+      280,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 4,
+    "scale": 0.80543,
+    "bounds": [
+      101,
+      196,
+      279,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 5,
+    "scale": 0.80543,
+    "bounds": [
+      94,
+      202,
+      280,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 6,
+    "scale": 0.80543,
+    "bounds": [
+      95,
+      194,
+      289,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 7,
+    "scale": 0.80543,
+    "bounds": [
+      83,
+      166,
+      244,
+      354
+    ],
+    "shoeBaseline": 354
+  },
+  {
+    "family": "KKK",
+    "pose": 8,
+    "scale": 0.80543,
+    "bounds": [
+      61,
+      167,
+      288,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 9,
+    "scale": 0.80543,
+    "bounds": [
+      96,
+      175,
+      300,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 10,
+    "scale": 0.80543,
+    "bounds": [
+      97,
+      194,
+      276,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 11,
+    "scale": 0.80543,
+    "bounds": [
+      99,
+      198,
+      284,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 12,
+    "scale": 0.80543,
+    "bounds": [
+      113,
+      158,
+      274,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 13,
+    "scale": 0.80543,
+    "bounds": [
+      90,
+      213,
+      270,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 14,
+    "scale": 0.80543,
+    "bounds": [
+      61,
+      193,
+      306,
+      376
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 15,
+    "scale": 0.80543,
+    "bounds": [
+      93,
+      238,
+      292,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 16,
+    "scale": 0.80543,
+    "bounds": [
+      94,
+      214,
+      264,
+      368
+    ],
+    "shoeBaseline": 368
+  },
+  {
+    "family": "KKK",
+    "pose": 17,
+    "scale": 0.80543,
+    "bounds": [
+      112,
+      180,
+      264,
+      368
+    ],
+    "shoeBaseline": 368
+  }
+]

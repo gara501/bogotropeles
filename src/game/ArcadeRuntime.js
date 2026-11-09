@@ -2,6 +2,7 @@ import {directionalStrike} from '../data/comboRoutes.js';
 import {ARCADE} from '../data/arcade.js';
 import {CAMPAIGN} from '../data/campaign.js';
 import {FixedClock} from './FixedClock.js';
+import {ForwardDash} from '../input/ForwardDash.js';
 import {Player} from '../actors/Player.js';
 import {Enemy} from '../actors/Enemy.js';
 import {updateEnemyDeaths,renderEnemyDeath} from '../actors/EnemyDeath.js';
@@ -24,7 +25,9 @@ export class ArcadeRuntime {
       s.game.events.emit('combat-paused',s.paused);this.clearInput();this.clock.clear();
     }
     if(s.paused || s.finished || s.cinematic || s.health<=0)return;
-    this.input={dx:input.dx,dy:input.dy};this.edges.jump ||= input.jump;this.edges.dash ||= input.dash;
+    this.forwardDash??=new ForwardDash();
+    const tapped=this.forwardDash.capture(input.dx,input.dy,s.facing,this.frame);
+    this.input={dx:input.dx,dy:input.dy};this.edges.jump ||= input.jump;this.edges.dash ||= input.dash || tapped;
     for(const action of input.actions){this.player.request(directionalStrike(action,input.dy));if(['punch','kick','lowKick',s.character.special].includes(action))s.boss?.status.shake();}
   }
   update(delta){if(this.destroyed || this.scene.paused || this.scene.cinematic){this.clock.clear();return;}this.clock.advance(delta*(this.scene.timeScale??1),frame=>this.step(frame));} // timeScale < 1: boss finale slow motion
@@ -115,7 +118,7 @@ export class ArcadeRuntime {
   }
   playerHit(combo,source){this.player.hurt(Boolean(combo?.finisher));if(!combo)this.combat.impact(source??null,this.scene.player,{finisher:false});}
   resetPlayer(revive=false){this.diablitos.cancelPlayer();this.poultry.clear();this.potatoes.clear();this.scene.vuvuzela?.clearHeld();this.scene.panela?.clearHeld();this.scene.panela?.clearFlights();this.scene.superPower?.reset();this.scene.stage?.rain?.forget(this.scene.player);this.player.reset();this.clearInput();if(revive){this.combat.clear();for(const enemy of this.enemies.values())enemy.hurt();}}
-  clearInput(){this.player.buffer.clear();this.edges={jump:false,dash:false};this.input={dx:0,dy:0};}
+  clearInput(){this.player.buffer.clear();this.forwardDash?.reset();this.edges={jump:false,dash:false};this.input={dx:0,dy:0};}
   win(){
     const s=this.scene;this.diablitos.clear();this.poultry.clear();this.potatoes.clear();s.finished=true;this.player.transition('celebration');this.clearInput();this.combat.tokens.clear();
     s.vuvuzela?.clearHeld();s.panela?.clearHeld();s.panela?.clearFlights();s.superPower?.reset();

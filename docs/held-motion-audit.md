@@ -17,3 +17,5 @@ Vista animada de los cinco personajes, desarmados y con cada objeto, hacia ambos
 ## Revisión en el motor
 
 `?campaignPreview=vuvuzela&character=office` y `?campaignPreview=panela&character=office` permiten elegir cualquiera de los cinco personajes, caminar hacia ambos lados y detenerse usando los botones de prueba. El estado visible identifica la textura y pose que reproduce el controlador real. Las pruebas de juego cubren las diez combinaciones: movimiento lateral y en profundidad, cambio de dirección, reposo, contacto del ataque, daño, retirada del objeto y paletas.
+
+Verificación final: 768 pruebas aprobadas y compilación de producción correcta. Se cargaron y reprodujeron en el motor los diez ciclos, incluidos los cambios de personaje, sin errores de consola. Capturas finales: `held-magolita-vuvuzela-game.png` y `held-magolita-panela-game.png`.

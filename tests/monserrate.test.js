@@ -53,8 +53,8 @@ test('curves alternate smoothly and every actor shares the exact road centre at 
 });
 
 test('rocky stairs form a distinct gradual section and stationary vendors occupy the inside edges',()=>{
-  assert.equal(trailSection(40).rock,0);assert.equal(trailSection(500).rock,1);assert.equal(trailSection(800).rock,0);
-  assert.equal(trailSection(1000).label,'SANTUARIO');
+  assert.equal(trailSection(40).rock,0);assert.equal(trailSection(1000).rock,1);assert.equal(trailSection(1800).rock,0);
+  assert.deepEqual([40,1000,1800,2200].map(d=>trailSection(d).label),['BOSQUE','ESCALINATA','LAS VELAS','SANTUARIO']);
   for(let d=0;d<MONSERRATE.length;d++)assert.ok(Math.abs(trailSection(d+1).rock-trailSection(d).rock)<.05);
   assert.ok(TRAIL_VENDORS.length>=8);
   for(const vendor of TRAIL_VENDORS){
@@ -62,7 +62,7 @@ test('rocky stairs form a distinct gradual section and stationary vendors occupy
     assert.ok(Math.abs(vendor.lane-vendor.side)<vendor.hitWidth,'the vendor blocks the outer lane');
     assert.ok(Math.abs(vendor.lane)>vendor.hitWidth,'the centre lane stays clear');
     // Even the full padded frame, wider than the actual silhouette, fits within the road.
-    for(const z of [0,8,24,50])for(const distance of [0,90,200,350,700,950]){
+    for(const z of [0,8,24,50])for(const distance of [0,90,200,350,700,950,1200,1450,1800,2100,2300]){
       const p=projectHiker(vendor.lane,z,distance),road=trailRow(p.y,distance);
       assert.ok(Math.abs(p.x-road.centre)+192/2*152/208*p.scale<road.width/2,'full vendor and stand remain inside railing');
     }
@@ -110,14 +110,14 @@ test('a visible-gap steering policy completes 80 courses without damage at varie
       hits+=run.step(ms,steer).hits.length;
     }
     assert.equal(hits,0,`seed ${seed}`);assert.equal(run.crashes,0,`seed ${seed}`);assert.ok(run.done);
-    assert.ok(run.elapsed>28000 && run.elapsed<45000,`seed ${seed}: ${run.elapsed}`);
+    assert.ok(run.elapsed>55000 && run.elapsed<72000,`seed ${seed}: ${run.elapsed}`); // ~62 s climb
     assert.equal(run.cleared,TRAIL_JUMPS.length);assert.ok(run.dodged>30);
   }
 });
 
 test('a fixed candle vendor damages an edge runner once while the centre route passes safely',()=>{
   for(const [x,expectedHits] of [[-1,1],[0,0]]){
-    const run=new MonserrateRun();run.nextWave=Infinity;run.distance=59.99;run.x=x;
+    const run=new MonserrateRun();run.nextWave=Infinity;run.distance=TRAIL_VENDORS[0].at-.01;run.x=x;
     const vendor=run.vendors[0],at=vendor.at;
     const event=run.step(50);assert.equal(event.hits.length,expectedHits);
     assert.equal(vendor.at,at);assert.equal(vendor.passed,true);
@@ -153,7 +153,7 @@ test('finish is final, clamps distance, and stops spawning in the clear summit s
   run.step(250);assert.equal(run.npcs.length,0);
   while(!run.done)run.step(250);
   const t=run.elapsed;assert.equal(run.distance,MONSERRATE.length);
-  assert.deepEqual(run.step(250),{hits:[],passed:[],waves:[],falls:[],jumped:[]});assert.equal(run.elapsed,t);
+  assert.deepEqual(run.step(250),{hits:[],passed:[],waves:[],falls:[],jumped:[],close:[]});assert.equal(run.elapsed,t);
 });
 
 test('dash: a short burst of speed and steering with a recharge, and it doubles dodge points',()=>{
@@ -172,7 +172,8 @@ test('dash: a short burst of speed and steering with a recharge, and it doubles 
 
 test('the longer, faster climb: at least 1 km and over 50 km/h at the top',()=>{
   assert.ok(MONSERRATE.length>=1000);assert.ok(MONSERRATE.endSpeed*3.6>50);
-  assert.ok(MONSERRATE.endSpeed*MONSERRATE_DASH.speed*3.6<175,'dash stays readable');
+  assert.ok(MONSERRATE.endSpeed*MONSERRATE_DASH.speed*3.6<215,'dash stays readable');
+  assert.ok(MONSERRATE.length>=2400 && MONSERRATE.startSpeed>=30 && MONSERRATE.endSpeed>=48,'much longer and faster than the 1100 m, 22→36 m/s version');
   assert.ok(MONSERRATE.endSpeed*3.6>75,'top speed above 75 km/h');
 });
 
@@ -284,4 +285,32 @@ test('a jump clears kneeling pilgrims but standing walkers still collide',()=>{
     const run=new MonserrateRun();run.nextWave=Infinity;run.distance=30;run.jump();run.step(100);
     run.npcs=[{id:kind,kind,lane:0,z:.05,passed:false}];assert.equal(run.step(20).hits.length,hits);
   }
+});
+
+test('near misses pay points and refund part of the dash cooldown; real contact or wide dodges do not',async()=>{
+  const {MONSERRATE_CLOSE}=await import('../src/monserrate/MonserrateRun.js');
+  const pass=x=>{const run=new MonserrateRun();run.nextWave=Infinity;run.x=x;run.dash();run.elapsed+=MONSERRATE_DASH.ms;const before=run.dashReadyAt;
+    run.npcs=[{id:'w',kind:'walker',lane:0,z:.01,passed:false}];const e=run.step(20);return {e,refund:before-run.dashReadyAt};};
+  const close=pass(MONSERRATE.hitWidth+.1);assert.equal(close.e.hits.length,0);assert.equal(close.e.close.length,1);
+  assert.ok(Math.abs(close.refund-MONSERRATE_DASH.cooldown*MONSERRATE_CLOSE.dashRefund)<1,'dash recharges faster');
+  const wide=pass(1);assert.equal(wide.e.close.length,0);assert.equal(wide.refund,0);
+  const hit=pass(.1);assert.equal(hit.e.hits.length,1);assert.equal(hit.e.close.length,0);
+});
+test('the 2400 m climb ramps up: a sparse forest intro, dense stairs, and a final leap near the top',()=>{
+  const inRange=(a,b)=>TRAIL_JUMPS.filter(j=>j.at>=a && j.at<b).length;
+  assert.ok(inRange(0,697)/697<inRange(697,1507)/810,'the forest is the gentle opening');
+  assert.equal(TRAIL_JUMPS.at(-1).kind,'gap');assert.ok(TRAIL_JUMPS.at(-1).at>2200);assert.ok(TRAIL_JUMPS.length>=28);
+  for(let i=1;i<TRAIL_JUMPS.length;i++)assert.ok((TRAIL_JUMPS[i].at-TRAIL_JUMPS[i-1].at)/MONSERRATE.endSpeed>.9,'about a second between jumps even at top speed');
+});
+
+test('logs and sinkholes draw at every distance with a stub canvas, and the textures are built once from small canvases',async()=>{
+  const {drawJumps,makeObstacleTextures}=await import('../src/monserrate/MonserrateObstacles.js');
+  const calls=new Map();
+  const ctx=new Proxy({},{get:(_,name)=>name==='createLinearGradient'?()=>({addColorStop(){}}):(...args)=>{calls.set(name,(calls.get(name)??0)+1);},set:()=>true});
+  const sizes=[];
+  const doc={createElement:()=>{const c={width:0,height:0,getContext:()=>ctx};sizes.push(c);return c;}};
+  const tex=makeObstacleTextures(doc);assert.equal(sizes.length,2);assert.ok(sizes.every(c=>c.width*c.height<10000));assert.ok(tex.bark && tex.soil);
+  const run=new MonserrateRun();
+  for(let d=0;d<MONSERRATE.length;d+=7)drawJumps(ctx,run.jumps,d,tex);
+  assert.ok(calls.get('drawImage')>100,'bark and soil are sampled');assert.ok(calls.get('ellipse')>10,'sawn log ends are drawn');
 });

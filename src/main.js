@@ -114,7 +114,7 @@ var mainMenu=new MainMenu({root:menuRoot,art:menuArt,onBack:()=>startIntro({kind
     hint:()=>cloud?.username?`${cloud.username} · ${cloud.statusText}`:'Guarda tu avance en la nube y recupéralo en otro equipo.'},
   {id:'controls',label:'CONTROLES',action:()=>{mainMenu.close();controlsScreen.show(selected,{portrait:document.querySelector(`[data-portrait="${selected}"]`)?.src||null,onDone:openMainMenu,onBack:openMainMenu});},
     hint:()=>'Teclado, táctil y gamepad.'},
-  {id:'combos',label:'COMBOS',action:()=>openCombos(),hint:()=>'Las cinco combinaciones, con demostración de cada personaje.'},
+  {id:'combos',label:'COMBOS',action:()=>openCombos(),hint:()=>'PPKKK para todos; Gomelo suma PPP, Universitaria KKK y Teleperforman PPP de puños y KKK con teléfono; agarre + puño para latigazos.'},
   {id:'sound',label:'SONIDO',value:()=>document.querySelector('#audio-toggle')?.getAttribute('aria-pressed')==='true'?'SÍ':'NO',change:()=>document.querySelector('#audio-toggle')?.click(),hint:()=>'Música y efectos.'},
   {id:'intro',label:'VER INTRO',action:()=>startComic(),hint:()=>'La historia de cómo Don Pacho alquiló la ciudad.'},
 ]});
@@ -180,8 +180,9 @@ document.addEventListener('click',event=>{
   const button=event.target.closest('button');
   if(button && !button.disabled && !button.hasAttribute('data-touch-action'))playUiSound(button.matches('[data-pick]')?'start':'button');
 },true);
-function showScreen(next) {
+function showScreen(next, introMusic=false) {
   screen = next;
+  game.menuMusic?.setPaused(!introMusic && !['menu','selection','combos'].includes(next));
   document.documentElement.dataset.screen=next;
   game.touchControls.setEnabled(next==='game');
   selection.hidden = next !== 'selection';
@@ -232,7 +233,7 @@ function startIntro(data={kind:'game'}) {
   if(['boss','ending','credits'].includes(data.kind))game.scene.pause('Street');
   else game.scene.stop('Street');
   game.scene.stop('Menu');game.scene.stop('CharacterIntro');
-  showScreen('intro');
+  showScreen('intro',['game','story','character'].includes(data.kind));
   document.querySelector('#next-level').disabled=true;
   if(data.kind==='level')levelLabel.textContent=`${String(data.level+1).padStart(2,'0')} / ${levels[data.level].name.toUpperCase()}`;
   const sceneKey=data.kind==='character' || data.kind==='ending'?'CharacterIntro':'Intro';
@@ -538,7 +539,7 @@ game.events.on('intro-complete',data=>{
 });
 function startComic(){
   game.scene.stop('Intro');game.scene.stop('Menu');game.scene.stop('CharacterIntro');
-  showScreen('intro');game.scene.start('Comic');game.scene.bringToTop('Comic');focusGame();
+  showScreen('intro',true);game.scene.start('Comic');game.scene.bringToTop('Comic');focusGame();
 }
 function startMap(data){
   game.scene.stop('Street');game.scene.stop('Menu');game.scene.stop('CharacterIntro');game.scene.stop('Intro');
@@ -588,6 +589,7 @@ if (import.meta.env.DEV) {
     },
   };
   const debugParams = new URLSearchParams(window.location.search);
+  if(debugParams.has('menuPreview'))game.events.once('menu-ready',openMainMenu);
   if(debugParams.has('monserrateTest'))game.events.once('menu-ready',()=>{
     selected=characters[debugParams.get('character')]?debugParams.get('character'):'office';
     showScreen('game');game.scene.stop('Menu');game.scene.stop('Intro');

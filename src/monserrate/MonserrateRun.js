@@ -1,9 +1,14 @@
 import {trailOffset,TRAIL_VENDORS,TRAIL_JUMPS,logSpan} from './MonserrateTrail.js';
 
-export const MONSERRATE={length:1100,startSpeed:22,endSpeed:36,walkerSpeed:1.2,kneelerSpeed:.28,steerSpeed:7,
-  spawnDistance:120,changerChance:.35,changeSpeed:2.4,hitWidth:.32,damage:18,invulnerability:1200,finishPoints:2500,gapDamage:25,logDamage:18};
+// 2400 m at 30→48 m/s (~62 s): much longer and faster than the first 1100 m / 22→36 version. Walkers spawn further
+// out (165 m) so even the top speed leaves over 3 s to read a wave; waves also come closer together.
+export const MONSERRATE={length:3400,startSpeed:60,endSpeed:90,walkerSpeed:1.8,kneelerSpeed:.78,steerSpeed:7.5,
+  spawnDistance:165,changerChance:.35,changeSpeed:2.4,hitWidth:.32,damage:18,invulnerability:1200,finishPoints:2500,gapDamage:25,logDamage:18};
 // Dash (SHIFT / touch »): a short burst of speed and sharper steering, then a recharge.
-export const MONSERRATE_DASH={ms:1000,cooldown:3600,speed:1.3,steer:1.4,dodgePoints:60};
+export const MONSERRATE_DASH={ms:1000,cooldown:3600,speed:1.2,steer:1.4,dodgePoints:60};
+// Near miss: passing a walker, pilgrim, vendor or log within `margin` lane units of contact pays points and
+// refunds part of the dash cooldown, so risky lines are rewarded (racing-game boost-for-close-calls).
+export const MONSERRATE_CLOSE={margin:.2,points:40,dashRefund:.3};
 // Jump (SPACE / ↑ / touch SALTO / pad A): clears broken stairs, fallen logs and kneeling pilgrims, never standing walkers.
 export const MONSERRATE_JUMP={ms:600,height:110,airSteer:.6,points:50,warn:2.2};
 export const LANES=[-1,0,1];
@@ -40,7 +45,7 @@ export class MonserrateRun{
   get done(){return this.progress===1;}
   get flawless(){return this.done && this.crashes===0;}
   get speed(){return (MONSERRATE.startSpeed+(MONSERRATE.endSpeed-MONSERRATE.startSpeed)*this.progress)*(this.elapsed<this.slowUntil?.65:1)*(this.dashing?MONSERRATE_DASH.speed:1);}
-  get interval(){return this.progress<.15?1000:this.progress<.4?850:this.progress<.7?760:700;}
+  get interval(){return this.progress<.12?900:this.progress<.35?780:this.progress<.65?720:690;}
   spawnWave(){
     // Keep walkers away from broken stairs and logs: one problem at a time.
     const contact=this.distance+this.speed*MONSERRATE.spawnDistance/(this.speed-MONSERRATE.walkerSpeed);
@@ -71,13 +76,19 @@ export class MonserrateRun{
       variant:Math.floor(this.random()*(kneeling?4:8)),born:this.elapsed,passed:false,hit:false});
     return {wave,safeLane:this.safeLane,blocked,kneeling};
   }
+  /** Passed without contact: was it a close call? Refunds part of the dash cooldown. */
+  closeCall(item,crossingX,width,events){
+    if(Math.abs(crossingX-item.lane)-width>=MONSERRATE_CLOSE.margin)return;
+    item.close=true;this.closeCalls=(this.closeCalls??0)+1;events.close.push(item);
+    if(!this.dashReady)this.dashReadyAt=Math.max(this.elapsed,this.dashReadyAt-MONSERRATE_DASH.cooldown*MONSERRATE_CLOSE.dashRefund);
+  }
   respawn(){
     this.npcs=this.npcs.filter(n=>n.z>18);this.x=0;this.invulnerableUntil=this.elapsed+2200;this.slowUntil=0;
     this.nextWave=Math.max(this.nextWave,this.elapsed+1400);this.jumpStart=-Infinity;
     for(const jump of this.jumps)if(!jump.passed && this.distance>=jump.at-4){jump.passed=true;this.distance=Math.max(this.distance,jump.at+jump.length+.5);}
   }
   step(milliseconds,steer=0){
-    const events={hits:[],passed:[],waves:[],falls:[],jumped:[]};
+    const events={hits:[],passed:[],waves:[],falls:[],jumped:[],close:[]};
     let remaining=Math.max(0,Math.min(milliseconds,250));
     // Substeps make collision and wave timing stable at both 30 and 144 Hz.
     while(remaining>0 && !this.done){
@@ -97,7 +108,7 @@ export class MonserrateRun{
           else if(Math.abs(crossingX-npc.lane)<MONSERRATE.hitWidth){
             this.crashes++;
             if(this.elapsed>=this.invulnerableUntil){npc.hit=true;this.invulnerableUntil=this.elapsed+MONSERRATE.invulnerability;this.slowUntil=this.elapsed+300;events.hits.push(npc);}
-          }else{this.dodged++;npc.dashed=this.dashing;events.passed.push(npc);}
+          }else{this.dodged++;npc.dashed=this.dashing;events.passed.push(npc);this.closeCall(npc,crossingX,MONSERRATE.hitWidth,events);}
         }
       }
       for(const vendor of this.vendors){
@@ -108,7 +119,7 @@ export class MonserrateRun{
         if(Math.abs(crossingX-vendor.lane)<vendor.hitWidth){
           this.crashes++;
           if(this.elapsed>=this.invulnerableUntil){vendor.hit=true;this.invulnerableUntil=this.elapsed+MONSERRATE.invulnerability;this.slowUntil=this.elapsed+300;events.hits.push(vendor);}
-        }else{this.dodged++;vendor.dashed=this.dashing;events.passed.push(vendor);}
+        }else{this.dodged++;vendor.dashed=this.dashing;events.passed.push(vendor);this.closeCall(vendor,crossingX,vendor.hitWidth,events);}
       }
       for(const jump of this.jumps){
         if(jump.passed)continue;

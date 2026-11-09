@@ -5,6 +5,7 @@ import {InputBuffer} from '../input/InputBuffer.js';
 import {canSpendSpecialEnergy,spendSpecialEnergy} from '../combat/specialEnergy.js';
 import {strikeSound,playPowerSound} from '../audio/SoundEffects.js';
 import {GrabPiledriver} from './GrabPiledriver.js';
+import {GrabShake} from './GrabShake.js';
 // Strikes that choose their sound by result (hit → punch/kick, miss → wave) once the active frames end.
 const STRIKES=['punch','kick','lowKick','upperPunch','slide','shoulder','airDashKick'];
 
@@ -14,9 +15,9 @@ const transitions={walk:['attack','special','jump','hurt','knockdown','dash','ce
   hurt:['walk','knockdown','celebration'],knockdown:['walk','knockdown','celebration'],dash:['walk','attack','hurt','knockdown','celebration'],celebration:[]};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export class Player {
-  constructor(runtime){this.runtime=runtime;this.scene=runtime.scene;this.buffer=new InputBuffer();this.reset();}
+  constructor(runtime){this.runtime=runtime;this.scene=runtime.scene;this.buffer=new InputBuffer();this.jumpRoll=0;this.reset();}
   get actor(){return this.scene.player;}
-  reset(){this.captor?.releasePlayer();this.dropGrab();this.state='walk';this.pendingComboDown=null;this.lastCombo=null;this.age=0;this.action=null;this.jumpAge=ARCADE.jump.frames;this.airMotion=null;this.airDashUsed=false;this.airDashWindow=-Infinity;this.dashReady=0;this.parry=null;this.buffer.clear();if(this.actor){this.actor.z=0;this.actor.sprite?.clearTint?.();}}
+  reset(){this.captor?.releasePlayer();this.dropGrab();this.state='walk';this.pendingComboDown=null;this.lastCombo=null;this.age=0;this.action=null;this.jumpRoll=0;this.jumpAge=ARCADE.jump.frames;this.airMotion=null;this.airDashUsed=false;this.airDashWindow=-Infinity;this.dashReady=0;this.parry=null;this.buffer.clear();if(this.actor){this.actor.z=0;this.actor.sprite?.clearTint?.();}}
   transition(state){if(state!==this.state && !transitions[this.state]?.includes(state))throw new Error(`Invalid player transition: ${this.state} → ${state}`);if(this.state==='grab' && state!=='grab')this.dropGrab();if(this.state==='parry' && state!=='parry')this.actor?.sprite?.clearTint?.();this.state=state;this.age=0;if(!['attack','special'].includes(state)){this.action=null;this.scene.playerAttack=null;}}
   request(type){
     if(type==='super'){this.scene.superPower?.activate();return;}
@@ -126,10 +127,13 @@ export class Player {
     }else if(this.jumpAge<ARCADE.jump.frames){this.jumpAge++;this.actor.z=this.jumpAge===ARCADE.jump.frames?0:Math.sin(this.jumpAge/ARCADE.jump.frames*Math.PI)*ARCADE.jump.height;}
     if(this.jumpAge>=ARCADE.jump.frames){this.airDashUsed=false;this.airDashWindow=-Infinity;}
     if(this.state==='walk'||this.state==='jump') {
-      if(input.jump && this.state==='walk'){this.transition('jump');this.jumpAge=0;s.jumpStart=s.combatTime;}
+      if(input.jump && this.state==='walk'){
+        this.jumpRoll=input.dx?(Math.sign(input.dx)===s.facing?1:-1):0;
+        this.transition('jump');this.jumpAge=0;s.jumpStart=s.combatTime;
+      }
       if(input.dash)this.dash(input.dx,input.dy);
       if(this.state!=='dash') {
-        if(input.dx)s.facing=Math.sign(input.dx);
+        if(input.dx && !(this.state==='jump' && this.jumpRoll))s.facing=Math.sign(input.dx);
         this.move(input.dx,input.dy,s.boss?.status.speedMultiplier??1);
         if(this.state==='walk' && this.tryGrab(input)){s.boss?.hazards.resolveMovement(previous);s.jumpHeight=0;this.age++;return;}
         if(this.state==='walk' && this.tryParry()){s.boss?.hazards.resolveMovement(previous);s.jumpHeight=0;this.age++;return;}
@@ -143,7 +147,8 @@ export class Player {
       if(this.state==='walk'){if(input.dx||input.dy)this.pose('walk');else this.actor.sprite.stop().setFrame(s.character.idle);}
       if(this.state==='jump'){
         const bounce=this.airMotion?.kind==='bounce'?s.character.animations.airBounce:null;
-        this.actor.sprite.stop().setFrame(bounce?bounce[Math.min(bounce.length-1,Math.floor(this.airMotion.age/this.airMotion.frames*bounce.length))]:s.character.jump);
+        const roll=this.jumpRoll<0?s.character.animations.jumpRollBack:this.jumpRoll>0?s.character.animations.jumpRoll:null;
+        this.actor.sprite.stop().setFrame(bounce?bounce[Math.min(bounce.length-1,Math.floor(this.airMotion.age/this.airMotion.frames*bounce.length))]:roll?roll[Math.min(roll.length-1,Math.floor(this.jumpAge/ARCADE.jump.frames*roll.length))]:s.character.jump);
       }
     } else if(this.state==='grab') {
       this.stepGrab(input);
@@ -242,6 +247,7 @@ export class Player {
   stepGrab(input){
     const s=this.scene,g=this.grab,G=ARCADE.grab,t=g.target,poses=this.grabPoses();g.age++;
     if(g.piledriver){g.piledriver.step();return;}
+    if(g.shake){g.shake.step();return;}
     if(!g.action && (t.hp<=0 || g.model.state!=='grabbed')){this.transition('walk');return;}
     if(g.action){
       const act=g.action;act.age++;
@@ -255,7 +261,12 @@ export class Player {
         }
       }else{
         this.actor.sprite.stop().setFrame(this.sequencePose(poses.throw,poses.throwContact,act.age,act.release,act.total));
-        if(act.age<act.release)this.holdTarget();
+        // Load the body onto the shoulder before release, rather than teleporting it across on a back throw.
+        if(act.age<=act.release){
+          const progress=act.age/act.release;
+          t.x=clamp(this.actor.x+act.fromFacing*G.hold*(1-progress)+s.facing*12*progress,s.floor.left,s.floor.right);
+          t.y=this.actor.y;t.z=Math.sin(progress*Math.PI/2)*G.throwLift;
+        }
         if(act.age===act.release && t.hp>0 && g.model.state==='grabbed'){
           g.model.startThrown(s.facing,Math.round(s.character.attacks.kick.damage*G.throwDamage));s.sfx?.play('whip');
         }
@@ -268,9 +279,13 @@ export class Player {
     this.holdTarget();this.actor.sprite.stop().setFrame(g.age<reach?poses.start[Math.floor(g.age/8)]:poses.hold[Math.floor((g.age-reach)/12)%poses.hold.length]);
     const frame=this.runtime.frame,back=input.dx && Math.sign(input.dx)===-s.facing;
     if(input.jump && s.character.piledriver && g.age<G.holdFrames){g.piledriver=new GrabPiledriver(this,g);g.piledriver.step();}
-    else if(this.buffer.consume('kick',frame))g.action={kind:'throw',age:0,release:G.throwRelease,total:G.throwTotal};
+    else if(this.buffer.consume('kick',frame)){
+      const fromFacing=s.facing;if(back && s.character.grabShake)s.facing=-s.facing;
+      g.action={kind:'throw',age:0,fromFacing,release:G.throwRelease,total:G.throwTotal};
+    }
     else if(this.buffer.consume('punch',frame)){
-      if(back){s.facing=-s.facing;this.holdTarget();g.action={kind:'throw',age:0,release:G.throwRelease,total:G.throwTotal};} // throw backward
+      if(s.character.grabShake)g.shake=new GrabShake(this,g);
+      else if(back){const fromFacing=s.facing;s.facing=-s.facing;g.action={kind:'throw',age:0,fromFacing,release:G.throwRelease,total:G.throwTotal};}
       else g.action={kind:'knee',age:0,hit:G.kneeHit,total:G.kneeTotal};
     }
     else if(g.age>=G.holdFrames){g.model.breakFree();this.actor.x=clamp(this.actor.x-s.facing*12,s.floor.left,s.floor.right);this.transition('walk');}
@@ -337,11 +352,12 @@ export class Player {
       s.tweens?.add?.({targets:label,y:label.y-20,alpha:0,duration:420,delay:200,onComplete:()=>label.destroy()})});
   }
   /** Leaving the grab state for any reason (hurt, reset…) lets a still-held enemy go. */
-  dropGrab(){this.grab?.piledriver?.cancel();if(this.grab?.model?.state==='grabbed')this.grab.model.breakFree();this.grab=null;}
+  dropGrab(){this.grab?.piledriver?.cancel();this.grab?.shake?.cancel();if(this.grab?.model?.state==='grabbed'){this.grab.target.z=0;this.grab.model.breakFree();}this.grab=null;}
   /** Impact sound fires on the first frame a strike connects; a whoosh if the active frames end empty. */
   resolveStrikeSound(action,connected=false){
     if(action.sounded || !STRIKES.includes(action.data.type) || (!connected && !action.wasActive))return;
-    action.sounded=true;this.scene.sfx?.play(strikeSound(action.data.type==='upperPunch'?'punch':action.data.type,connected));
+    const impact=action.data.impactType??action.data.type;
+    action.sounded=true;this.scene.sfx?.play(connected && action.data.impactSound?action.data.impactSound:strikeSound(['upperPunch','book'].includes(impact)?'punch':impact,connected));
   }
   contact(action){
     const s=this.scene,attack=s.playerAttack;if(!attack)return;
@@ -384,7 +400,7 @@ export class Player {
     // A completed combo route lands: emphasise it once, on the first target it hit.
     if(attack.path && attack.finisher && action.targets.size && !action.comboFinished){
       action.comboFinished=true;const target=[...action.targets].find(t=>t!==this.actor && t.config);
-      const route=matchingRoutes(attack.path).find(r=>r.inputs.length===attack.path.length);
+      const route=matchingRoutes(attack.path,s.character).find(r=>r.inputs.length===attack.path.length);
       if(target && route)this.runtime.combat.comboFinish?.(this.actor,target,attack,route.notation);
     }
     if(action.targets.size)this.resolveStrikeSound(action,true);

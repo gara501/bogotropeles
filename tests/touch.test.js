@@ -10,6 +10,14 @@ test('joystick dead zone, analog strength, diagonal clamp and outside drags are 
   const diagonal=joystickVector(-500,500,50);assert.ok(Math.abs(Math.hypot(diagonal.x,diagonal.y)-1)<1e-10);
   assert.ok(diagonal.x<0 && diagonal.y>0);
 });
+test('short thumb drags accelerate promptly and reach full speed before the rim',()=>{
+  assert.equal(joystickVector(5,0,50).x,0,'neutral thumb drift is ignored');
+  assert.ok(joystickVector(10,0,50).x>0,'movement begins with a short drag');
+  assert.ok(joystickVector(25,0,50).x>.7,'half travel is already a useful cruising speed');
+  assert.equal(joystickVector(33,0,50).x,1);
+  const diagonal=joystickVector(-25,25,50);
+  assert.ok(Math.abs(Math.hypot(diagonal.x,diagonal.y)-1)<1e-10,'diagonal input cannot exceed full speed');
+});
 test('independent fingers can hold movement, punch and jump; releases cannot cancel other actions',()=>{
   const input=new TouchInput();input.x=1;input.down('H',1);input.down('SPACE',2);
   assert.equal(input.isDown('H'),true);assert.equal(input.justDown('SPACE'),true);

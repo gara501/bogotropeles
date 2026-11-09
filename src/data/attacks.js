@@ -1,4 +1,4 @@
-import {matchingRoutes,sequenceOptions,comboSpeed,COMBO_FINISH} from './comboRoutes.js';
+import {matchingRoutes,sequenceOptions,comboSpeed,COMBO_FINISH,routeAnimations} from './comboRoutes.js';
 import {ARCADE,toFrames} from './arcade.js';
 
 // Each entry is a displayed animation frame, a phase and a cancel permission.
@@ -26,44 +26,55 @@ export const PLAYER_CONTACT_POSES={
 /** A character's ground combo: {inputs, animations, ranges?, damages?, knockback?}. */
 export function comboFor(character,chain){
   if(chain==='dash')return character.dashCombo??null; // dash + K opener (GOMELO's slide → punch → punch)
+  if(character.comboRoutes)return null; // retired ground chains must not reappear as a fallback
   if(chain==='kick')return character.kickCombo??null;
   if(character.combo)return character.combo;
   const p=character.punchCombo;return p?{inputs:p.animations.map(()=>'punch'),animations:p.animations}:null;
 }
 /** The input that continues the combo after `data`, or null. */
 export function comboNext(character,data){
-  if(data?.path)return sequenceOptions(data)[0]??null;
+  if(data?.path)return sequenceOptions(data,character)[0]??null;
   const combo=data?.combo?comboFor(character,data.chain):null;
   return combo && data.stage<combo.inputs.length-1?combo.inputs[data.stage+1]:null;
 }
-export function comboOptions(character,data){return data?.path?sequenceOptions(data):[comboNext(character,data)].filter(Boolean);}
+export function comboOptions(character,data){return data?.path?sequenceOptions(data,character):[comboNext(character,data)].filter(Boolean);}
 function sequenceAttack(character,type,stage,route){
-  const path=Array.isArray(route)?route:[type],matches=matchingRoutes(path);
+  const path=Array.isArray(route)?route:[type],matches=matchingRoutes(path,character);
   if(!matches.length)return null;
-  const name=matches[0].animations[path.length-1],art=character.animations[name];
+  const name=routeAnimations(character,matches[0])[path.length-1],art=character.animations[name];
   if(!art)return null;
   const base=character.attacks[type]??character.attacks[type==='upperPunch'?'punch':'kick'];
   const kickIndex=path.filter(input=>input==='kick'||input==='lowKick').length-1;
   const damage=type==='kick'||type==='lowKick'?character.kickCombo?.damages?.[kickIndex]??base.damage:base.damage;
-  const finisher=matches.some(r=>r.inputs.length===path.length),more=sequenceOptions({path}).length>0;
+  const finisher=matches.some(r=>r.inputs.length===path.length),more=sequenceOptions({path},character).length>0;
   const timing=PLAYER_ATTACK_FRAMES[type==='upperPunch'?'punch3':type==='lowKick'?'kick4':type==='punch'?`punch${path.length===1?'':Math.min(3,path.length)}`:'kick'];
   const speed=comboSpeed(path.length-1,finisher);
+  const timingScale=character.comboTimingScales?.[name]??1;
   // Keep every active tick; speed up anticipation/recovery without skipping contact.
   // The finisher snaps out (short anticipation) and keeps its full follow-through, so it reads as a heavier blow.
-  const accelerated={...timing,startup:Math.max(3,Math.ceil(timing.startup/speed))};
-  return {...base,type,stage:path.length-1,chain:'sequence',path,combo:true,comboSpeed:speed,finisher,knockdown:finisher,
+  const accelerated={...timing,startup:Math.max(3,Math.ceil(timing.startup/speed*timingScale)),recovery:Math.ceil(timing.recovery*timingScale)};
+  return {...base,type,impactType:character.comboImpactTypes?.[name]??type,impactSound:character.comboImpactSounds?.[name],stage:path.length-1,chain:'sequence',path,combo:true,comboSpeed:speed,finisher,knockdown:finisher,
     damage:Math.round(damage*(type==='upperPunch'?1.4:1)*(finisher && path.length>1?COMBO_FINISH.damage:1)),
-    range:type==='upperPunch'?125:type==='lowKick'?120:type==='kick'?character.kickCombo?.ranges?.[kickIndex]??base.range:base.range,
-    knockback:finisher?30:0,stun:ARCADE.attack.stun*ARCADE.clock.stepMs,lane:ARCADE.body.lane,
+    range:character.comboRanges?.[name]??(type==='upperPunch'?125:type==='lowKick'?120:type==='kick'?character.kickCombo?.ranges?.[kickIndex]??base.range:base.range),
+    knockback:finisher?30:0,stun:ARCADE.attack.stun*ARCADE.clock.stepMs,lane:character.comboLanes?.[name]??ARCADE.body.lane,
     comboEffect:type==='upperPunch'?'explosion':type==='lowKick' && finisher?'sweep':null,
     frames:timeline({...accelerated,startupPose:art.slice(0,2),activePose:art[2],recoveryPose:art.slice(3),cancelFrames:more?ARCADE.input.comboCancelFrames:0})};
 }
 export function playerAttackData(character,type,stage=0,airborne=false,route){
+  if(airborne && type==='kick' && character.animations.airKick){
+    const art=character.animations.airKick,base=character.attacks.kick;
+    const style=character.airKickStyle; // e.g. Teleperforman's mid-air headset lash
+    return {...base,type,stage:0,finisher:true,combo:false,lane:ARCADE.body.lane,
+      ...(style?{impactType:style.impactType,impactSound:style.sound,range:style.range??base.range}:{}),
+      knockback:base.finisherKnockback??ARCADE.attack.finisherKnockback,stun:ARCADE.attack.stun*ARCADE.clock.stepMs,
+      frames:timeline({...PLAYER_ATTACK_FRAMES.jumpKick,startupPose:art[0],activePose:art.slice(1,3),recoveryPose:art[3]})};
+  }
   if(character.comboRoutes && !airborne && route!=='dash' && ['punch','kick','lowKick','upperPunch'].includes(type)){
     const sequence=sequenceAttack(character,type,stage,route);if(sequence)return sequence;
+    if(Array.isArray(route))return null;
     if(type==='upperPunch')type='punch';
   }
-  if(!airborne && !route && type==='kick' && character.kickCombo)route='kick';
+  if(!character.comboRoutes && !airborne && !route && type==='kick' && character.kickCombo)route='kick';
   const chain=airborne?null:comboFor(character,route);
   const combo=chain && chain.inputs[stage]===type?chain:null;
   if(combo && !route && character.kickCombo)route='ground';

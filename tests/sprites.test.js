@@ -65,3 +65,12 @@ test('overlapping pose rectangles retain the fighter without copying a neighbour
   const effects=fixture(30,25,fill,{isolateFrames:true,keepDetachedFrames:[0],trimFrames:true});
   assert.equal(effects.copies.at(-1)[0].width,20,'detached special effects can be explicitly retained');
 });
+
+test('airborne silhouettes keep a common source-space baseline after trimming',()=>{
+  const result=fixture(10,24,paint=>{
+    for(let y=4;y<12;y++)for(let x=2;x<8;x++)paint(x,y);
+  },{trimFrames:true,frameBaselines:{0:20}});
+  const [image,,y]=result.copies.at(-1);
+  assert.equal(result.texture.referenceHeight,8);
+  assert.equal(y+image.height,result.frames[0][5]-4-8,'inverted head/shoes stay eight pixels above the shared ground line');
+});

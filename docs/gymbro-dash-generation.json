@@ -1,0 +1,17 @@
+{
+  "tool": "imagegen (built-in)",
+  "source": "C:/Users/gandr/.codex/generated_images/01a1be31-fac4-7270-916e-3864593af3f3/exec-e60bcfb9-6360-4937-99ee-4d66acbc2c4f.png",
+  "reference": "src/data/players/gymbro_combos_v1.png",
+  "motionReference": "src/data/players/player_4_shoulder.png",
+  "output": "src/data/players/player_4_dash_consistent.png",
+  "prompt": "Generate ONE production game sprite sheet for Street Bogota: exactly SIX columns in ONE horizontal row, 6 separate full-body poses, transparent background, NO text, NO grid, NO cast shadows or VFX. Reference image 1 gymbro_combos_v1.png is the EXACT canonical identity and drawing style: match its first-row jab guard's broad muscular arms, thick shoulders and neck, chunky athletic body, short black hair, full short black beard and face, tan skin, plain black tank top, grey sweatpants, black sneakers with white soles. Reference image 2 player_4_shoulder.png is MOTION ONLY: replace the old slimmer character with the EXACT canonical punch-combo Gymbro. Six-frame grounded DASH / SHOULDER CHARGE to the RIGHT: 1 guard drops into forward-launch crouch; 2 explosive forward step torso leaning 30 degrees with both elbows tucked near chest; 3 strong low shoulder-leading charge, front shoulder projected toward right, leading knee flexed, back leg extended pushing off; 4 second forward shoulder charge contact stride legs exchanged while retaining torso lean; 5 braking/recovery step bringing torso upright; 6 return to EXACT first-row guard posture from reference 1, fists raised, wide planted stance. All six frames have identical body volume/head size; do not become thinner or younger, do not substitute the old face. Final guard is same physical height as canonical reference guard, leaning poses naturally lower but never rescale smaller. Fully show head hands elbows and both complete shoes in EVERY pose. Generous spacing. Each pose centered on a regular cell, planted foot on one common baseline. Clean crisp pixel sprite rendering matching reference 1. Ideally canvas1920x320.",
+  "frames": [
+    44,
+    45,
+    46,
+    47,
+    48,
+    49
+  ],
+  "nativeGuardHeight": 198
+}

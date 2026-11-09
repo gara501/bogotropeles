@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { StreetScene } from './StreetScene.js';
 import { characters } from '../data/characters.js';
 import { registerAnimations } from '../data/spriteSheets.js';
+import {INTRO_MUSIC} from '../audio/musicTracks.js';
+import {LevelMusic} from '../audio/LevelMusic.js';
 import office from '../data/players/player_1_profile.png?url';
 import student from '../data/players/player_2_profile.png?url';
 import teleperforman from '../data/players/player_3_profile.png?url';
@@ -14,7 +16,10 @@ const PROFILES = { office, student, teleperforman, gymbro, magolita };
 // Loads the shared textures (levels, pickups, props, effects) before combat starts; fighter and enemy sheets are loaded per level by Street.
 export class MenuScene extends Phaser.Scene {
   constructor() { super('Menu'); }
-  preload() { StreetScene.prototype.preload.call(this); }
+  preload() {
+    StreetScene.prototype.preload.call(this);
+    if(!this.cache.audio.exists(INTRO_MUSIC.key))this.load.audio(INTRO_MUSIC.key,INTRO_MUSIC.url);
+  }
   create() {
     for (const [key, config] of Object.entries(characters)) {
       const img = document.querySelector(`[data-portrait="${key}"]`);
@@ -39,6 +44,12 @@ export class MenuScene extends Phaser.Scene {
       cropped.width = right - left + 1; cropped.height = bottom - top + 1;
       cropped.getContext('2d').drawImage(portrait, left, top, cropped.width, cropped.height, 0, 0, cropped.width, cropped.height);
       document.querySelector(`[data-portrait="${key}"]`).src = cropped.toDataURL();
+    }
+    if(this.sound && this.cache?.audio && !this.game.menuMusic){
+      const music=this.game.menuMusic=new LevelMusic(this,INTRO_MUSIC.key);
+      // The Menu scene stops while the title, comic and selection remain visible.
+      this.game.events.on('poststep',music.onUpdate);
+      this.game.events.once('destroy',()=>{this.game.events.off('poststep',music.onUpdate);music.destroy();});
     }
     this.game.events.emit('menu-ready');
   }

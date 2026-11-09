@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readPng} from './helpers/readPng.js';
+import {registerHooks} from 'node:module';
+
+registerHooks({load(url,ctx,next){if(url.endsWith('?url'))return {format:'module',source:`export default ${JSON.stringify(url)}`,shortCircuit:true};return next(url,ctx);}});
+const {characters}=await import('../src/data/characters.js');
+
+test('Teleperforman kicks keep guard height and celebration does not grow by a quarter',()=>{
+  const png=readPng(new URL('../src/data/players/player_3.png',import.meta.url)),c=characters.teleperforman;
+  const height=frame=>{
+    const r=c.frameRects[frame];let top=r.height,bottom=-1;
+    for(let y=0;y<r.height;y++)for(let x=0;x<r.width;x++)if(png.pixel(r.x+x,r.y+y)[3]>32){top=Math.min(top,y);bottom=Math.max(bottom,y);}
+    return (bottom-top+1)*(c.frameScales?.[frame]??1);
+  };
+  const guard=height(c.idle);
+  for(const frame of c.animations.kick)assert.ok(Math.abs(height(frame)-guard)<2,`kick ${frame}`);
+  for(const frame of c.animations.victory)assert.ok(height(frame)<guard*1.16,`celebration ${frame}: raised arm fits without enlarging the whole body`);
+});
 
 // Measure actual face pixels rather than equating a crouch to a standing height.
 function faceArea(png,x,y,w,h){

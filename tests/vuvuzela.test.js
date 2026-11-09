@@ -122,7 +122,7 @@ test('Teleperforman keeps the same standing body size when walking armed, stoppi
 
 test('armed locomotion strips have exactly one configured cell per pose',()=>{
   // A mismatch makes prepareSheet read outside the image and build a texture too wide for WebGL.
-  const files=Object.fromEntries(Object.keys(ARMED_RUN).map(key=>[key,`${key}_vuvuzela_motion_v2.png`]));
+  const files=Object.fromEntries(Object.keys(ARMED_RUN).map(key=>[key,`${key}_vuvuzela_motion_v${key==='gymbro'?3:2}.png`]));
   for(const [character,run] of Object.entries(ARMED_RUN)){
     const png=readFileSync(new URL(`../src/data/players/${files[character]}`,import.meta.url));
     assert.equal(png.readUInt32BE(16),run.poses*(run.cellWidth??128),character);assert.equal(png.readUInt32BE(20),run.cellHeight??128,character);

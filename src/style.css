@@ -328,38 +328,44 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 @media(max-width:600px){.loader-panel{flex-direction:column;gap:12px}.loader-portrait{width:96px;height:96px}}
 @media(prefers-reduced-motion:reduce){.loader-bus svg,.loader-portrait,.loader-road::before{animation:none}.loader-bus,.loader-fill{transition:none}}
 /* Controls screen (src/ui/ControlsScreen.js): desktop only, between the selection and level 1 */
-.controls-screen{position:fixed;inset:0;z-index:26;display:flex;align-items:center;justify-content:center;padding:clamp(8px,2vw,24px);background:radial-gradient(ellipse at 50% 30%,#2a3463 0,#0b0f2a 75%)}
-.controls-panel{width:min(1200px,100%);max-height:100%;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable;border:24px solid transparent;border-image:url(./ui/cyber/plate.png) 12 / 24px stretch;
+.controls-screen{position:fixed;inset:0;z-index:26;display:flex;align-items:center;justify-content:center;padding:clamp(6px,1.6vmin,20px);background:radial-gradient(ellipse at 50% 30%,#2a3463 0,#0b0f2a 75%)}
+/* The whole screen fits the viewport: it never scrolls. Sizes scale with the shorter side (--u). */
+.controls-panel{--u:clamp(.62px,calc(min(100vh,100vw*.56)/1000),1px);display:flex;flex-direction:column;width:min(1240px,100%);max-height:100%;min-height:0;overflow:hidden;
+  border:calc(22*var(--u)) solid transparent;border-image:url(./ui/cyber/plate.png) 12 / calc(22*var(--u)) stretch;
   background:url(./ui/cyber/glass-soft.png) 0 0/128px 128px repeat,var(--cy-steel);background-clip:padding-box;image-rendering:pixelated;color:var(--cy-ink);box-shadow:0 20px 80px #000a}
-.controls-head{display:flex;justify-content:flex-start;gap:18px;align-items:center;margin-bottom:14px;padding:0;border:0;background:none}.controls-head>div{text-align:left}
-.controls-portrait{width:86px;height:86px;object-fit:cover;border:3px solid #0b0f2a;box-shadow:0 0 0 2px var(--cy-edge);image-rendering:auto}
-.controls-head h2{margin:2px 0 4px;font:800 clamp(28px,4vw,42px)/1 'Barlow Condensed',Impact,sans-serif;color:var(--cy-gold);text-shadow:3px 3px 0 var(--cy-red)}
-.controls-head .eyebrow{color:var(--cy-edge)}.controls-who{margin:0;font-size:11px;letter-spacing:2px;color:#c9d2ea}.controls-who b{color:var(--cy-ink)}
-.controls-grid{display:grid;grid-template-columns:minmax(145px,.55fr) minmax(0,1fr) minmax(0,1.2fr);gap:18px}
-.controls-grid section{min-width:0;background:#0b0f2a73;border:2px solid #0b0f2a;box-shadow:inset 0 0 0 1px #8babbf40;padding:16px}
-.controls-system-section{grid-column:1/-1}
-.controls-grid .combo-legend{margin:0 0 12px;color:var(--cy-edge);font-size:10px;line-height:1.7;letter-spacing:.5px}
-#controls-system{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
-#controls-combos li,#controls-system li{flex-direction:column;align-items:flex-start;gap:8px}
-.controls-grid h3{margin:0 0 10px;font-size:10px;letter-spacing:3px;color:var(--cy-edge)}.controls-grid h3:not(:first-child){margin-top:14px}
-.controls-move{display:flex;flex-direction:column;gap:12px;align-items:center}
-.dpad{display:grid;grid-template-areas:'. up .' 'left down right';grid-template-columns:repeat(3,38px);gap:4px}
-.controls-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
-.controls-list li{display:flex;align-items:flex-start;gap:12px;min-width:0;font-size:12px;line-height:1.5;letter-spacing:.5px}
-.controls-list .keys{display:flex;flex-wrap:wrap;align-items:center;gap:4px;flex-shrink:0;max-width:100%;min-width:64px}.controls-list .keys i{font-style:normal;color:var(--cy-edge)}
+.controls-head{display:flex;justify-content:flex-start;gap:calc(16*var(--u));align-items:center;margin-bottom:calc(12*var(--u));padding:0;border:0;background:none;flex-shrink:0}.controls-head>div{text-align:left}
+.controls-portrait{width:calc(68*var(--u));height:calc(68*var(--u));object-fit:cover;border:3px solid #0b0f2a;box-shadow:0 0 0 2px var(--cy-edge);image-rendering:auto}
+.controls-head h2{margin:2px 0 3px;font:800 calc(38*var(--u))/1 'Barlow Condensed',Impact,sans-serif;color:var(--cy-gold);text-shadow:3px 3px 0 var(--cy-red)}
+.controls-head .eyebrow{color:var(--cy-edge);font-size:calc(10*var(--u));margin:0}.controls-who{margin:0;font-size:calc(11*var(--u));letter-spacing:2px;color:#c9d2ea}.controls-who b{color:var(--cy-ink)}
+.controls-grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr);grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"move combos" "actions combos" "system system";gap:calc(12*var(--u))}
+.controls-grid section{min-width:0;min-height:0;background:#0b0f2a73;border:2px solid #0b0f2a;box-shadow:inset 0 0 0 1px #8babbf40;padding:calc(12*var(--u)) calc(14*var(--u))}
+.controls-grid>section:nth-child(1){grid-area:move}.controls-grid>section:nth-child(2){grid-area:actions}.controls-grid>section:nth-child(3){grid-area:combos}
+.controls-system-section{grid-area:system}
+.controls-grid .combo-legend{margin:0 0 calc(10*var(--u));color:var(--cy-edge);font-size:calc(10*var(--u));line-height:1.5;letter-spacing:.5px}
+.controls-grid h3{margin:0 0 calc(9*var(--u));font-size:calc(10*var(--u));letter-spacing:3px;color:var(--cy-edge)}
+.controls-move{display:flex;flex-direction:row;gap:calc(28*var(--u));align-items:center;justify-content:center}
+.controls-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:calc(8*var(--u))}
+.controls-list li{display:flex;align-items:center;gap:calc(12*var(--u));min-width:0;font-size:calc(12*var(--u));line-height:1.35;letter-spacing:.5px}
+.controls-list .keys{display:flex;flex-wrap:nowrap;align-items:center;gap:calc(4*var(--u));flex-shrink:0}.controls-list .keys i{font-style:normal;color:var(--cy-edge);font-size:calc(11*var(--u))}
+#controls-actions .keys{width:calc(64*var(--u))}
+#controls-combos .keys{width:calc(250*var(--u))}
 .controls-list .what{min-width:0;overflow-wrap:anywhere}
-.controls-list .what small{display:block;font-size:10px;line-height:1.6;color:var(--cy-gold);letter-spacing:.5px;margin-top:4px}
-.controls-screen kbd{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:34px;padding:0 6px;font:700 13px/1 'IBM Plex Mono',monospace;color:var(--cy-ink);
-  border:8px solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / 8px stretch;image-rendering:pixelated;box-sizing:border-box;text-shadow:0 2px 0 #1a0014}
-.controls-screen kbd.wide{min-width:64px;font-size:10px}
-.controls-foot{display:flex;justify-content:space-between;gap:12px;margin-top:16px}
-.controls-foot button{min-height:48px;padding:0 18px;font-size:12px;border:10px solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / 10px stretch;background:none;color:var(--cy-ink);letter-spacing:1.5px;text-shadow:0 2px 0 #1a0014;image-rendering:pixelated}
+.controls-list .what small{display:block;font-size:calc(10*var(--u));line-height:1.4;color:var(--cy-gold);letter-spacing:.5px;margin-top:calc(2*var(--u))}
+#controls-system{flex-direction:row;flex-wrap:wrap;column-gap:calc(30*var(--u));row-gap:calc(8*var(--u))}
+.controls-screen kbd{display:inline-flex;align-items:center;justify-content:center;min-width:calc(34*var(--u));height:calc(30*var(--u));padding:0 calc(5*var(--u));font:700 calc(12*var(--u))/1 'IBM Plex Mono',monospace;color:var(--cy-ink);
+  border:calc(7*var(--u)) solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / calc(7*var(--u)) stretch;image-rendering:pixelated;box-sizing:border-box;text-shadow:0 2px 0 #1a0014}
+.controls-move .dpad{display:grid;grid-template-columns:repeat(3,calc(36*var(--u)));grid-template-areas:". up ." "left down right";gap:calc(4*var(--u))}
+.controls-screen kbd.wide{min-width:calc(56*var(--u));font-size:calc(9*var(--u))}
+.controls-foot{display:flex;justify-content:space-between;gap:12px;margin-top:calc(12*var(--u));flex-shrink:0}
+.controls-foot button{min-height:calc(44*var(--u));padding:0 18px;font-size:calc(12*var(--u));border:10px solid transparent;border-image:url(./ui/cyber/button-plum.png) 5 fill / 10px stretch;background:none;color:var(--cy-ink);letter-spacing:1.5px;text-shadow:0 2px 0 #1a0014;cursor:pointer;image-rendering:pixelated}
 .controls-foot button.primary{border-image:url(./ui/cyber/button-red.png) 5 fill / 10px stretch;color:#fff7dc;text-shadow:0 2px 0 #6b0e10}
 .controls-foot button:hover{filter:brightness(1.3)}.controls-foot button:focus-visible{outline:2px solid var(--cy-gold);outline-offset:3px}
 .controls-foot .primary{animation:controls-pulse 1s steps(2) infinite}
 @keyframes controls-pulse{50%{filter:brightness(1.25)}}
-@media(max-width:900px){.controls-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.controls-grid>section:first-child{grid-column:1/-1}.controls-move{flex-direction:row;justify-content:center;gap:32px}#controls-system{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:560px){.controls-panel{border-width:16px;border-image-width:16px}.controls-grid{grid-template-columns:minmax(0,1fr);gap:12px}.controls-grid section{padding:12px}.controls-head{gap:12px}.controls-portrait{width:60px;height:60px}.controls-head .eyebrow,.controls-who{font-size:9px;letter-spacing:1px}#controls-system{grid-template-columns:minmax(0,1fr)}.controls-foot{flex-wrap:wrap}.controls-foot button{flex:1;font-size:10px;letter-spacing:.5px;padding:0 8px}}
+/* Narrow screens: one column; only here may the panel scroll, as a last resort on tiny phones. */
+@media(max-width:760px){.controls-panel{--u:.62px;overflow:auto}.controls-grid{grid-template-columns:minmax(0,1fr);grid-template-areas:"move" "actions" "combos" "system";grid-template-rows:none}
+  #controls-combos .keys{width:auto}#controls-combos li{flex-wrap:wrap}.controls-foot button{flex:1;letter-spacing:.5px;padding:0 8px}}
 @media(prefers-reduced-motion:reduce){.controls-foot .primary{animation:none}}
 .palette-picker{display:flex;align-items:center;gap:8px;flex-wrap:wrap;width:100%;max-width:1040px;align-self:center}
 .palette-picker .palette-label{font-size:9px;letter-spacing:2px;color:#aebeb1;margin-right:4px}
@@ -395,6 +401,27 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 .menu-foot{display:flex;gap:18px;font:600 10px 'IBM Plex Mono',monospace;color:#aebeb1;letter-spacing:1px}
 .menu-foot kbd{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#2bd27a;color:#05080a;font-size:10px;margin-right:4px}
 .menu-foot span+span kbd{background:#ff5d5d}
+.menu-back{flex-shrink:0;align-self:flex-start;margin-top:8px;min-height:36px;color:#e8e8e8}
+
+/* Fit the menu inside the actual space left by the mobile browser and stage bar. */
+.is-mobile[data-screen=menu] .toolbar{display:none}
+.is-mobile .main-menu{container-type:size;touch-action:pan-y}
+.is-mobile .menu-column{width:min(82%,420px);min-width:0;min-height:0;padding:12px 20px;justify-content:center}
+.is-mobile .menu-list{min-height:0;flex:0 1 auto;gap:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:3px 8px 3px 0}
+.is-mobile .menu-item{flex-shrink:0;align-items:center;min-height:36px;font-size:clamp(18px,3.7cqh,24px);gap:8px}
+.is-mobile .menu-item.big{font-size:clamp(24px,4.7cqh,32px)}
+.is-mobile .menu-item.active{transform:none}
+.is-mobile .menu-hint{flex-shrink:0;min-height:3em;margin:10px 0 0;font-size:10px;letter-spacing:0}
+.is-mobile .menu-foot{display:none}
+.is-mobile .menu-list .menu-subtitle~.menu-item{font-size:16px}
+@media(orientation:landscape) and (max-height:500px){
+  .is-mobile .menu-column{width:min(76%,620px);padding:8px 18px}
+  .is-mobile .menu-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-flow:row;column-gap:20px}
+  .is-mobile .menu-item{min-height:clamp(28px,11cqh,40px);font-size:18px}
+  .is-mobile .menu-item.big{font-size:24px}
+  .is-mobile .menu-subtitle{grid-column:1/-1;margin-bottom:4px}
+  .is-mobile .menu-hint{min-height:2.8em;margin-top:6px;font-size:9px}
+}
 
 /* ── Character selection (SoR4 style) ─────────────────────────────────── */
 .sor-select:not([hidden]){display:block!important;padding:0!important;overflow:hidden;background:linear-gradient(180deg,#071a2acc,#0b2f4699 50%,#071a2ad9),var(--selection-art) center/cover,#0b2333!important}
@@ -408,9 +435,12 @@ header,.intro,footer,.note{display:none}html,body{height:100%;overflow:hidden}bo
 .select-mode{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:2px;color:#7fe0ff;background:#05080acc;padding:6px 10px;border:1px solid #7fe0ff55}
 .select-stage{position:absolute;left:clamp(20px,4vw,70px);top:54px;width:clamp(300px,36vw,440px);z-index:2}
 .select-art{position:relative;height:clamp(180px,38vh,330px);overflow:visible;background:#0b2f46;box-shadow:0 0 0 2px #7fe0ff33,0 20px 40px #000a}
-.select-art-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 20%;opacity:.55;filter:saturate(1.2) contrast(1.05);mix-blend-mode:screen}
+.select-art-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;opacity:.55;filter:saturate(1.2) contrast(1.05);mix-blend-mode:screen}
 .select-art::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#3fb6ff22,#0b2f46cc)}
 .select-sprite{position:absolute;left:50%;bottom:-8px;width:min(95%,300px);height:auto;aspect-ratio:1;transform:translateX(-50%);image-rendering:pixelated;filter:drop-shadow(0 6px 0 #0007);animation:select-breathe 1.6s ease-in-out infinite}
+.select-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:12px;box-sizing:border-box;pointer-events:none}
+.select-loading img{display:block;min-height:0;width:min(65%,180px);height:70%;max-height:220px;object-fit:contain;image-rendering:pixelated;opacity:.8;filter:drop-shadow(0 3px 0 #0008)}
+.select-loading [role="status"]{position:relative;max-width:90%;margin:0;padding:8px 12px;background:#05080ae8;border:1px solid #7fe0ff88;color:#d8f5ff;text-align:center;font:600 11px/1.5 'IBM Plex Mono',monospace;letter-spacing:1px}
 @keyframes select-breathe{50%{transform:translateX(-50%) scaleY(1.015)}}
 .select-stage.enter .select-art{animation:select-slide .28s ease-out}
 @keyframes select-slide{from{transform:translateX(-24px);opacity:.3}}

@@ -1,8 +1,10 @@
 import {ARCADE} from '../data/arcade.js';
-export function joystickVector(dx,dy,radius,deadZone=ARCADE.movement.deadZone) {
+export function joystickVector(dx,dy,radius,deadZone=ARCADE.movement.touchDeadZone) {
   const distance=Math.hypot(dx,dy),strength=Math.min(1,distance/radius);
   if(!radius || strength<=deadZone)return {x:0,y:0};
-  const amount=(strength-deadZone)/(1-deadZone);
+  // Short thumb travel reaches cruising speed; retain fine movement near center.
+  const fullSpeed=Math.max(deadZone+.01,ARCADE.movement.touchFullSpeed);
+  const amount=Math.min(1,(strength-deadZone)/(fullSpeed-deadZone));
   return {x:dx/distance*amount,y:dy/distance*amount};
 }
 

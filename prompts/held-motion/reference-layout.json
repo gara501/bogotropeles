@@ -65,23 +65,23 @@
     "cols": 4
   },
   "gymbro": {
-    "file": "player_4_run.png",
+    "file": "player_4_run_consistent.png",
     "count": 8,
     "w": 256,
     "h": 256,
     "anchor": 128,
     "scale": 0.96,
     "n": 4,
-    "height": 208,
+    "height": 198,
     "heights": [
-      208,
-      214,
-      216,
-      203,
-      211,
-      210,
-      215,
-      198
+      198,
+      198,
+      200,
+      194,
+      199,
+      199,
+      200,
+      190
     ],
     "cols": 4
   },

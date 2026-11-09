@@ -1,0 +1,32 @@
+{
+  "tool": "imagegen (built-in)",
+  "source": "C:/Users/gandr/.codex/generated_images/01a1be31-fac4-7270-916e-3864593af3f3/exec-3c4c0824-22cd-470a-8172-2d89784bbe98.png",
+  "identityReference": "src/data/players/student_combos_v1.png",
+  "motionReference": "ejemplos/unive.jpg",
+  "output": "src/data/players/student_book_combo_v1.png",
+  "prompt": "Create ONE production game sprite atlas for Street Bogota: exactly SIX COLUMNS and THREE ROWS, 18 full-body isolated poses, transparent background, no text/grid/shadows. Reference image1 student_combos_v1.png is EXACT CHARACTER IDENTITY: Maca Demia university student, long flowing brown hair, white off-shoulder blouse with brown cuffs, brown belt, blue jeans, white sneakers, same athletic proportions face and crisp illustrated pixel-sprite style. Use the small red hardback book with gold spine shown in its bottom row. Reference image2 unive.jpg is MOTION RHYTHM ONLY: dynamic torso twists, hip pivots, stepping/lunging follow through and wide arm arcs; do NOT copy its red-haired fighter, costume or use kicks. We are replacing the last three K button presses of PPKKK with THREE MELEE BOOK STRIKES. All rows face/travel RIGHT. Do not draw punches or kicks: EACH ROW attacks with the RED BOOK visibly gripped throughout. Same physical body/head size across all18 cells, complete head hands book and shoes, generous margins. Row1 HORIZONTAL BOOK SWING: col1 standing natural guard holding book near chest (calibration pose, no raised arms); col2 wind book back beside left hip with torso twist; col3 CONTACT explosive forward-right horizontal book swing at enemy chest, arm extended book leading; col4 torso and long hair follow the rotation; col5 book retracts upward; col6 knee bent book chambered ready to rise. Row2 RISING BOOK STRIKE: col1 low crouch book at hip; col2 pushing up with hips rotating; col3 CONTACT powerful diagonal uppercut with the red book extended up-right above face; col4 arm follows arc above head; col5 both hands catch/hold book overhead; col6 poised overhead, feet still on floor. Row3 TWO-HANDED DESCENDING BOOK SLAM: col1 book overhead both hands; col2 torso coils and takes a short forward step; col3 CONTACT forceful diagonal DOWN-FORWARD book strike at enemy chest/waist height with deeply bent front knee; col4 low forward lunge follow through, book near forward knee; col5 recover weight onto rear foot; col6 stand in guard with book near chest. CRITICAL: column3 of EVERY row is the single contact frame, columns1-2 anticipate, columns4-6 follow through. No detached objects, no second character, no motion trails that overlap cells. Subtle small dark arc only if attached to the book, optional. All feet align on one ground line per row, do not change character scale when crouching. Canvas ideally1920x960.",
+  "selectedFrames": [
+    [
+      0,
+      1,
+      2,
+      4,
+      5
+    ],
+    [
+      6,
+      7,
+      8,
+      10,
+      11
+    ],
+    [
+      12,
+      13,
+      14,
+      15,
+      17
+    ]
+  ],
+  "note": "Only complete poses retaining the held book are selected; one shared scale from the first neutral pose. K remains the kick-button input and produces book strikes only inside PPKKK."
+}

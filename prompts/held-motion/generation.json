@@ -55,7 +55,11 @@
       "source": "prompts/held-motion/gymbro-vuvuzela-source.png",
       "original": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-112605a0-bff0-42a1-a161-ac19fdd7d991.png",
       "prompt": "EDIT the provided pixel-art animation reference sheet. Produce exactly 8 full-body poses arranged in EXACTLY 4 columns and TWO rows, reading left to right then second row. Each cell is an equal square. Keep every original leg pose, all foot placements, alternating forward/back leg depth, body lean, face, head size, hair, outfit, palette and RIGHT-facing camera. Character: Gymbro, large muscular black-haired bearded man, black tank top gray sweatpants black sneakers wristbands. Change ONLY the arms and hands to carry a SINGLE Colombian plastic vuvuzela: red grip, blue middle tube, yellow flared bell pointing forward to the RIGHT. Grip it at waist level, with its base firmly in the hand, never floating. Its length is about 30% of the character's height. The torso may counter-rotate subtly but the reference locomotion MUST remain a proper smooth looping gait with alternating legs. No attacks, swings, throws, kicks, idle poses, duplicate poses, backwards poses or leg redesigns. Preserve the same apparent body scale and same hip axis in each corresponding cell. Transparent RGBA background. Character and object fully contained in each cell with clear transparent margins. No shadows, scenery, grid lines, text, numbers, labels, baked checkerboard, extra objects or loose fragments. Keep the original pixel-art style and crisp pixel clusters. Preserve reference spacing and each cell's foot baseline. This is production spritesheet art, not an illustration.",
-      "file": "src/data/players/gymbro_vuvuzela_motion_v2.png"
+      "file": "src/data/players/gymbro_vuvuzela_motion_v3.png",
+      "styleCorrection": {
+        "source": "prompts/gymbro-consistency/vuvuzela-source.png",
+        "provenance": "prompts/gymbro-consistency/generation.json"
+      }
     },
     {
       "character": "gymbro",
@@ -63,7 +67,11 @@
       "source": "prompts/held-motion/gymbro-panela-source.png",
       "original": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-c9669ac6-4342-4f42-97ec-fa458172faf6.png",
       "prompt": "EDIT the provided pixel-art animation reference sheet. Produce exactly 8 full-body poses arranged in EXACTLY 4 columns and TWO rows, reading left to right then second row. Each cell is an equal square. Keep every original leg pose, all foot placements, alternating forward/back leg depth, body lean, face, head size, hair, outfit, palette and RIGHT-facing camera. Character: Gymbro, large muscular black-haired bearded man, black tank top gray sweatpants black sneakers wristbands. Change ONLY the arms and hands to carry a SINGLE small solid rectangular brown panela sugar brick, no wrapping, gripped in the forward hand at waist level. The brick is about 12% of the character's height; the other hand can support it or sway naturally. The torso may counter-rotate subtly but the reference locomotion MUST remain a proper smooth looping gait with alternating legs. No attacks, swings, throws, kicks, idle poses, duplicate poses, backwards poses or leg redesigns. Preserve the same apparent body scale and same hip axis in each corresponding cell. Transparent RGBA background. Character and object fully contained in each cell with clear transparent margins. No shadows, scenery, grid lines, text, numbers, labels, baked checkerboard, extra objects or loose fragments. Keep the original pixel-art style and crisp pixel clusters. Preserve reference spacing and each cell's foot baseline. This is production spritesheet art, not an illustration.",
-      "file": "src/data/players/gymbro_panela_motion_v2.png"
+      "file": "src/data/players/gymbro_panela_motion_v3.png",
+      "styleCorrection": {
+        "source": "prompts/gymbro-consistency/panela-source.png",
+        "provenance": "prompts/gymbro-consistency/generation.json"
+      }
     },
     {
       "character": "magolita",
@@ -79,7 +87,12 @@
       "source": "prompts/held-motion/magolita-panela-source.png",
       "original": "C:\\Users\\gandr\\.codex\\generated_images\\01a1b97c-c40c-7e22-bee6-51f168eb956c\\exec-efda2c93-6527-482a-83d9-7f9505ed716d.png",
       "prompt": "EDIT the provided pixel-art animation reference sheet. Produce exactly 8 full-body poses arranged in EXACTLY 4 columns and TWO rows, reading left to right then second row. Each cell is an equal square. Keep every original leg pose, all foot placements, alternating forward/back leg depth, body lean, face, head size, hair, outfit, palette and RIGHT-facing camera. Character: Magolita, stocky woman brown hair in bun blue cleaning blouse light blue apron purple gloves dark trousers black shoes. Change ONLY the arms and hands to carry a SINGLE small solid rectangular brown panela sugar brick, no wrapping, gripped in the forward hand at waist level. The brick is about 12% of the character's height; the other hand can support it or sway naturally. The torso may counter-rotate subtly but the reference locomotion MUST remain a proper smooth looping gait with alternating legs. No attacks, swings, throws, kicks, idle poses, duplicate poses, backwards poses or leg redesigns. Preserve the same apparent body scale and same hip axis in each corresponding cell. Transparent RGBA background. Character and object fully contained in each cell with clear transparent margins. No shadows, scenery, grid lines, text, numbers, labels, baked checkerboard, extra objects or loose fragments. Keep the original pixel-art style and crisp pixel clusters. Preserve reference spacing and each cell's foot baseline. This is production spritesheet art, not an illustration.",
-      "file": "src/data/players/magolita_panela_motion_v2.png"
+      "file": "src/data/players/magolita_panela_motion_v2.png",
+      "cleanup": {
+        "source": "prompts/held-motion/magolita-panela-clean-source.png",
+        "tool": "image_gen built-in",
+        "prompt": "Clean this production sprite sheet. Preserve EXACTLY the eight Magolita full-body walking poses, costumes, body scale, hand-held brown panela brick, facial identity, and exact layout (4 columns by 2 rows). Remove ALL extraneous white/gray/red scribbles, ghost silhouettes, noise, marks and remnants above and around the characters, particularly across the entire top margin and above the four top-row heads. Keep only the eight complete character silhouettes including their hair, apron ties, fingers, panela bricks and shoes. Everything else MUST be fully transparent alpha=0, not white or gray. No new poses, no repainting or repositioning of characters, no background scenery, no checkerboard. Restore clean transparent padding around every full-body sprite. Maintain the existing pixel-art style. This is a cleanup edit; do not redesign."
+      }
     }
   ]
 }

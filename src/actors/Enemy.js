@@ -201,7 +201,7 @@ export class Enemy {
   breakFree(){if(this.state!=='grabbed')return;this.transition('hurt');this.ready=this.clock+Math.round(ARCADE.ai.hurtCooldown/this.scene.level.pressure);}
   startThrown(dir,damage){
     const a=this.actor,s=this.scene,g=ARCADE.grab;
-    this.transition('thrown');this.thrown={dir,damage,frames:g.throwFrames,distance:g.throwDistance,height:g.throwHeight,hit:new Set()};
+    this.transition('thrown');this.thrown={dir,damage,frames:g.throwFrames,distance:g.throwDistance,height:g.throwHeight,fromZ:a.z??0,hit:new Set()};
     a.facing=-dir;a.sprite.setFlipX(a.facing<0);a.invulnerableUntil=s.combatTime+g.throwFrames*ARCADE.clock.stepMs+50;
   }
   /** Regular enemies (not bosses, minions or crossing bikes) use the corner-escape rule. */
@@ -332,17 +332,19 @@ export class Enemy {
     }
   }
   step(){
-    const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){combat.tokens.release(a);this.jugo?.destroy();this.ortencio?.destroy();this.sackSpin?.clear();this.endStruggle();return;}
+    const s=this.scene,a=this.actor,combat=this.runtime.combat;if(a.hp<=0){if(this.frenzy){this.frenzy=null;a.sprite.clearTint?.();}combat.tokens.release(a);this.jugo?.destroy();this.ortencio?.destroy();this.sackSpin?.clear();this.endStruggle();return;}
     if(this.state==='superDown'){this.stepSuperDown();return;}
     if(a.config.ringFighter){(this.ringFighter??=new RingFighter(this)).step();return;}
     if(a.config.reversa){(this.reversa??=new ReversaController(this)).step();return;}
     if(a.arriving)return;
     this.jugo?.tint();
     this.ortencio?.red();
+    this.frenzyGlow();
     if(a.config.boss && this.bossCornerStep())return;
     this.checkShieldPhase();
     if(combat.frozen(a))return;
     this.clock++;this.age++;
+    if(this.canFrenzy()){this.beginFrenzy();return;}
     if(a.config.jugo){(this.jugo??=new JugoController(this)).step();return;}
     if(this.sackSpin?.step())return;
     if(a.config.pacho){this.pacho??=new PachoController(this);this.pacho.step();return;}
@@ -351,7 +353,8 @@ export class Enemy {
     if(this.state==='grabbed'){if(!a.grabMove && !this.struggle())this.pose('hurt',a.config.animations.hurt?.[0]??a.config.idle);return;} // the player positions it
     if(this.state==='thrown'){
       const t=this.thrown,g=ARCADE.grab,art=a.config.animations.defeat??a.config.animations.hurt;
-      a.x=clamp(a.x+t.dir*t.distance/t.frames,s.floor.left,s.floor.right);a.z=Math.sin(Math.min(1,this.age/t.frames)*Math.PI)*t.height;
+      const progress=Math.min(1,this.age/t.frames);
+      a.x=clamp(a.x+t.dir*t.distance/t.frames,s.floor.left,s.floor.right);a.z=(t.fromZ??0)*(1-progress)+Math.sin(progress*Math.PI)*t.height;
       this.pose('defeat',art[0]);
       // The flying body bowls over anyone in its way.
       for(const other of s.enemies)if(other!==a && other.hp>0 && !t.hit.has(other) && !other.crossing && Math.abs(other.x-a.x)<44 && Math.abs(other.y-a.y)<ARCADE.body.lane &&
@@ -422,6 +425,7 @@ export class Enemy {
       a.x=clamp(a.x+p.dir*(p.distance??ev.distance)/p.frames,s.floor.left,s.floor.right);a.z=Math.sin(t*Math.PI)*(p.height??ev.height);
       if(p.toY!=null)a.y=p.fromY+(p.toY-p.fromY)*t;
       this.pose('evade',p.poses?p.poses[Math.min(p.poses.length-1,Math.floor(t*p.poses.length))]:p.pose??(ev.poses?ev.poses[Math.min(ev.poses.length-1,Math.floor(t*ev.poses.length))]:ev.pose));
+      if(this.age>=p.frames && p.frenzy){a.z=0;this.evade=null;this.frenzyHop();return;}
       if(this.age>=p.frames){a.z=0;this.evade=null;if(ev.stain)s.paintStain?.(a.x,a.y,ev.stain,a); // landing mark
         // Summoners call a wave instead of rushing back in; a cornered enemy that escaped just regroups.
         if(ev.summonAfter){this.summonReady=0;this.rush=false;}else this.rush=!p.escape;
@@ -562,6 +566,44 @@ export class Enemy {
     this.action={data:enemyThrowData(config,s.level.damage??1),index:0,hit:false,throw:true,barrage:true};
     this.barrageReady=this.clock+toFrames((c.cooldown[0]+Math.random()*(c.cooldown[1]-c.cooldown[0]))/s.level.pressure);
     a.tell.setText('¡LLUVIA DE SPRAY!').setVisible(true);this.transition('windup');return true;
+  }
+  /** config.frenzy (level-1 boss): once below `below` health, from a state that can leap away. */
+  canFrenzy(){
+    const a=this.actor,f=a.config.frenzy;
+    return Boolean(f) && !this.frenzyStarted && a.hp>0 && a.hp<=a.config.hp*f.below && ['approach','circle','recover','hurt'].includes(this.state);
+  }
+  beginFrenzy(){
+    const a=this.actor,s=this.scene,f=a.config.frenzy;
+    this.frenzyStarted=true;this.runtime.combat.tokens.release(a);this.action=null;a.pending=null;this.rush=false;this.stunFrames=null;
+    const [lo,hi]=f.hops;this.frenzy={hopsLeft:lo+Math.floor(Math.random()*(hi-lo+1))};
+    // From here on the knife combo is quicker and he moves a bit faster (per-actor copy, like Brayatan's phase two).
+    a.config={...a.config,combo:{...a.config.combo,...f.combo},speed:a.config.speed*(f.speedMultiplier??1)};
+    a.tell.setText(f.label).setVisible(true);s.sfx?.play('wave');
+    this.frenzyHop();
+  }
+  /** One fast leap to a far point of the arena; after the last one he lands and whistles for help. */
+  frenzyHop(){
+    const a=this.actor,s=this.scene,f=a.config.frenzy,fl=s.floor;
+    if(this.state==='evade')this.transition('approach');
+    if(this.frenzy.hopsLeft<=0){
+      this.frenzy.hopsLeft=0;a.invulnerableUntil=0;a.tell.setVisible(false);this.ready=this.clock;
+      if(a.config.summon)this.beginSummon();
+      return;
+    }
+    this.frenzy.hopsLeft--;
+    let target=a.x;
+    for(let i=0;i<8 && Math.abs(target-a.x)<f.minDistance;i++)target=fl.left+30+Math.random()*(fl.right-fl.left-60);
+    if(Math.abs(target-a.x)<f.minDistance)target=a.x-fl.left>fl.right-a.x?fl.left+30:fl.right-30;
+    const toY=clamp(fl.top+10+Math.random()*(fl.bottom-fl.top-20),fl.top+5,fl.bottom-5),frames=toFrames(f.hopMs);
+    this.transition('evade');
+    a.facing=Math.sign(target-a.x)||a.facing;a.sprite.setFlipX(a.facing<0);
+    this.evade={dir:Math.sign(target-a.x)||1,distance:Math.abs(target-a.x),frames,height:f.height,pose:f.pose,fromY:a.y,toY,frenzy:true,escape:true};
+    a.invulnerableUntil=s.combatTime+f.hopMs+ARCADE.clock.stepMs*2;s.sfx?.play('whip');
+  }
+  /** Pulsing red while enraged; the white hit flash still shows on top. */
+  frenzyGlow(){
+    const a=this.actor,f=a.config.frenzy;if(!this.frenzy || !f || a.hp<=0 || this.runtime.combat.flashes?.has(a))return;
+    a.sprite.setTint?.(f.tint[Math.floor(this.clock/6)%f.tint.length]);
   }
   /** Summoner bosses: call a wave when the cooldown allows and few of their minions are still up. */
   canSummon(){

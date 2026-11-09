@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {readFileSync,readdirSync,existsSync} from 'node:fs';
-import {TouchInput} from '../src/input/TouchInput.js';
+import {TouchInput,joystickVector} from '../src/input/TouchInput.js';
 import {registerHooks} from 'node:module';
 import {COMBAT_CAMPAIGN as ALL_COMBAT_STAGES,CAMPAIGN as PLAYABLE_CAMPAIGN,campaignIndexForCombat,scaledEnemy,crossingHits} from '../src/data/campaign.js';
 import {RingBonus} from '../src/bonus/RingBonus.js';
@@ -63,6 +63,7 @@ const {Panela}=await import('../src/game/Panela.js');
 const {actorsFor}=await import('../src/data/actorSet.js');hooks.deregister();
 const {CyclingStage}=await import('../src/cycling/CyclingStage.js');
 const {MonserrateStage}=await import('../src/monserrate/MonserrateStage.js');
+const {MONSERRATE}=await import('../src/monserrate/MonserrateRun.js');
 const {CYCLING}=await import('../src/cycling/CyclingRun.js');
 const {CYCLING_PLAYERS,CYCLING_ASSETS}=await import('../src/data/cycling.js');
 
@@ -382,7 +383,7 @@ test('Monserrate freezes on pause, accepts keyboard and touch steering, and coll
 test('Monserrate finish awards once, waits for result and advances to La Candelaria',()=>{
   const {s,stage,tick}=monserrateFixture(),results=[],transitions=[];
   s.game.events.on('level-result',r=>results.push(r));s.game.events.on('level-transition',r=>transitions.push(r));
-  stage.run.distance=1099.99;tick();assert.equal(s.finished,true);assert.equal(s.run.score,7500);
+  stage.run.distance=MONSERRATE.length-.01;tick();assert.equal(s.finished,true);assert.equal(s.run.score,7500);
   stage.finish();assert.equal(s.run.score,7500);s.nextLevel();assert.equal(transitions.length,0);
   tick(100);assert.equal(results.length,1);assert.equal(results[0].monserrate,true);assert.equal(results[0].collectible,'el-perdido-de-la-pena-lisa');
   s.nextLevel();s.nextLevel();assert.deepEqual(transitions,[{character:'magolita',level:MODE('monserrate')+1}]);
@@ -394,7 +395,7 @@ test('one Monserrate crash removes the card bonus even after respawn, while norm
   s.game.events.on('level-result',result=>results.push(result));
   stage.run.nextWave=Infinity;stage.run.npcs=[{id:99,lane:0,z:.01,passed:false}];tick();
   assert.equal(stage.run.crashes,1);stage.respawn();assert.equal(stage.run.crashes,1);
-  stage.run.distance=1099.99;tick();assert.equal(s.run.score,2500);
+  stage.run.distance=MONSERRATE.length-.01;tick();assert.equal(s.run.score,2500);
   stage.finish();tick(100);assert.equal(s.run.score,2500);
   assert.equal(results.length,1);assert.equal(results[0].collectible,null);assert.equal(results[0].crashes,1);
 });
@@ -993,7 +994,7 @@ test('hitting, grabbing and killing a cuidacarros cancel the pending whistle and
   until(()=>model.cuidacarros.phase==='windup');model.seize();step(100);
   assert.equal(sounds.filter(n=>n==='whistle').length,0);assert.equal(model.state,'grabbed');model.breakFree();
   until(()=>model.cuidacarros.phase==='windup');s.hitEnemy(caller,{damage:10000,knockback:0,facing:1});step(400);
-  assert.equal(caller.hp,0);assert.ok(sounds.includes('enemy1Die'));assert.equal(sounds.filter(n=>n==='whistle').length,0);
+  assert.equal(caller.hp,0);assert.ok(sounds.includes('elderDie'));assert.equal(sounds.filter(n=>n==='whistle').length,0);
 });
 
 test('random level reinforcements survive their caller and must be defeated without corrupting campaign totals',()=>{
@@ -1035,10 +1036,10 @@ test('slide strips sit inside their stacked sheets with one 6-pose cell each',as
   const png=file=>readFileSync(new URL(`../src/data/players/${file}`,import.meta.url));
   for(const [key,files] of Object.entries({office:['player_1.png','player_1_agarre.png','player_1_walk.png','player_1_run_clean.png','player_1_slide.png'],
     student:['player_2.png','player_2_agarre.png','player_2_walk.png','player_2_slide.png','player_2_kicks_air.png'],teleperforman:['player_3.png','player_3_combo.png','player_3_agarre_consistent.png','player_3_walking.png','player_3_walk.png','player_3_slide_clean.png'],
-    magolita:['player_5.png','player_5_agarre_clean.png','player_5_walk.png','player_5_slide_clean.png','player_5_kicks.png'],gymbro:['player_4.png','player_4_agarre.png','player_4_run.png','player_4_shoulder.png','player_4_piledriver.png']})){
-    const c=characters[key],pngs=files.map(png),stripIndex=files.findIndex(file=>/slide|shoulder/.test(file)),
+    magolita:['player_5.png','player_5_agarre_clean.png','player_5_walk.png','player_5_slide_clean.png','player_5_kicks.png'],gymbro:['player_4.png','player_4_agarre_consistent.png','player_4_run.png','player_4_dash_consistent.png','player_4_piledriver.png']})){
+    const c=characters[key],pngs=files.map(png),stripIndex=files.findIndex(file=>/slide|shoulder|dash_consistent/.test(file)),
       strip=pngs[stripIndex],offset=pngs.slice(0,stripIndex).reduce((h,p)=>h+p.readUInt32BE(20),0);
-    assert.equal(c.appendUrls.length,files.length,key);assert.equal(c.rows.reduce((a,n)=>a+n,0),c.frameRects.length,key);
+    assert.equal(c.appendUrls.length,files.length+2+(key==='student'||key==='teleperforman'?2:['gymbro','office'].includes(key)?1:0),key);assert.equal(c.rows.reduce((a,n)=>a+n,0),c.frameRects.length,key);
     const opener=c.dashCombo.inputs[0];assert.equal(c.animations[opener].length,6,key);
     for(const frame of c.animations[opener]){
       const r=c.frameRects[frame];
@@ -1158,18 +1159,127 @@ test('phase data can distribute multiple source poses without moving the active 
   assert.deepEqual(frames.map(f=>f.cancel),[false,false,false,false,true]);
 });
 
-test('Magolita retains three separate punch impacts alongside her new leg kicks',async()=>{
+test('mobile PPKKK links five distinct impacts and only the fifth is a finisher for every fighter',()=>{
+  for(const character of ['office','student','teleperforman','gymbro','magolita'])for(const keys of [['H','H','J','J','J']]){
+    const {s,target,step,press}=arcadeSetup(character),player=s.arcade.player;
+    let expected=0;const sounds=[];s.sfx={play:name=>sounds.push(name)};
+    for(let stage=0;stage<keys.length;stage++){
+      press(keys[stage]);
+      const data=player.action.data;expected+=data.damage;
+      assert.equal(data.stage,stage,character);
+      assert.equal(data.finisher,stage===keys.length-1,character);
+      if(character==='student' && stage>=2)assert.equal(data.impactType,'book');
+      if(stage<keys.length-1){
+        let guard=0;while(!player.action?.data.frames[player.action.index]?.cancel && guard++<80)step();
+        assert.ok(guard<80,character);
+      }
+    }
+    step(80);assert.equal(target.hp,1000-expected,`${character}: each strike damages once`);
+    assert.equal(player.state,'walk');
+    assert.equal(s.health,100,'PPKKK is a basic combo and spends no special energy');
+    if(character==='student'){
+      assert.equal(sounds.filter(name=>name==='punch').length,5,'punch and book contact sound once per strike');
+      assert.equal(sounds.includes('kick'),false,'book contact must not use a kick sound');
+    }
+  }
+});
+
+test('Universitaria KKK has three distinct kick contacts, a circular finisher and the correct combo label on keyboard and touch',()=>{
+  for(const facing of [-1,1])for(const mobile of [false,true]){
+    const {s,target,step,press}=arcadeSetup('student'),p=s.arcade.player;
+    s.player.x=450;s.facing=facing;target.x=450+facing*55;
+    const hits=[],sounds=[],labels=[],hit=s.hitEnemy.bind(s);
+    s.hitEnemy=(enemy,attack)=>{hits.push({...attack,pose:s.player.sprite.frame});return hit(enemy,attack);};
+    s.sfx={play:name=>sounds.push(name)};s.arcade.combat.comboFinish=(a,t,data,label)=>labels.push(label);
+    if(mobile)s.game.touchControls={input:new TouchInput()};
+    const kick=()=>{if(!mobile)return press('J');const input=s.game.touchControls.input;input.down('J','kick-finger');step();input.up('kick-finger');};
+    kick();
+    for(let stage=1;stage<3;stage++){
+      let guard=0;while(!p.action?.data.frames[p.action.index]?.cancel && guard++<80)step();
+      assert.ok(guard<80);kick();assert.equal(p.action.data.stage,stage);
+    }
+    step(80);
+    assert.equal(hits.length,3);assert.deepEqual(hits.map(h=>h.damage),[22,24,40]);
+    assert.deepEqual(hits.map(h=>h.finisher),[false,false,true]);
+    assert.deepEqual(hits.map(h=>h.impactType),['kick','kick','kick']);
+    assert.deepEqual(hits.map(h=>h.pose),['chainStudentKick1','chainStudentKick2','chainStudentCircleKick'].map(name=>s.character.animations[name][2]));
+    assert.equal(target.hp,914);assert.equal(s.arcade.enemies.get(target).state,'down');
+    assert.equal(s.health,100);assert.equal(sounds.filter(name=>name==='kick').length,3);assert.deepEqual(labels,['KKK']);
+  }
+});
+
+test('Teleperforman PPP and KKK land their three weapon contacts on keyboard and touch in both directions',()=>{
+  for(const route of ['ppp','kkk'])for(const facing of [-1,1])for(const mobile of [false,true]){
+    const {s,target,step,press}=arcadeSetup('teleperforman'),p=s.arcade.player;
+    s.player.x=450;s.facing=facing;target.x=450+facing*105;
+    const hits=[],sounds=[],labels=[],hit=s.hitEnemy.bind(s),key=route==='ppp'?'H':'J';
+    s.hitEnemy=(enemy,attack)=>{hits.push({...attack,pose:s.player.sprite.frame});return hit(enemy,attack);};
+    s.sfx={play:name=>sounds.push(name)};s.arcade.combat.comboFinish=(a,t,data,label)=>labels.push(label);
+    if(mobile)s.game.touchControls={input:new TouchInput()};
+    const tap=()=>{if(!mobile)return press(key);const input=s.game.touchControls.input;input.down(key,'weapon-finger');step();input.up('weapon-finger');};
+    tap();
+    for(let stage=1;stage<3;stage++){
+      let guard=0;while(!p.action?.data.frames[p.action.index]?.cancel && guard++<80)step();
+      assert.ok(guard<80);tap();assert.equal(p.action.data.stage,stage);
+    }
+    step(80);
+    const names=route==='ppp'?['chainPunch1','chainPunch2','chainPunch3']:['chainPhoneRise','chainPhoneSpin','chainPhoneSlam'];
+    assert.equal(hits.length,3);assert.deepEqual(hits.map(h=>h.finisher),[false,false,true]);
+    assert.deepEqual(hits.map(h=>h.pose),names.map(name=>s.character.animations[name][2]));
+    assert.deepEqual(hits.map(h=>h.impactType),Array(3).fill(route==='ppp'?'punch':'phoneSlam'));
+    assert.equal(target.hp,1000-hits.reduce((sum,h)=>sum+h.damage,0));assert.equal(s.arcade.enemies.get(target).state,'down');
+    assert.equal(s.health,100,'basic weapon combos spend no special energy');
+    assert.equal(sounds.filter(name=>name===(route==='ppp'?'punch':'celuco')).length,3);assert.deepEqual(labels,[route.toUpperCase()]);
+  }
+});
+
+test('double forward from touch or keyboard starts the real dash in both facing directions',()=>{
+  for(const touch of [false,true])for(const facing of [-1,1]){
+    const {s,target,step}=arcadeSetup('gymbro');target.x=850;s.player.x=450;s.facing=facing;
+    s.game.touchControls={input:new TouchInput()};
+    const move=value=>{if(touch)s.game.touchControls.input.x=value;else s.keys[facing===1?'D':'A'].isDown=Boolean(value);};
+    move(facing);step(4);assert.equal(s.arcade.player.state,'walk');
+    move(0);step(2);move(facing);step();
+    assert.equal(s.arcade.player.state,'dash');assert.equal(s.arcade.player.vector.x,facing);
+  }
+});
+
+test('all fighters load a grabbed rival over the shoulder before forward and backward projection',()=>{
+  for(const character of ['office','student','teleperforman','gymbro','magolita'])for(const backwards of [false,true]){
+    const {s,target,step,press,model,walkIn}=grabSetup(character);s.player.x=450;target.x=500;walkIn();
+    const hp=target.hp;
+    if(backwards)s.keys.A.isDown=true;
+    press(backwards && !s.character.grabShake?'H':'J');s.keys.A.isDown=false;
+    step(5);assert.equal(model.state,'grabbed');assert.ok(target.z>20);assert.equal(target.hp,hp);
+    const before=target.z;
+    let releaseGuard=0;while(model.state==='grabbed' && releaseGuard++<10)step();
+    assert.equal(model.state,'thrown');assert.ok(target.z>=before,'release preserves the loaded height');
+    const releaseX=target.x;let guard=0;
+    while(model.state!=='down' && guard++<80)step();
+    assert.equal(model.state,'down');assert.equal(target.z,0);
+    assert.ok((target.x-releaseX)*(backwards?-1:1)>150);
+    assert.equal(target.hp,hp-Math.round(s.character.attacks.kick.damage*ARCADE.grab.throwDamage));
+  }
+});
+
+test('interrupting a shoulder throw before release returns the held enemy to the floor',()=>{
+  const {s,target,step,press,walkIn}=grabSetup();walkIn();press('J');step(5);
+  assert.ok(target.z>0);s.arcade.player.hurt();assert.equal(target.z,0);
+  assert.notEqual(s.arcade.enemies.get(target).state,'grabbed');
+});
+
+test('Magolita retains two separate punch impacts and a standalone leg kick',async()=>{
   const {s,target,step,press}=arcadeSetup('magolita');
   press('H');
-  for(let stage=0;stage<2;stage++){
+  for(let stage=0;stage<1;stage++){
     let guard=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && guard++<80)step();
     assert.ok(guard<80);press('H');assert.equal(s.arcade.player.action.data.stage,stage+1);
   }
   const punch=s.character.attacks.punch.damage;
-  step(70);assert.equal(target.hp,1000-2*punch-Math.round(punch*1.25),'the third punch completes PPP: a heavier finisher');
+  step(70);assert.equal(target.hp,1000-2*punch,'two punches do not complete the five-strike combo');
   const {playerAttackData}=await import('../src/data/attacks.js');
   const kick=playerAttackData(s.character,'kick');assert.equal(kick.range,96);
-  assert.ok(kick.frames.filter(f=>f.phase==='active').every(f=>f.pose===s.character.animations.chainKick1[2]));
+  assert.ok(kick.frames.filter(f=>f.phase==='active').every(f=>f.pose===s.character.animations.kick[2]));
 });
 
 test('Magolita mop costs energy once, hits more than three punches, knocks down and throws a water splash',()=>{
@@ -1183,7 +1293,7 @@ test('Magolita mop costs energy once, hits more than three punches, knocks down 
 
 test('Magolita atlas and animation frames fit player_5 and selection has no temporary level picker',()=>{
   const c=setup(0,'magolita').character,png=readFileSync(new URL('../src/data/players/player_5.png',import.meta.url));
-  assert.equal(c.frameRects.length,113,'original 81 poses + 32 shared-combo poses');
+  assert.equal(c.frameRects.length,129,'81 original + 32 shared combo + 12 aerial + 4 uppercut poses');
   for(const r of c.frameRects.slice(0,39)){assert.ok(r.x>=0 && r.y>=0 && r.x+r.width<=png.readUInt32BE(16) && r.y+r.height<=png.readUInt32BE(20));}
   for(const frames of Object.values(c.animations))for(const frame of frames)assert.ok(frame>=0 && frame<c.frameRects.length);
   const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
@@ -1196,25 +1306,37 @@ test('input buffer expires after its window (12 frames: forgiving combos), consu
 });
 test('production arcade runtime starts and stops immediately, has slower depth movement and enforces every lane',()=>{
   const {s,step}=arcadeSetup();const x=s.player.x,y=s.player.y;s.keys.D.isDown=true;step();
-  assert.equal(s.player.x-x,s.character.speed/60);s.keys.D.isDown=false;const stopped=s.player.x;step(20);assert.equal(s.player.x,stopped);
+  assert.ok(Math.abs(s.player.x-x-s.character.speed/60)<1e-9);s.keys.D.isDown=false;const stopped=s.player.x;step(20);assert.equal(s.player.x,stopped);
   s.keys.S.isDown=true;step();assert.ok(Math.abs(s.player.y-y-s.character.speed*ARCADE.movement.depthRatio/60)<1e-6);
   for(const level of CAMPAIGN){const lane={top:level.top,bottom:level.bottom??500};Object.assign(s.floor,lane);s.player.y=lane.top; s.keys.S.isDown=false;s.keys.W.isDown=true;step(60);assert.equal(s.player.y,lane.top);s.keys.W.isDown=false;s.keys.S.isDown=true;step(200);assert.equal(s.player.y,lane.bottom);}
 });
+test('all five fighters respond immediately to short thumb travel, reversal and release',()=>{
+  for(const character of ['office','student','teleperforman','gymbro','magolita']){
+    const {s,step}=arcadeSetup(character),input=new TouchInput();
+    s.enemies=[];s.game.touchControls={input};
+    Object.assign(input,joystickVector(25,0,50));const from=s.player.x;
+    step();assert.ok(s.player.x-from>s.character.speed/60*.7,`${character}: useful speed on the first step`);
+    Object.assign(input,joystickVector(-33,0,50));const turn=s.player.x;
+    step();assert.ok(Math.abs(s.player.x-turn+s.character.speed/60)<1e-9,`${character}: immediate reversal`);
+    input.reset();const stopped=s.player.x;step(10);assert.equal(s.player.x,stopped);
+  }
+});
+
 test('production damage is gated by the displayed active frame, once per target, with independent narrow boxes',()=>{
   const {s,target,step,press}=arcadeSetup();press('H');step(5);assert.equal(target.hp,1000);
   step();assert.equal(s.player.sprite.frame,s.character.animations.chainPunch1[2]);assert.equal(target.hp,962);step(40);assert.equal(target.hp,962);
   target.y=s.player.y+ARCADE.body.lane;press('H');step(40);assert.equal(target.hp,962);
   target.y=s.player.y;target.z=ARCADE.body.airborneAvoidHeight;press('H');step(40);assert.equal(target.hp,962);
 });
-test('Gymbro cancels only in the late window; three linked active poses deal three separate hits',()=>{
+test('Gymbro cancels only in the late window; PP K deals three separate hits without finishing early',()=>{
   const {s,target,step,press}=arcadeSetup();press('H');press('H');step(40);assert.equal(target.hp,962,'an early queued strike expires before the cancel window');
-  step(21); // past the link window (comboLinkFrames), so the next H starts a fresh combo
+  step(ARCADE.input.comboLinkFrames+1); // past the link window (comboLinkFrames), so the next H starts a fresh combo
   press('H');
   for(let stage=0;stage<2;stage++){
     let guard=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && guard++<60)step();
-    assert.ok(guard<60);press('H');assert.equal(s.arcade.player.action.data.stage,stage+1);
+    assert.ok(guard<60);press(stage===0?'H':'J');assert.equal(s.arcade.player.action.data.stage,stage+1);
   }
-  step(70);assert.equal(target.hp,1000-38*3-Math.round(38*1.25),'the third punch is the PPP finisher (×1.25)');assert.equal(s.arcade.player.state,'walk');
+  step(70);assert.equal(target.hp,1000-38*3-42,'the first kick is still an opening strike');assert.equal(s.arcade.player.state,'walk');
 });
 test('a combo strike pressed shortly after the previous one ends still links (comboLinkFrames)',()=>{
   const {s,step,press}=arcadeSetup();press('H');
@@ -1222,23 +1344,23 @@ test('a combo strike pressed shortly after the previous one ends still links (co
   step(5);press('H');step();assert.equal(s.arcade.player.action.data.stage,1);
 });
 
-test('Magolita chains three kicks then DOWN + kick into the sweeping fourth strike',()=>{
+test('Magolita PPKKK uses three kicks and holding down cannot restore the retired sweep route',()=>{
   for(const facing of [-1,1]){
     const {s,target,step,press}=arcadeSetup('magolita');s.facing=facing;s.player.x=450;target.x=s.player.x+facing*55;
     const hits=[],hit=s.hitEnemy.bind(s);
     s.hitEnemy=(enemy,attack)=>{hits.push({damage:attack.damage,finisher:attack.finisher,stage:attack.stage,pose:s.player.sprite.frame});return hit(enemy,attack);};
-    press('J');
-    for(let stage=0;stage<3;stage++){
+    press('H');
+    for(let stage=0;stage<4;stage++){
       let guard=0;
       while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && guard++<80)step();
-      assert.ok(guard<80);if(stage===2)s.keys.S.isDown=true;press('J');s.keys.S.isDown=false;assert.equal(s.arcade.player.action.data.stage,stage+1);
+      assert.ok(guard<80);if(stage>=2)s.keys.S.isDown=true;press(stage===0?'H':'J');s.keys.S.isDown=false;assert.equal(s.arcade.player.action.data.stage,stage+1);
       assert.equal(s.arcade.player.action.data.chain,'sequence');
     }
     step(80);
-    assert.deepEqual(hits.map(h=>h.damage),[12,14,20,28],'route finishers (3rd kick of KKK, the sweep) hit ×1.25');
-    assert.deepEqual(hits.map(h=>h.finisher),[false,false,false,true]);
-    assert.deepEqual(hits.map(h=>h.pose),[s.character.animations.chainKick1[2],s.character.animations.chainKick2[2],s.character.animations.chainKick3[2],s.character.animations.chainSweep[2]]);
-    assert.equal(target.hp,1000-(12+14+20+28));assert.equal(s.arcade.player.state,'walk');
+    assert.deepEqual(hits.map(h=>h.damage),[28,28,12,14,20]);
+    assert.deepEqual(hits.map(h=>h.finisher),[false,false,false,false,true]);
+    assert.deepEqual(hits.map(h=>h.pose),['chainPunch1','chainPunch2','chainKick1','chainKick2','chainKick3'].map(name=>s.character.animations[name][2]));
+    assert.equal(target.hp,1000-(28+28+12+14+20));assert.equal(s.arcade.player.state,'walk');
     step(ARCADE.input.comboLinkFrames+1);press('J');assert.equal(s.arcade.player.action.data.stage,0);
     assert.ok(s.character.kickCombo.ranges.every(range=>range<=112));
   }
@@ -1375,20 +1497,20 @@ function gymPunchScene(facing=1) {
 test('Gymbro single press holds only the first punch pose and deals exactly one hit',()=>{
   const {s,enemy,hits,poses,sounds,advance,press}=gymPunchScene();
   press();advance(70);assert.equal(enemy.hp,500);
-  advance(20);assert.deepEqual(hits,[{stage:0,damage:38}]);
+  advance(20);assert.deepEqual(hits,[{stage:undefined,damage:38}]);
   assert.equal(s.player.sprite.animation,'gymbro-punch');assert.deepEqual(s.character.animations.punch,[8]);
   advance(1000);assert.equal(enemy.hp,462);assert.equal(s.playerAttack,null);
   assert.deepEqual(poses,['punch']);assert.deepEqual(sounds,['punch']);assert.equal(s.health,100);
 });
-test('Gymbro buffers two or three quick presses and impacts once per stage in either direction',()=>{
+test('legacy Gymbro quick punches cannot restore the retired PPP chain in either direction',()=>{
   for(const facing of [-1,1])for(const count of [2,3]) {
     const {s,enemy,hits,poses,sounds,advance,press}=gymPunchScene(facing),x=enemy.x;
     for(let i=0;i<count;i++){press();advance(20);}
     advance(1200);
-    assert.deepEqual(hits.map(h=>h.stage),Array.from({length:count},(_,i)=>i));
-    assert.deepEqual(poses,['punch','punch2','punch3'].slice(0,count));
-    assert.equal(enemy.hp,500-38*count);assert.equal(sounds.length,count);assert.equal(s.health,100);
-    assert.equal(enemy.x,x+(count===3?20*facing:0));
+    assert.deepEqual(hits.map(h=>h.stage),[undefined]);
+    assert.deepEqual(poses,['punch']);
+    assert.equal(enemy.hp,500-38);assert.equal(sounds.length,1);assert.equal(s.health,100);
+    assert.equal(enemy.x,x+20*facing);
     assert.equal(s.playerAttack,null);
   }
 });
@@ -1400,20 +1522,20 @@ test('holding keyboard or mobile punch never queues or repeats Gymbro strikes',(
     advance(1500);assert.equal(hits.length,1);assert.equal(s.playerAttack,null);
   }
 });
-test('three mobile taps chain all three Gymbro poses; excess presses cannot add a fourth strike',()=>{
+test('legacy mobile punch taps cannot queue the retired PPP chain',()=>{
   const {s,hits,poses,advance}=gymPunchScene(),input=new TouchInput();s.game.touchControls={input};
   for(let i=0;i<6;i++){input.down('H',i);input.up(i);advance(20);}
-  advance(1200);assert.equal(hits.length,3);assert.deepEqual(poses,['punch','punch2','punch3']);
+  advance(1200);assert.equal(hits.length,1);assert.deepEqual(poses,['punch']);
 });
 test('damage and dash cancel pending Gymbro punches; separated presses start a fresh first pose',()=>{
   for(const cancel of ['damage','dash']) {
     const {s,hits,poses,advance,press}=gymPunchScene();press();press();press();
     if(cancel==='damage'){s.invulnerableUntil=0;s.hitPlayer(5);}else s.startDash(1,0);
     advance(1200);assert.equal(hits.length,0);assert.ok(!poses.includes('punch2'));
-    press();assert.equal(s.playerAttack.comboStage,0);assert.equal(s.playerAttack.queued,0);
+    press();assert.equal(s.playerAttack.comboStage,undefined);assert.equal(s.playerAttack.queued,undefined);
   }
   const {s,poses,advance,press}=gymPunchScene();press();advance(500);press();
-  assert.equal(s.playerAttack.comboStage,0);assert.deepEqual(poses,['punch','punch']);
+  assert.equal(s.playerAttack.comboStage,undefined);assert.deepEqual(poses,['punch','punch']);
 });
 test('Gymbro combo still checks enemy reach and never damages an out-of-range target',()=>{
   const {enemy,hits,advance,press}=gymPunchScene();enemy.x=800;
@@ -1524,6 +1646,34 @@ test('damage cancels the air dash and rebound, and holding J only performs the f
   bounce.s.paused=true;bounce.step(20);assert.equal(bounce.s.player.z,z,'pause freezes the bounce');
   bounce.s.paused=false;bounce.s.invulnerableUntil=0;bounce.s.hitPlayer(5);
   assert.equal(bounce.s.arcade.player.airMotion,null);assert.equal(bounce.s.player.z,0);
+});
+
+test('directional jumps roll in either direction, keep facing and land cleanly for every fighter',()=>{
+  for(const key of ['office','student','teleperforman','gymbro','magolita'])for(const facing of [-1,1])for(const relative of [-1,1]){
+    const {s,step,press}=arcadeSetup(key),p=s.arcade.player;s.enemies=[];s.facing=facing;
+    const horizontal=facing*relative,keyName=horizontal>0?'D':'A';s.keys[keyName].isDown=true;
+    press('SPACE');assert.equal(p.jumpRoll,relative);assert.equal(s.facing,facing);
+    const seen=new Set();
+    while(p.jumpAge<ARCADE.jump.frames){step();if(p.state==='jump')seen.add(s.player.sprite.frame);}
+    const art=s.character.animations[relative>0?'jumpRoll':'jumpRollBack'];
+    assert.ok(art.every(frame=>seen.has(frame)),`${key}: all eight rotation poses`);
+    assert.equal(p.state,'walk');assert.equal(s.player.z,0);
+    s.keys[keyName].isDown=false;press('SPACE');assert.equal(p.jumpRoll,0);assert.equal(s.player.sprite.frame,s.character.jump);
+  }
+});
+
+test('every fighter can interrupt a somersault with a martial arts kick and recover without sticking',()=>{
+  for(const key of ['office','student','teleperforman','gymbro','magolita']){
+    const {s,step,press}=arcadeSetup(key),p=s.arcade.player;s.enemies=[];s.keys.D.isDown=true;
+    press('SPACE');step(5);press('J');
+    const action=p.action,art=s.character.animations.airKick;
+    assert.equal(action.data.type,'kick');assert.equal(action.data.combo,false);
+    assert.equal(action.displayedFrame.pose,art[0]);
+    const contacts=action.data.frames.filter(f=>f.phase==='active').map(f=>f.pose);
+    assert.deepEqual([...new Set(contacts)],art.slice(1,3));
+    assert.equal(action.data.frames.at(-1).pose,art[3]);
+    step(55);assert.equal(p.state,'walk');assert.equal(s.player.z,0);assert.equal(p.action,null);
+  }
 });
 
 test('simultaneous jump dash and kick starts Maca Demia air dash while other characters retain their normal jump kick',()=>{
@@ -1654,7 +1804,7 @@ test('updated Gymbro atlas fits the actual PNG and synchronizes contact poses wi
   const c=setup(0,'gymbro').character,png=readFileSync(new URL('../src/data/players/player_4.png',import.meta.url));
   const width=png.readUInt32BE(16),height=png.readUInt32BE(20),count=c.rows.reduce((sum,n)=>sum+n,0);
   assert.equal(width,1024);assert.equal(height,1536);
-  assert.equal(count,102,'original 70 poses + 32 shared-combo poses');assert.equal(c.frameRects.length,count);
+  assert.equal(count,130,'70 original + 32 shared combo + 12 aerial + 4 uppercut + 12 spinning kick poses');assert.equal(c.frameRects.length,count);
   for(const r of c.frameRects.slice(0,32))assert.ok(r.x>=0 && r.y>=0 && r.width>0 && r.height>0 && r.x+r.width<=width && r.y+r.height<=height);
   for(const frames of Object.values(c.animations))assert.ok(frames.every(f=>f>=0 && f<count));
   for(const [name,pose] of [['punch',8],['punch2',6],['punch3',10],['kick',22],['stomp',20]]) {
@@ -1662,7 +1812,7 @@ test('updated Gymbro atlas fits the actual PNG and synchronizes contact poses wi
     assert.equal(frames[Math.floor(a.hitAt/a.duration*frames.length)],pose);
   }
   assert.equal(c.dash,true);
-  assert.deepEqual(c.animations.defeat,[12,13,14,15]);assert.deepEqual(c.animations.dash,[16,17,18,19]);
+  assert.deepEqual(c.animations.defeat,[12,13,14,15]);assert.deepEqual(c.animations.dash,[44,45,46,47,48,49]);
   assert.deepEqual(c.animations.hurt,[24,25,26,27]);assert.deepEqual(c.animations.victory,[28,29,30,31]);
   assert.ok(c.animations.stomp.every(f=>c.animations.kick.includes(f)),'stomp reuses knee lift and planted foot from the new art');
   for(const name of ['punch','punch2','punch3','kick','stomp','dash','hurt'])assert.ok(!c.animations[name].some(f=>c.animations.defeat.includes(f)));
@@ -1770,7 +1920,7 @@ function finishWaves(s,avoid=false) {
 }
 
 test('campaign has exact pools and totals and steadily increases health, speed, damage and pressure',()=>{
-  assert.deepEqual(CAMPAIGN.map(l=>l.enemies),[['fan','brawler'],['walker','rider','vendor','belly'],['guitarist','vendor','sweeper','chain','guard','thrower'],['brawler','fan','sweeper','guard','yulitza'],['guitarist','motorata','vendor','thrower','belly'],['motorata','walker','thrower','sweeper','belly','yulitza'],['guard','belly','motorata','leash','vendor']].map((pool,index)=>[...(index>=2?[...pool,'homeless']:pool),...([1,2,4,5,6].includes(index)?['malabarista']:[]),...([1,2,4].includes(index)?['parlanchin']:[]),...([0,1,2,4,5,6].includes(index)?['cuidacarros']:[])]));
+  assert.deepEqual(CAMPAIGN.map(l=>l.enemies),[['fan','brawler'],['walker','rider','vendor','belly'],['guitarist','vendor','sweeper','chain','brincolas_calle','thrower'],['brawler','fan','sweeper','brincolas_calle','yulitza'],['guitarist','motorata','vendor','thrower','belly'],['motorata','walker','thrower','sweeper','belly','yulitza'],['brincolas_calle','belly','motorata','leash','vendor']].map((pool,index)=>[...(index>=2?[...pool,'homeless']:pool),...([1,2,4,5,6].includes(index)?['malabarista']:[]),...([1,2,4].includes(index)?['parlanchin']:[]),...([0,1,2,4,5,6].includes(index)?['cuidacarros']:[])]));
   assert.deepEqual(CAMPAIGN.map(l=>l.total),[15,20,20,20,20,30,30]);
   // difficulty ramps in playable order (combat stages only; bonus modes have their own tuning)
   const fights=PLAYABLE_CAMPAIGN.filter(l=>l.combatIndex!==undefined);assert.equal(fights.length,9);
@@ -2213,6 +2363,33 @@ test('level 1 boss hops back after 3 quick hits, is untouchable mid-air, then ru
   let combo=false;for(let i=0;i<120 && !combo;i++){step();combo=Boolean(model.action && !model.action.throw && !model.action.charge);}
   assert.ok(combo,'runs straight back into the knife combo (no football in between)');assert.equal(model.rush,false);
 });
+test('level 1 boss at a quarter of health glows red, leaps 4-6 times across the arena, whistles, then knifes faster',()=>{
+  for(const roll of [0,.999]){
+    const random=Math.random;Math.random=()=>roll;
+    try{
+      const {s,step}=bossArena();step();const boss=s.miniBoss.enemy;
+      const model=s.arcade.enemies.get(boss)??new Enemy(s.arcade,boss);s.arcade.enemies.set(boss,model);
+      const tints=[],setTint=boss.sprite.setTint?.bind(boss.sprite);boss.sprite.setTint=c=>{tints.push(c);return setTint?.(c)??boss.sprite;};
+      const sounds=[];const play=s.sfx?.play?.bind(s.sfx);s.sfx={...s.sfx,play:n=>{sounds.push(n);return play?.(n);}};
+      boss.x=s.player.x+300;boss.y=s.player.y;const base=enemies.barra.combo;
+      boss.hp=Math.floor(boss.config.hp*.25)+5;step(5);assert.equal(model.frenzy,undefined,'not before a quarter of health');
+      s.hitEnemy(boss,{damage:10,knockback:0,facing:1});
+      let hops=0,last=null;const spots=[];
+      for(let i=0;i<400 && !model.action?.summon;i++){
+        step();const leap=model.state==='evade' && model.evade?.frenzy?model.evade:null;
+        if(leap && leap!==last){hops++;spots.push(boss.x);const hp=boss.hp;s.hitEnemy(boss,{damage:50,knockback:0,facing:1});assert.equal(boss.hp,hp,'untouchable mid-leap');}
+        last=leap;
+      }
+      assert.ok(spots.every((x,i)=>i===0 || Math.abs(x-spots[i-1])>100),'each leap crosses the arena');
+      assert.equal(hops,roll?6:4,'4 to 6 leaps');assert.equal(model.action?.summon,true,'whistles after the last leap');
+      assert.ok(tints.some(c=>enemies.barra.frenzy.tint.includes(c)),'glows red');
+      assert.ok(boss.config.combo.windup<base.windup && boss.config.combo.cooldown<base.cooldown,'quicker knife combo');
+      assert.equal(enemies.barra.combo.windup,base.windup,'the shared boss config is not mutated');
+      step(200);assert.ok(s.enemies.some(e=>e.summoner===boss && e.hp>0),'minions arrive');
+      step(300);assert.equal(model.frenzyStarted,true);assert.notEqual(model.evade?.frenzy,true,'the frenzy happens only once');
+    }finally{Math.random=random;}
+  }
+});
 test('spaced-out hits never trigger the evade; Gymbro full punch combo does',()=>{
   const {s,step}=bossArena();step();const boss=s.miniBoss.enemy;
   const model=s.arcade.enemies.get(boss)??new Enemy(s.arcade,boss);s.arcade.enemies.set(boss,model);model.ready=1e9;
@@ -2596,13 +2773,141 @@ test('level 5 boss: shield blocks frontal hits (chip damage, no stagger), full d
   s.combatTime+=r.throw.gas.ms;gas.update();assert.equal(gas.clouds.length,0);assert.equal(cloud.sprite.destroyed,true);
 });
 
-function grabSetup(){
-  const setup=arcadeSetup();const {s,target}=setup;s.debugPreview=false;
+function grabSetup(character='gymbro'){
+  const setup=arcadeSetup(character);const {s,target}=setup;s.debugPreview=false;
   const model=new Enemy(s.arcade,target);s.arcade.enemies.set(target,model);model.ready=1e6;
   target.x=s.player.x+50;target.y=s.player.y;
   const walkIn=()=>{s.keys.D.isDown=true;setup.step(6);s.keys.D.isDown=false;};
   return {...setup,model,walkIn};
 }
+test('Gomelo PPP shares the PPKKK opening, lands three new punch contacts and knocks down only on the third',()=>{
+  for(const facing of [-1,1]){
+    const {s,target,step,press}=arcadeSetup('office'),p=s.arcade.player;
+    s.player.x=450;s.facing=facing;target.x=450+facing*50;
+    const hits=[],labels=[],hit=s.hitEnemy.bind(s);
+    s.hitEnemy=(enemy,attack)=>{hits.push({...attack,pose:s.player.sprite.frame});return hit(enemy,attack);};
+    s.arcade.combat.comboFinish=(a,t,data,label)=>labels.push(label);
+    press('H');
+    for(let stage=1;stage<3;stage++){
+      let limit=0;while(!p.action?.data.frames[p.action.index]?.cancel && limit++<90)step();
+      assert.ok(limit<90);press('H');assert.equal(p.action.data.stage,stage);
+    }
+    step(80);
+    assert.deepEqual(hits.map(h=>h.damage),[30,30,38]);assert.deepEqual(hits.map(h=>h.finisher),[false,false,true]);
+    assert.deepEqual(hits.map(h=>h.pose),['chainGomeloPunch1','chainGomeloPunch2','chainGomeloPunch3'].map(name=>s.character.animations[name][2]));
+    assert.equal(target.hp,902);assert.equal(s.arcade.enemies.get(target).state,'down');assert.deepEqual(labels,['PPP']);
+  }
+});
+
+function officeShakeSetup(facing=1,character='office'){
+  const setup=grabSetup(character),{s,target,step}=setup;
+  s.player.x=450;s.facing=facing;target.x=450+facing*50;
+  for(let i=0;i<ARCADE.grab.touchFrames;i++)s.arcade.player.tryGrab({dx:facing});
+  const graphics=[];
+  s.add.graphics=()=>{
+    const g=new Visual();g.draws=0;
+    for(const method of ['clear','lineStyle','lineBetween','strokeEllipse','fillStyle','fillCircle','strokeCircle','fillRect','fillTriangle'])g[method]=function(){this.draws++;return this;};
+    graphics.push(g);return g;
+  };
+  target.sprite.rotation=0;s.placeFighter(target);step();
+  return {...setup,graphics};
+}
+
+test('Teleperforman hold plus punch plays three lashes, costs two ordinary punches and releases on keyboard and touch',()=>{
+  for(const facing of [-1,1])for(const mobile of [false,true]){
+    const {s,target,model,step,press}=officeShakeSetup(facing,'teleperforman'),p=s.arcade.player;
+    const hp=target.hp,hits=[],sounds=[],seen=new Set(),hit=s.hitEnemy.bind(s);
+    s.hitEnemy=(enemy,attack)=>{hits.push(attack);return hit(enemy,attack);};s.sfx={play:name=>sounds.push(name)};
+    if(mobile){s.game.touchControls={input:new TouchInput()};s.game.touchControls.input.down('H','held-lash');step();s.game.touchControls.input.up('held-lash');}
+    else press('H');
+    const action=p.grab.shake;assert.ok(action);assert.equal(action.graphic,null,'no shake lines: the rival is just struck');
+    for(let i=0;i<100 && p.state==='grab';i++){
+      seen.add(s.player.sprite.frame);if(!action.released){assert.equal(model.state,'grabbed');assert.equal(target.grabJitterX??0,0,'the held rival does not vibrate');}step();
+    }
+    assert.equal(p.state,'walk');assert.equal(p.grab,null);assert.equal(hits.length,1);
+    assert.equal(hits[0].damage,s.character.attacks.punch.damage*2);assert.equal(target.hp,hp-52);
+    assert.equal(hits[0].knockdown,false);assert.notEqual(model.state,'grabbed');
+    for(const name of ['chainHeadset1','chainHeadset2','chainHeadset3'])assert.ok(seen.has(s.character.animations[name][2]));
+    assert.equal(sounds.filter(n=>n==='whip').length,3);assert.equal(sounds.includes('shake'),false);
+    assert.equal(target.grabJitterX,0);assert.equal(target.grabMove,null);assert.equal(s.health,100);
+  }
+});
+
+test('each Teleperforman held lash shows the rival in pain with a hit flash and spark',()=>{
+  const {s,target,step,press}=officeShakeSetup(1,'teleperforman'),p=s.arcade.player,combat=s.arcade.combat??p.runtime.combat;
+  const impacts=[],impact=combat.impact.bind(combat);combat.impact=(a,v,atk)=>{impacts.push({v,atk});return impact(a,v,atk);};
+  target.sprite.setFrame=function(frame){this.frame=frame;return this;};
+  press('H');const action=p.grab.shake,hurt=target.config.animations.hurt;
+  for(let i=0;i<100 && p.state==='grab';i++){
+    step();
+    if(s.character.grabShake.contacts.includes(action.age) && !action.released){
+      assert.ok(hurt.includes(target.sprite.frame),'pain frame on contact');assert.ok(combat.flashes.has(target),'white hit flash');
+    }
+  }
+  const lashes=impacts.filter(i=>i.atk.type==='headsetWhip');
+  assert.equal(lashes.length,3);assert.ok(lashes.every(i=>i.v===target && i.atk.damage===0));
+});
+
+test('Teleperforman held lashes pause and clean up on interruption, reset and lethal release',()=>{
+  for(const exit of ['hurt','reset','lethal']){
+    const {s,target,model,step,press}=officeShakeSetup(1,'teleperforman'),p=s.arcade.player;
+    target.hp=exit==='lethal'?40:1000;press('H');step(20);
+    const action=p.grab.shake,age=action.age;assert.equal(action.graphic,null);
+    s.paused=true;step(40);assert.equal(action.age,age);s.paused=false;
+    if(exit==='hurt')p.hurt(1,{});else if(exit==='reset')p.reset();
+    for(let i=0;i<90 && p.state==='grab';i++)step();
+    assert.equal(target.hp,exit==='lethal'?0:1000);assert.equal(p.grab,null);
+    assert.notEqual(model.state,'grabbed');assert.equal(target.grabMove,null);assert.equal(target.grabJitterX,0);
+  }
+});
+
+test('Gomelo one punch while holding rapidly shakes the visible rival, emits FX, then releases with damage once',()=>{
+  for(const facing of [-1,1])for(const mobile of [false,true]){
+    const {s,target,model,step,press}=officeShakeSetup(facing),p=s.arcade.player;
+    const hp=target.hp,hits=[],hit=s.hitEnemy.bind(s),sounds=[];s.sfx={play:name=>sounds.push(name)};
+    s.hitEnemy=(enemy,attack)=>{hits.push(attack);return hit(enemy,attack);};
+    if(mobile){s.game.touchControls={input:new TouchInput()};s.game.touchControls.input.down('H','shake');step();s.game.touchControls.input.up('shake');}
+    else press('H');
+    assert.ok(p.grab.shake);const shake=p.grab.shake,fx=shake.graphic;
+    step(7);assert.equal(model.state,'grabbed');assert.equal(target.hp,hp);assert.equal(target.grabMove,'shake');
+    const x=target.x,visualX=target.sprite.x,offset=target.grabJitterX;
+    assert.ok(Math.abs(offset)>0);assert.ok(fx.draws>0,'speed lines and orbit draw while shaking');
+    step();assert.equal(target.x,x,'visual vibration does not move the collision body');assert.notEqual(target.sprite.x,visualX);
+    assert.equal(target.grabJitterX,-offset);
+    let guard=0;while(p.state==='grab' && guard++<100)step();
+    assert.ok(guard<100);assert.equal(p.state,'walk');assert.equal(p.grab,null);
+    assert.equal(hits.length,1);assert.equal(hits[0].type,'grabShake');assert.equal(hits[0].knockdown,false);
+    assert.equal(target.hp,hp-48);assert.notEqual(model.state,'grabbed');assert.notEqual(model.state,'down');
+    assert.equal(target.grabJitterX,0);assert.equal(target.grabJitterY,0);assert.equal(target.sprite.rotation,0);
+    assert.equal(target.grabMove,null);assert.equal(fx.destroyed,true);assert.equal(shake.graphic,null);
+    assert.equal(s.health,100);assert.equal(sounds.filter(name=>name==='punch').length,1);
+    assert.equal(sounds.filter(name=>name==='shake').length,1,'shaking.wav plays once when the rapid vibration starts');
+  }
+});
+
+test('Gomelo shake freezes on pause and cancellation by hurt or reset restores all visual state without a late hit',()=>{
+  for(const mode of ['hurt','reset']){
+    const {s,target,model,step,press}=officeShakeSetup(),p=s.arcade.player;
+    press('H');step(8);const shake=p.grab.shake,fx=shake.graphic,hp=target.hp;
+    const age=shake.age,offset=target.grabJitterX;
+    s.paused=true;step(40);assert.equal(shake.age,age);assert.equal(target.grabJitterX,offset);s.paused=false;
+    if(mode==='hurt')p.hurt();else p.reset();
+    assert.equal(target.grabJitterX,0);assert.equal(target.grabJitterY,0);assert.equal(target.sprite.rotation,0);
+    assert.equal(target.grabMove,null);assert.equal(fx.destroyed,true);assert.notEqual(model.state,'grabbed');
+    step(80);assert.equal(target.hp,hp,'cancelled shake cannot damage later');
+  }
+});
+
+test('Gomelo shake releases on a killing hit and punch plus back still shakes instead of throwing',()=>{
+  for(const lethal of [false,true]){
+    const {s,target,step,press}=officeShakeSetup(),p=s.arcade.player;target.hp=lethal?40:1000;
+    s.keys.A.isDown=true;press('H');s.keys.A.isDown=false;const shake=p.grab.shake,fx=shake.graphic;
+    assert.ok(shake);for(let i=0;i<40 && p.state==='grab';i++)step();
+    assert.equal(target.hp,lethal?0:952);assert.equal(p.grab,null);assert.equal(p.state,'walk');
+    assert.equal(target.grabJitterX,0);assert.equal(target.grabMove,null);assert.equal(fx.destroyed,true);
+  }
+});
+
 test('walking into a regular enemy grabs it; H knees it and the third knee knocks it down',()=>{
   const {s,target,step,press,model,walkIn}=grabSetup();walkIn();
   assert.equal(s.arcade.player.state,'grab');assert.equal(model.state,'grabbed');
@@ -2811,11 +3116,12 @@ test('bosses cannot be grabbed and a grab ends if the player is hit; held too lo
   const held=grabSetup();held.walkIn();held.step(ARCADE.grab.holdFrames+2);
   assert.equal(held.model.state,'hurt');assert.equal(held.s.arcade.player.state,'walk');
 });
-test('the third strike of a combo knocks a regular enemy down',()=>{
+test('only the fifth strike of PPKKK knocks a regular enemy down',()=>{
   const {s,target,step,press,model}=grabSetup();target.x=s.player.x+55;
   press('H');
-  for(let stage=0;stage<2;stage++){
-    let guard=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && guard++<60)step();press('H');
+  for(let stage=0;stage<4;stage++){
+    let guard=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && guard++<60)step();
+    assert.notEqual(model.state,'down');press(stage===0?'H':'J');
   }
   let guard=0;while(model.state!=='down' && guard++<60)step();
   assert.equal(model.state,'down');
@@ -3091,7 +3397,7 @@ function motorataArena(direction=1,index=6){
 }
 
 test('Zona Rosa includes the sack carrier and juggler and Motorata has complete combat/entrance frames',()=>{
-  assert.deepEqual(CAMPAIGN[6].enemies,['guard','belly','motorata','leash','vendor','homeless','malabarista','cuidacarros']);
+  assert.deepEqual(CAMPAIGN[6].enemies,['brincolas_calle','belly','motorata','leash','vendor','homeless','malabarista','cuidacarros']);
   assert.deepEqual(CAMPAIGN.flatMap((level,i)=>level.enemies.includes('motorata')?[i+1]:[]),[5,6,7]);
   assert.equal(CAMPAIGN[6].total,30);assert.equal(CAMPAIGN[6].boss,'pacho');
   for(const [file,c,count] of [['motorata.png',enemies.motorata,24],['motorata_entry.png',MOTORATA_ENTRY,12]]){
@@ -3400,7 +3706,8 @@ test('Teleperforman locomotion and slide recovery retain the guard scale',()=>{
   const walk=readPng(new URL('../src/data/players/player_3_walk.png',import.meta.url));
   for(const frame of c.animations.walk){const r=c.frameRects[frame];
     const height=bounds(walk,r.x,0,r.width,r.height)*c.frameScales[frame]*world;
-    assert.ok(Math.abs(height-guard)<5,`walking pose ${frame} must not grow from 178 to 195 source pixels`);
+    // The walking heads were enlarged to the guard's head size (+~7 source px on top); the body and legs are unchanged.
+    assert.ok(height-guard>-5 && height-guard<8,`walking pose ${frame} must not grow from 178 to 195 source pixels`);
   }
   const armed=readPng(new URL('../src/data/players/player_3_vuvuzela_walk.png',import.meta.url));
   for(let i=0;i<8;i++)assert.ok(Math.abs(bounds(armed,i*256,0,256,256)*178/195*world-guard)<5,`armed step ${i} keeps the body size`);
@@ -3460,7 +3767,7 @@ test('Gomelo run cycle uses the clean 10-pose strip at a shared scale',()=>{
   const c=setup(0,'office').character,files=['player_1.png','player_1_agarre.png','player_1_walk.png','player_1_run_clean.png'];
   const pngs=files.map(file=>readFileSync(new URL(`../src/data/players/${file}`,import.meta.url)));
   const offset=pngs[0].readUInt32BE(20)+pngs[1].readUInt32BE(20)+pngs[2].readUInt32BE(20),png=pngs[3];
-  assert.equal(c.appendUrls.length,5);
+  assert.equal(c.appendUrls.length,8);
   assert.deepEqual(c.animations.walk,Array.from({length:10},(_,i)=>74+i));
   assert.equal(c.walkFramesPerPose,3);assert.equal(c.rows.reduce((sum,n)=>sum+n,0),c.frameRects.length);
   for(const frame of c.animations.walk){
@@ -3655,7 +3962,7 @@ test('Transmilleno · Estación only shrinks Coladín and his colados; the rest 
   const station=PLAYABLE_CAMPAIGN.find(l=>l.name==='Transmilleno · Estación'),first=PLAYABLE_CAMPAIGN[0];
   assert.ok(scaledEnemy(enemies.cabecilla,station,'cabecilla').height<=108);
   assert.ok(scaledEnemy(enemies.estudiante,station,'estudiante').height<enemies.estudiante.height);
-  for(const key of ['brawler','fan','sweeper','guard','yulitza'])assert.equal(scaledEnemy(enemies[key],station,key).height,enemies[key].height,key);
+  for(const key of ['brawler','fan','sweeper','brincolas_calle','yulitza'])assert.equal(scaledEnemy(enemies[key],station,key).height,enemies[key].height,key);
   assert.equal(scaledEnemy(enemies.brawler,first,'brawler').height,scaledEnemy(enemies.brawler,station,'brawler').height,'same brawler size as level 1');
   assert.ok(ARCADE.dash.frames*ARCADE.dash.speed/60>=150,'dash covers at least 150 px');
 });
@@ -3726,7 +4033,7 @@ test('a hit that lands at the end of an evade hop lands the hop instead of crash
 });
 
 for(const hero of ['office','student','teleperforman','gymbro','magolita'])for(const facing of [-1,1]){
-  for(const keys of [['H','H','H'],['H','H','H','J','J'],['J','J','J'],['J','J','J','downJ'],['H','H','J','J','upH']]){
+  for(const keys of [['H','H','J','J','J']]){
     test(`${hero} ${facing}: ${keys.join(' ')} lands once per strike and knocks down`,()=>{
       const {s,target,step,press}=arcadeSetup(hero),model=s.arcade.player;
       s.player.x=450;s.facing=facing;target.x=450+facing*50;
@@ -3739,8 +4046,8 @@ for(const hero of ['office','student','teleperforman','gymbro','magolita'])for(c
       }
       step(75);assert.equal(hits.length,keys.length);assert.equal(s.arcade.enemies.get(target).state,'down');
       assert.ok(target.hp<1000);assert.equal(model.state,'walk');
-      if(keys.at(-1)==='upH')assert.equal(hits.at(-1).comboEffect,'explosion');
-      if(keys.at(-1)==='downJ')assert.equal(hits.at(-1).comboEffect,'sweep');
+      assert.deepEqual(hits.map(h=>h.finisher),[false,false,false,false,true]);
+      if(hero==='student')assert.deepEqual(hits.slice(2).map(h=>h.impactType),['book','book','book']);
     });
   }
 }
@@ -3765,16 +4072,17 @@ test('a completed shared combo also knocks a boss down without super damage',()=
   assert.equal(model.state,'superDown');assert.equal(target.hp,hp);
 });
 
-test('the COMBOS screen lists the five playable routes with the actual keyboard and gamepad mapping',async()=>{
+test('the COMBOS screen lists the shared routes with the actual keyboard and gamepad mapping',async()=>{
   const {comboRows}=await import('../src/ui/CombosScreen.js');
   const {controlsFor}=await import('../src/ui/ControlsScreen.js');
   const {COMBO_ROUTES}=await import('../src/data/comboRoutes.js');
   for(const hero of ['office','student','teleperforman','gymbro','magolita']){
     const rows=comboRows(hero);
-    assert.deepEqual(rows.map(r=>r.notation),COMBO_ROUTES.map(r=>r.notation));
-    assert.deepEqual(rows[1].keys,['H','H','H','J','J']);assert.deepEqual(rows[1].pad,['X','X','X','Y','Y']);
-    assert.deepEqual(rows[3].keys,['J','J','J','↓ J']);
-    assert.deepEqual(rows[4].keys,['H','H','J','J','↑ H']);assert.ok(rows[4].about.length>20);
+    assert.deepEqual(rows.map(r=>r.notation),hero==='student'?['PPKKK','KKK']:hero==='office'?['PPKKK','PPP']:hero==='teleperforman'?['PPKKK','PPP','KKK']:COMBO_ROUTES.map(r=>r.notation));
+    assert.equal(rows.length,hero==='teleperforman'?3:['student','office'].includes(hero)?2:1);assert.deepEqual(rows[0].pad,['X','X','Y','Y','Y']);
+    assert.deepEqual(rows.find(r=>r.id==='ppkkk').keys,['H','H','J','J','J']);
+    assert.ok(rows[0].about.length>20);
+    if(hero==='student')assert.match(rows[0].about,/librazos/);
     assert.ok(controlsFor(hero).combos.some(r=>/COMBOS/.test(r.note??'')),'the controls screen points to the COMBOS menu instead of listing them');
   }
 });
@@ -3783,28 +4091,51 @@ test('a completed combo route gets the finisher emphasis once; a plain hit does 
   s.arcade.combat.comboFinish=(actor,t,attack,notation)=>calls.push(notation);
   target.x=s.player.x+50;target.hp=5000;target.config={...target.config,hp:5000};s.invulnerableUntil=Infinity;
   press('H');step(4);assert.deepEqual(calls,[],'one punch is not a combo');
-  for(let i=0;i<2;i++){let n=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && n++<80)step();press('H');}
+  for(let i=0;i<4;i++){let n=0;while(!s.arcade.player.action?.data.frames[s.arcade.player.action.index]?.cancel && n++<80)step();press(i===0?'H':'J');}
   let n=0;while(!calls.length && n++<60)step();
-  assert.deepEqual(calls,['PPP']);
+  assert.deepEqual(calls,['PPKKK']);
 });
 
-for(const hero of ['office','student','teleperforman','gymbro','magolita'])test(`${hero}: KKK keeps the opening kicks at normal speed and bursts out the finisher with a trail`,()=>{
+for(const hero of ['office','student','teleperforman','gymbro','magolita'])test(`${hero}: PPKKK keeps opening strikes at normal speed and bursts out only its finisher`,()=>{
   const {s,target,step,press}=arcadeSetup(hero),p=s.arcade.player;
   s.add.graphics=()=>{const g=new Visual();g.clear=g.lineStyle=g.lineBetween=()=>g;return g;};
   target.x=s.player.x+400; // Measure cadence without hitstop or recoil.
   const effects=[],rush=s.arcade.combat.comboRush.bind(s.arcade.combat);
   s.arcade.combat.comboRush=(actor,facing,speed)=>{effects.push(speed);rush(actor,facing,speed);};
   const durations=[],active=[];
-  press('J');
-  for(let i=0;i<3;i++){
+  press('H');
+  for(let i=0;i<5;i++){
     const data=p.action.data;durations.push(data.frames.length);active.push(data.frames.filter(f=>f.phase==='active').length);
-    if(i===2)break;
+    if(i===4)break;
     let limit=0;while(!p.action.data.frames[p.action.index]?.cancel && limit++<100)step();
-    assert.ok(limit<100);press('J');
+    assert.ok(limit<100);press(i===0?'H':'J');
   }
-  assert.equal(durations[1],durations[0],'opening strikes keep the normal cadence');assert.ok(durations[2]<durations[1],'the finisher is faster');
-  assert.deepEqual(active,[4,4,4],'contact frames are never skipped');
+  assert.equal(durations[3],durations[2],'opening K strikes keep the normal cadence');assert.ok(durations[4]<durations[3],'the finisher is faster');
+  assert.deepEqual(active,[3,3,4,4,4],'contact frames are never skipped');
   assert.deepEqual(effects,[1.6],'only the finisher leaves the speed trail');assert.ok(s.arcade.combat.impacts.some(e=>e.rush));
-  step(100);press('J');assert.equal(p.action.data.comboSpeed,1);assert.equal(effects.length,1);
+  step(100);press('H');assert.equal(p.action.data.comboSpeed,1);assert.equal(effects.length,1);
   assert.equal(target.hp,1000,'visuals do not deal damage');
+});
+
+test('Brincolas replaces the guard in the street levels: it hops and slaps, scores, counts toward the wave and stays out of the Ring roster',()=>{
+  const levels=CAMPAIGN.filter(l=>l.enemies.includes('brincolas_calle'));
+  assert.deepEqual(levels.map(l=>l.name),['La Candelaria','Transmilleno · Estación','Zona Rosa']);
+  assert.ok(CAMPAIGN.every(l=>!l.enemies.includes('guard')),'enemy_4 no longer appears in any level');
+  const c=enemies.brincolas_calle,ring=enemies.brincolas_rataquieta;
+  assert.equal(c.url,ring.url);assert.equal(c.ringFighter,'brincolas');assert.equal(c.street,true);assert.equal(c.name,'BRINCOLAS');
+  assert.ok(c.hp<ring.hp/2 && c.hp>enemies.guard.hp,'tougher than the guard, far below the Ring boss');
+  assert.equal(ring.street,undefined);assert.ok(!RING_ORDER.includes('brincolas_calle'));
+});
+
+test('a street Brincolas announces itself, hurts and dies with its sounds, pays 100 points and counts toward the wave',()=>{
+  const s=setup(2),calls=[];s.sfx={play:n=>calls.push(n),stop(){},setPaused(){}};
+  const before=s.defeated,score=s.run.score;
+  const b=s.spawnEnemy('brincolas_calle',93,0,1,0);assert.equal(calls.at(-1),'brincolasEntry');
+  s.hitEnemy(b,{damage:1,knockback:0,facing:1});assert.ok(calls.includes('brincolasHurt'));
+  s.hitEnemy(b,{damage:10000,knockback:0,facing:1});
+  assert.equal(b.hp,0);assert.equal(s.defeated,before+1,'counts toward the level total');assert.ok(s.run.score>=score+100,'pays like a regular enemy');
+  assert.ok(calls.includes('brincolasDie'));
+  const ring=setup(0);ring.init({level:5,character:'office',ringBonus:true,returnLevel:6});
+  const r=ring.spawnEnemy('brincolas_rataquieta',94,0,1,0),d=ring.defeated,sc=ring.run.score;
+  ring.hitEnemy(r,{damage:10000,knockback:0,facing:1});assert.equal(ring.defeated,d,'Ring fighters still do not count');assert.equal(ring.run.score,sc,'and still pay no kill points');
 });
